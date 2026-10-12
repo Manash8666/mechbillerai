@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Garage SaaS",
-    "slug": "garage-saas",
+    "name": "MechBillerAI",
+    "slug": "mechbiller-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +10,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.garagesaas.app",
+      "package": "com.hybridstudioz.mechbillerai",
       "adaptiveIcon": {
         "backgroundColor": "#0F172A",
         "foregroundImage": "./assets/android-icon-foreground.png",

@@ -10,9 +10,14 @@ export default function Home() {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <Car className="h-8 w-8 text-luxury-gold" />
-              <h1 className="text-2xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark">
-                Garage SaaS
-              </h1>
+              <div>
+                <h1 className="text-2xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark">
+                  MechBillerAI
+                </h1>
+                <p className="text-[10px] text-luxury-gold tracking-wider uppercase font-semibold">
+                  Powered by Hybrid StudioZ
+                </p>
+              </div>
             </div>
             <div className="flex space-x-4">
               <Link
@@ -145,7 +150,7 @@ export default function Home() {
       <footer className="bg-luxury-surface-light dark:bg-luxury-surface-dark border-t border-luxury-muted-light/20 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-center text-luxury-ink-light/60 dark:text-luxury-ink-dark/60">
-            © 2026 Garage SaaS. Made with ❤️ for Ahmedabad Garage Owners.
+            © 2026 MechBillerAI. Powered by Hybrid StudioZ. Made with ❤️ for Auto Workshops & Garages.
           </p>
         </div>
       </footer>

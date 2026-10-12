@@ -54,7 +54,7 @@ export default function LoginPage() {
           Welcome Back
         </h1>
         <p className="text-center text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-8">
-          Login to your Garage SaaS account
+          Login to your MechBillerAI account · Powered by Hybrid StudioZ
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">

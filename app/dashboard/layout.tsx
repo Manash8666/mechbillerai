@@ -83,7 +83,14 @@ function DashboardContent({
           <div className="flex items-center justify-between px-6 py-4 border-b border-luxury-gold/20">
             <div className="flex items-center space-x-2">
               <Car className="h-8 w-8 text-luxury-gold" />
-              <span className="text-xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark">Garage SaaS</span>
+              <div>
+                <span className="text-xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark block leading-none">
+                  MechBillerAI
+                </span>
+                <span className="text-[9px] text-luxury-gold uppercase tracking-wider font-semibold">
+                  By Hybrid StudioZ
+                </span>
+              </div>
             </div>
             <button
               className="lg:hidden text-luxury-ink-light dark:text-luxury-ink-dark"

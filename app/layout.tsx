@@ -6,8 +6,8 @@ import { Toaster } from "react-hot-toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Garage SaaS - Complete Garage Management System",
-  description: "Comprehensive billing, inventory, and job management for Ahmedabad garage owners",
+  title: "MechBillerAI - Powered by Hybrid StudioZ",
+  description: "Next-gen Garage Management, Job Cards & Smart GST Billing Platform. Powered by Hybrid StudioZ.",
 };
 
 export default function RootLayout({
