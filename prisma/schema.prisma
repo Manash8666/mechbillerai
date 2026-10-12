@@ -1,0 +1,327 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// License and Authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  phone         String?
+  role          String    @default("owner") // owner, admin, staff
+  garageType    String    @default("four_wheeler") // two_wheeler, four_wheeler
+  licenseKey    String?   @unique
+  licenseStatus String    @default("trial") // trial, active, expired
+  deviceId      String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  customers     Customer[]
+  invoices      Invoice[]
+  jobCards      JobCard[]
+  appointments  Appointment[]
+  activities    ActivityLog[]
+  branding      BrandingSettings?
+}
+
+// Customer Management
+model Customer {
+  id          String    @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  address     String?
+  gstNumber   String?
+  creditLimit Float     @default(0)
+  balance     Float     @default(0)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+  invoices     Invoice[]
+  jobCards     JobCard[]
+  appointments Appointment[]
+}
+
+// Vehicle Management
+model Vehicle {
+  id              String    @id @default(cuid())
+  registrationNo  String    @unique
+  make            String
+  model           String
+  year            Int?
+  color           String?
+  vin             String?
+  mileage         Int?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  customerId      String
+
+  // Relations
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobCards     JobCard[]
+  serviceHistory ServiceHistory[]
+}
+
+// Service History
+model ServiceHistory {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  serviceDate DateTime
+  serviceType String
+  description String
+  mileage     Int?
+  cost        Float
+  createdAt   DateTime @default(now())
+
+  // Relations
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+}
+
+// Job Card Management
+model JobCard {
+  id             String   @id @default(cuid())
+  jobNumber      String   @unique
+  customerId     String
+  vehicleId      String
+  status         String   @default("pending") // pending, in-progress, completed, delivered
+  priority       String   @default("normal") // low, normal, high, urgent
+  description    String
+  estimatedCost  Float?
+  actualCost     Float?
+  assignedTo     String?
+  startDate      DateTime @default(now())
+  completedDate  DateTime?
+  deliveryDate   DateTime?
+  notes          String?
+  beforePhotos   String? // JSON array of photo URLs
+  afterPhotos    String? // JSON array of photo URLs
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tasks      JobTask[]
+  invoice    Invoice?
+}
+
+// Job Tasks (Checklist)
+model JobTask {
+  id          String   @id @default(cuid())
+  jobCardId   String
+  description String
+  completed   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  jobCard JobCard @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+}
+
+// Invoice and Billing
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  customerId    String
+  jobCardId     String?  @unique
+  invoiceDate   DateTime @default(now())
+  dueDate       DateTime?
+  subtotal      Float
+  tax           Float    @default(0)
+  discount      Float    @default(0)
+  total         Float
+  paid          Float    @default(0)
+  balance       Float
+  status        String   @default("unpaid") // unpaid, partial, paid
+  paymentMode   String? // cash, upi, card, credit
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+
+  // Relations
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer      Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobCard       JobCard?        @relation(fields: [jobCardId], references: [id])
+  items         InvoiceItem[]
+  payments      Payment[]
+}
+
+// Invoice Items
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float
+  unitPrice   Float
+  tax         Float   @default(0)
+  total       Float
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// Payment Tracking
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  amount      Float
+  paymentMode String // cash, upi, card, bank
+  paymentDate DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// Inventory Management
+model InventoryItem {
+  id            String   @id @default(cuid())
+  name          String
+  code          String?  @unique
+  category      String?
+  description   String?
+  quantity      Float    @default(0)
+  unit          String   @default("pcs") // pcs, kg, ltr, etc.
+  minQuantity   Float    @default(0)
+  costPrice     Float
+  sellingPrice  Float
+  gstRate       Float    @default(18)
+  location      String?
+  supplierId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  supplier      Supplier?          @relation(fields: [supplierId], references: [id])
+  transactions  InventoryTransaction[]
+}
+
+// Inventory Transactions
+model InventoryTransaction {
+  id              String   @id @default(cuid())
+  itemId          String
+  type            String // in, out, adjustment
+  quantity        Float
+  reference       String? // Invoice number, PO number, etc.
+  notes           String?
+  transactionDate DateTime @default(now())
+
+  // Relations
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+// Supplier Management
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  gstNumber String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  items InventoryItem[]
+}
+
+// Appointment Booking
+model Appointment {
+  id          String   @id @default(cuid())
+  customerId  String
+  serviceType String
+  description String?
+  date        DateTime
+  startTime   String
+  endTime     String?
+  status      String   @default("scheduled") // scheduled, confirmed, completed, cancelled
+  bay         String? // Bay/slot number
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+// Service Packages
+model ServicePackage {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  duration    Int? // in minutes
+  services    String // JSON array of services included
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Activity Log
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  entity      String // customer, invoice, job, etc.
+  entityId    String?
+  description String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Settings
+model Settings {
+  id                  String   @id @default(cuid())
+  key                 String   @unique
+  value               String
+  updatedAt           DateTime @updatedAt
+}
+
+// Branding Settings
+model BrandingSettings {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  garageName          String?
+  logoUrl             String?
+  primaryColor        String   @default("#C9A84C")
+  secondaryColor      String?
+  accentColor         String?
+  canvasLightColor    String?
+  canvasDarkColor     String?
+  surfaceLightColor   String?
+  surfaceDarkColor    String?
+  textLightColor      String?
+  textDarkColor       String?
+  customCss           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+

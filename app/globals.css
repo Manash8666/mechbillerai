@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Luxury Design System - Oatmeal & Ink Color Architecture */
+:root {
+  /* Light Mode - 60-30-10 Distribution */
+  --canvas-bg: #F3EDE2;
+  --surface-bg: #D8D1C7;
+  --ink-text: #2B2B2B;
+  --gold-accent: #C9A84C;
+  --gold-light: #E8D6B3;
+  --muted-contrast: #D8D1C7;
+  
+  /* Semantic Colors - Light */
+  --success: #8FA89B;
+  --warning: #D4A373;
+  --error: #C97A7A;
+}
+
+.dark {
+  /* Dark Mode - Obsidian Ink */
+  --canvas-bg: #1E1B2E;
+  --surface-bg: #2B2B2B;
+  --ink-text: #F3EDE2;
+  --gold-accent: #C9A84C;
+  --muted-contrast: #D8D1C7;
+  
+  /* Semantic Colors - Dark */
+  --success: #5B7065;
+  --warning: #9C6F46;
+  --error: #8C4E4E;
+}
+
+body {
+  background-color: var(--canvas-bg);
+  color: var(--ink-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
