@@ -49,101 +49,73 @@ export default function DashboardPage() {
         <p className="text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mt-1">Welcome back! Here&apos;s your overview.</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Customers"
-          value={stats?.totalCustomers || 0}
-          icon={<Users className="h-6 w-6" />}
-          color="bg-luxury-gold"
-        />
-        <StatCard
-          title="Active Jobs"
-          value={stats?.activeJobCards || 0}
-          icon={<Car className="h-6 w-6" />}
-          color="bg-luxury-semantic-warning-light dark:bg-luxury-semantic-warning-dark"
-        />
-        <StatCard
-          title="Invoices (Month)"
-          value={stats?.invoicesThisMonth || 0}
-          icon={<FileText className="h-6 w-6" />}
-          color="bg-luxury-semantic-success-light dark:bg-luxury-semantic-success-dark"
-        />
-        <StatCard
-          title="Today's Appointments"
-          value={stats?.todayAppointments || 0}
-          icon={<Calendar className="h-6 w-6" />}
-          color="bg-luxury-gold-light"
-        />
-      </div>
-
-      {/* Revenue and Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Card */}
-        <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-luxury-ink-light dark:text-luxury-ink-dark">
-              Revenue This Month
-            </h3>
-            <div className="p-2 bg-luxury-gold/20 rounded-lg">
-              <IndianRupee className="h-6 w-6 text-luxury-gold" />
+      {/* iOS Banking Vault Hero Card & Quick Stats */}
+      <div className="rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-luxury-surface-dark via-[#111827] to-[#0A0F1D] text-white border-2 border-luxury-gold/30 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-luxury-gold/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-luxury-gold/20 border border-luxury-gold flex items-center justify-center text-luxury-gold font-bold">
+              ₹
+            </div>
+            <div>
+              <div className="text-xs font-mono font-bold tracking-widest text-luxury-gold uppercase">
+                Garage Operating Vault
+              </div>
+              <div className="text-xs text-slate-400">Monthly Net Cashflow & Settled Invoices</div>
             </div>
           </div>
-          <p className="text-3xl font-bold text-luxury-gold mb-2">
-            {formatCurrency(stats?.revenueThisMonth || 0)}
-          </p>
-          <div className="flex items-center text-sm">
-            {stats?.revenueGrowth >= 0 ? (
-              <>
-                <TrendingUp className="h-4 w-4 text-luxury-semantic-success-light dark:text-luxury-semantic-success-dark mr-1" />
-                <span className="text-luxury-semantic-success-light dark:text-luxury-semantic-success-dark font-medium">
-                  +{stats?.revenueGrowth || 0}%
-                </span>
-              </>
-            ) : (
-              <>
-                <TrendingUp className="h-4 w-4 text-luxury-semantic-error-light dark:text-luxury-semantic-error-dark mr-1 rotate-180" />
-                <span className="text-luxury-semantic-error-light dark:text-luxury-semantic-error-dark font-medium">
-                  {stats?.revenueGrowth || 0}%
-                </span>
-              </>
-            )}
-            <span className="text-luxury-ink-light/60 dark:text-luxury-ink-dark/60 ml-2">vs last month</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold w-fit">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            LIVE LEDGER
           </div>
         </div>
 
-        {/* Alerts Card */}
-        <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-luxury-ink-light dark:text-luxury-ink-dark">Alerts</h3>
-            <AlertCircle className="h-6 w-6 text-luxury-semantic-warning-light dark:text-luxury-semantic-warning-dark" />
+        <div className="mb-6 relative z-10">
+          <div className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-2 font-mono">
+            {formatCurrency(stats?.revenueThisMonth || 0)}
           </div>
-          <div className="space-y-3">
-            <Alert
-              title="Pending Invoices"
-              value={stats?.pendingInvoices || 0}
-              amount={stats?.outstandingAmount || 0}
-              color="text-luxury-semantic-warning-light dark:text-luxury-semantic-warning-dark"
-            />
-            <Alert
-              title="Low Stock Items"
-              value={stats?.lowStockItems || 0}
-              color="text-luxury-semantic-error-light dark:text-luxury-semantic-error-dark"
-            />
+          <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-300">
+            <span className="flex items-center text-emerald-400 font-semibold">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              +{stats?.revenueGrowth || 0}% vs last month
+            </span>
+            <span className="text-slate-500">•</span>
+            <span>{stats?.invoicesThisMonth || 0} Invoices Cleared</span>
+          </div>
+        </div>
+
+        {/* Banking Metrics Footer Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-black/40 border border-white/5 relative z-10">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Jobs</div>
+            <div className="text-xl font-bold text-luxury-gold mt-1">{stats?.activeJobCards || 0}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Customers</div>
+            <div className="text-xl font-bold text-white mt-1">{stats?.totalCustomers || 0}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Invoices</div>
+            <div className="text-xl font-bold text-amber-400 mt-1">{stats?.pendingInvoices || 0}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Outstanding (₹)</div>
+            <div className="text-xl font-bold text-rose-400 mt-1">{formatCurrency(stats?.outstandingAmount || 0)}</div>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Action Pills */}
       <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20">
-        <h3 className="text-lg font-semibold text-luxury-ink-light dark:text-luxury-ink-dark mb-4">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-4">
           Quick Actions
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickAction title="New Customer" href="/dashboard/customers" />
-          <QuickAction title="Create Job Card" href="/dashboard/jobcards" />
-          <QuickAction title="New Invoice" href="/dashboard/invoices" />
-          <QuickAction title="Book Appointment" href="/dashboard/appointments" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <QuickAction title="🛡️ Express Intake" href="/dashboard/jobcards" />
+          <QuickAction title="⚡ Evening Triage" href="/dashboard/jobcards" />
+          <QuickAction title="📄 Create Invoice" href="/dashboard/invoices" />
+          <QuickAction title="👥 Add Customer" href="/dashboard/customers" />
         </div>
       </div>
     </div>

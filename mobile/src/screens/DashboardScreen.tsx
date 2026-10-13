@@ -49,57 +49,130 @@ export default function DashboardScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
     >
+      {/* iOS App Top Bar */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Welcome back 👋</Text>
-          <Text style={styles.garageName}>{user?.name || 'Garage Owner'}</Text>
+        <View style={styles.profileSection}>
+          <View style={styles.avatarPill}>
+            <Text style={styles.avatarText}>{(user?.name || 'M')[0].toUpperCase()}</Text>
+          </View>
+          <View style={{ marginLeft: 12 }}>
+            <Text style={styles.welcomeText}>Good morning,</Text>
+            <Text style={styles.garageName}>{user?.name || 'Garage Partner'}</Text>
+          </View>
         </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {user?.licenseStatus === 'active' ? 'Active License' : 'Trial Period'}
-          </Text>
+        <TouchableOpacity style={styles.notificationPill}>
+          <MaterialCommunityIcons name="bell-badge-outline" size={20} color={COLORS.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Hero: iOS Banking Balance & Cashflow Card */}
+      <View style={styles.bankBalanceCard}>
+        <View style={styles.bankCardHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <MaterialCommunityIcons name="shield-check" size={16} color={COLORS.primary} />
+            <Text style={styles.bankCardLabel}>GARAGE OPERATING VAULT</Text>
+          </View>
+          <View style={styles.liveChip}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveChipText}>LIVE</Text>
+          </View>
+        </View>
+
+        <Text style={styles.balanceAmount}>
+          ₹{stats.revenueThisMonth.toLocaleString('en-IN')}
+        </Text>
+        <Text style={styles.balanceSubtext}>Net Cashflow Settled (This Month)</Text>
+
+        <View style={styles.bankCardFooter}>
+          <View style={styles.footerMetric}>
+            <Text style={styles.footerMetricLabel}>PAID INVOICES</Text>
+            <Text style={styles.footerMetricVal}>{stats.invoicesThisMonth}</Text>
+          </View>
+          <View style={styles.footerDivider} />
+          <View style={styles.footerMetric}>
+            <Text style={styles.footerMetricLabel}>ACTIVE JOBS</Text>
+            <Text style={[styles.footerMetricVal, { color: COLORS.primary }]}>{stats.activeJobs}</Text>
+          </View>
+          <View style={styles.footerDivider} />
+          <View style={styles.footerMetric}>
+            <Text style={styles.footerMetricLabel}>CUSTOMERS</Text>
+            <Text style={styles.footerMetricVal}>{stats.totalCustomers}</Text>
+          </View>
         </View>
       </View>
 
-      {/* Quick Stats Grid */}
-      <View style={styles.grid}>
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="account-group" size={28} color={COLORS.primary} />
-          <Text style={styles.statNumber}>{stats.totalCustomers}</Text>
-          <Text style={styles.statLabel}>Total Customers</Text>
-        </View>
+      {/* iOS Quick Actions Pills (Send, Receive, Invoice, Intake) */}
+      <View style={styles.pillsRow}>
+        <TouchableOpacity style={styles.actionPill}>
+          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(229, 192, 123, 0.15)' }]}>
+            <MaterialCommunityIcons name="camera-plus" size={22} color={COLORS.primary} />
+          </View>
+          <Text style={styles.pillLabel}>Express Intake</Text>
+        </TouchableOpacity>
 
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="car-wrench" size={28} color="#38BDF8" />
-          <Text style={styles.statNumber}>{stats.activeJobs}</Text>
-          <Text style={styles.statLabel}>Active Job Cards</Text>
-        </View>
+        <TouchableOpacity style={styles.actionPill}>
+          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+            <MaterialCommunityIcons name="cash-fast" size={22} color="#10B981" />
+          </View>
+          <Text style={styles.pillLabel}>Quick Pay</Text>
+        </TouchableOpacity>
 
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="file-document-outline" size={28} color="#34D399" />
-          <Text style={styles.statNumber}>{stats.invoicesThisMonth}</Text>
-          <Text style={styles.statLabel}>Invoices (Month)</Text>
-        </View>
+        <TouchableOpacity style={styles.actionPill}>
+          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
+            <MaterialCommunityIcons name="file-document-plus" size={22} color="#38BDF8" />
+          </View>
+          <Text style={styles.pillLabel}>New Bill</Text>
+        </TouchableOpacity>
 
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="currency-inr" size={28} color="#FBBF24" />
-          <Text style={styles.statNumber}>₹{stats.revenueThisMonth.toLocaleString('en-IN')}</Text>
-          <Text style={styles.statLabel}>Monthly Revenue</Text>
-        </View>
+        <TouchableOpacity style={styles.actionPill}>
+          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+            <MaterialCommunityIcons name="qrcode-scan" size={22} color="#C084FC" />
+          </View>
+          <Text style={styles.pillLabel}>UPI QR</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Quick Action Buttons */}
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.actionBtn}>
-          <MaterialCommunityIcons name="plus-circle" size={22} color={COLORS.background} />
-          <Text style={styles.actionBtnText}>New Job Card</Text>
+      {/* Recent Cashflow & Job Ledger Section */}
+      <View style={styles.ledgerHeader}>
+        <Text style={styles.sectionTitle}>Today's Garage Cashflow</Text>
+        <TouchableOpacity>
+          <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
+      </View>
 
-        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline]}>
-          <MaterialCommunityIcons name="account-plus" size={22} color={COLORS.primary} />
-          <Text style={[styles.actionBtnText, { color: COLORS.primary }]}>Add Customer</Text>
-        </TouchableOpacity>
+      <View style={styles.transactionsCard}>
+        <View style={styles.txRow}>
+          <View style={[styles.txIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+            <MaterialCommunityIcons name="arrow-bottom-left" size={20} color="#10B981" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.txTitle}>Splendor Plus (Spark Plug)</Text>
+            <Text style={styles.txSubtitle}>Collected via Cash · 11:20 AM</Text>
+          </View>
+          <Text style={styles.txAmountIncome}>+₹250</Text>
+        </View>
+
+        <View style={styles.txRow}>
+          <View style={[styles.txIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+            <MaterialCommunityIcons name="arrow-bottom-left" size={20} color="#10B981" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.txTitle}>Activa 6G (Oil Change)</Text>
+            <Text style={styles.txSubtitle}>Collected via UPI GPay · 10:45 AM</Text>
+          </View>
+          <Text style={styles.txAmountIncome}>+₹450</Text>
+        </View>
+
+        <View style={[styles.txRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.txIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+            <MaterialCommunityIcons name="clock-outline" size={20} color="#F59E0B" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.txTitle}>Royal Enfield Classic 350</Text>
+            <Text style={styles.txSubtitle}>Engine Rebuild (In Progress)</Text>
+          </View>
+          <Text style={styles.txAmountPending}>₹18,400</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -111,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    padding: 16,
+    padding: 18,
     paddingBottom: 40,
   },
   header: {
@@ -119,84 +192,223 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    marginTop: 8,
+    marginTop: 4,
+  },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(229, 192, 123, 0.15)',
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: COLORS.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   welcomeText: {
     color: COLORS.textMuted,
-    fontSize: 13,
+    fontSize: 12,
   },
   garageName: {
     color: COLORS.text,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
   },
-  badge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.success,
-  },
-  badgeText: {
-    color: COLORS.success,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
+  notificationPill: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
-    width: '48%',
     borderWidth: 1,
     borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statNumber: {
-    color: COLORS.text,
-    fontSize: 20,
+
+  // Bank Hero Card
+  bankBalanceCard: {
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: COLORS.borderHighlight,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  bankCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  bankCardLabel: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  liveChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  liveChipText: {
+    color: '#10B981',
+    fontSize: 10,
     fontWeight: 'bold',
-    marginTop: 8,
   },
-  statLabel: {
+  balanceAmount: {
+    color: COLORS.text,
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  balanceSubtext: {
     color: COLORS.textMuted,
     fontSize: 12,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  bankCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  footerMetric: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  footerMetricLabel: {
+    color: COLORS.textSubtle,
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  footerMetricVal: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: 'bold',
     marginTop: 2,
+  },
+  footerDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+
+  // Pills Row
+  pillsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  actionPill: {
+    alignItems: 'center',
+    width: '23%',
+  },
+  pillIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  pillLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Ledger / Transactions
+  ledgerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     color: COLORS.text,
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 12,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
+  seeAllText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '600',
   },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
+  transactionsCard: {
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  txRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 10,
-    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  actionBtnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+  txIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionBtnText: {
-    color: COLORS.background,
+  txTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  txSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  txAmountIncome: {
+    color: '#10B981',
+    fontSize: 15,
     fontWeight: 'bold',
-    fontSize: 14,
+  },
+  txAmountPending: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });
