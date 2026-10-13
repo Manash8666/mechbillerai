@@ -40,7 +40,39 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
         Alert.alert('Login Failed', res.error || 'Invalid credentials');
       }
     } catch {
-      Alert.alert('Connection Error', 'Could not reach server. Verify network.');
+      // Offline fallback: If server is unreached, allow immediate demo access for testing on device
+      if (email.includes('demo') || email.includes('test')) {
+        const fallbackUser = {
+          id: 'cmv4zl4620001d96sd1e0qto2',
+          name: email.includes('demo') ? 'Demo Two-Wheeler Workshop' : 'Premium Multi-Brand Auto Center',
+          email: email.trim(),
+          role: 'owner',
+          garageType: email.includes('demo') ? 'two_wheeler' : 'four_wheeler',
+          licenseStatus: 'active',
+        };
+        await Storage.setUser(fallbackUser);
+        Alert.alert(
+          'Offline Mode Enabled',
+          'Could not reach local server. Proceeding in Offline Demo Mode with all screens enabled.',
+          [
+            {
+              text: 'Continue to App',
+              onPress: () => {
+                if (onLoginSuccess) {
+                  onLoginSuccess(fallbackUser);
+                } else {
+                  navigation.replace('MainTabs');
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Connection Error',
+          'Could not reach server. Tap Quick Demo Accounts below to test the app offline, or enter your PC IP in settings.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -131,7 +163,24 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
           <View style={styles.demoButtonsRow}>
             <TouchableOpacity
               style={styles.demoPill}
-              onPress={() => handleFillDemo('two_wheeler')}
+              onPress={() => {
+                handleFillDemo('two_wheeler');
+                // Instant one-tap demo entry
+                const demoUser = {
+                  id: 'cmv4zl4620001d96sd1e0qto2',
+                  name: 'Royal Motors (Two-Wheeler)',
+                  email: 'demo@garagesaas.com',
+                  role: 'owner',
+                  garageType: 'two_wheeler',
+                  licenseStatus: 'active',
+                };
+                void Storage.setUser(demoUser);
+                if (onLoginSuccess) {
+                  onLoginSuccess(demoUser);
+                } else {
+                  navigation.replace('MainTabs');
+                }
+              }}
             >
               <MaterialCommunityIcons name="motorbike" size={16} color={COLORS.primary} />
               <Text style={styles.demoPillText}>Two-Wheeler</Text>
@@ -139,7 +188,24 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
 
             <TouchableOpacity
               style={styles.demoPill}
-              onPress={() => handleFillDemo('four_wheeler')}
+              onPress={() => {
+                handleFillDemo('four_wheeler');
+                // Instant one-tap demo entry
+                const demoUser = {
+                  id: 'cmv4zl4620001d96sd1e0qto2',
+                  name: 'Apex Auto Care (Four-Wheeler)',
+                  email: 'test@garagesaas.com',
+                  role: 'owner',
+                  garageType: 'four_wheeler',
+                  licenseStatus: 'active',
+                };
+                void Storage.setUser(demoUser);
+                if (onLoginSuccess) {
+                  onLoginSuccess(demoUser);
+                } else {
+                  navigation.replace('MainTabs');
+                }
+              }}
             >
               <MaterialCommunityIcons name="car" size={16} color={COLORS.primary} />
               <Text style={styles.demoPillText}>Four-Wheeler</Text>

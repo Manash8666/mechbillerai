@@ -2,12 +2,22 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base API config for mobile app
-// On Web preview in browser: http://localhost:3000/api
-// On Android Emulator: http://10.0.2.2:3000/api
-export const API_BASE_URL =
-  Platform.OS === 'web'
-    ? 'http://localhost:3000/api'
-    : 'http://10.0.2.2:3000/api';
+// When on actual device or offline, it falls back to demo mode gracefully or uses the live production / LAN server
+export const DEFAULT_API_URL = 'http://192.168.31.7:3000/api';
+
+export const getApiBaseUrl = async (): Promise<string> => {
+  try {
+    const custom = await AsyncStorage.getItem('custom_api_url');
+    if (custom) return custom;
+  } catch {}
+
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000/api';
+  }
+  return DEFAULT_API_URL;
+};
+
+export let API_BASE_URL = DEFAULT_API_URL;
 
 export interface UserSession {
   id: string;
@@ -18,7 +28,7 @@ export interface UserSession {
   licenseStatus: string;
 }
 
-const DEFAULT_DEMO_USER: UserSession = {
+export const DEFAULT_DEMO_USER: UserSession = {
   id: 'cmv4zl4620001d96sd1e0qto2',
   name: 'Demo Garage',
   email: 'demo@garagesaas.com',
@@ -41,6 +51,13 @@ export const Storage = {
   },
   removeUser: async () => {
     await AsyncStorage.removeItem('user');
+  },
+  setServerUrl: async (url: string) => {
+    await AsyncStorage.setItem('custom_api_url', url);
+    API_BASE_URL = url;
+  },
+  getServerUrl: async () => {
+    return (await AsyncStorage.getItem('custom_api_url')) || DEFAULT_API_URL;
   },
 };
 
