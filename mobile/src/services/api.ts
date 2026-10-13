@@ -80,4 +80,12 @@ export const API = {
     const result = await res.json();
     return Array.isArray(result) ? result : result.data || [];
   },
+
+  getJobCardPdfUrl: (jobCardId: string) => {
+    return `${API_BASE_URL}/pdf/jobcard?id=${jobCardId}`;
+  },
+
+  getInvoicePdfUrl: (invoiceId: string, type: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
+    return `${API_BASE_URL}/pdf/invoice?id=${invoiceId}&type=${type}`;
+  },
 };

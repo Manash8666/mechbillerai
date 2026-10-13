@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Linking, Share, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -57,6 +57,37 @@ export default function JobCardsScreen() {
     }
   };
 
+  const handleOpenPdf = async (jobId: string, type: 'jobcard' | 'estimate' = 'jobcard') => {
+    try {
+      const url =
+        type === 'jobcard' ? API.getJobCardPdfUrl(jobId) : API.getInvoicePdfUrl(jobId, 'ESTIMATE');
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        await Share.share({
+          message: `Vehicle ${type === 'jobcard' ? 'Job Card' : 'Estimate'} PDF: ${url}`,
+          url,
+        });
+      }
+    } catch {
+      Alert.alert('PDF Viewer', `Opening PDF: ${API.getJobCardPdfUrl(jobId)}`);
+    }
+  };
+
+  const handleSharePdf = async (jobNumber: string, jobId: string) => {
+    try {
+      const url = API.getJobCardPdfUrl(jobId);
+      await Share.share({
+        title: `Vehicle Job Card - ${jobNumber}`,
+        message: `Vehicle Job Card ${jobNumber} PDF: ${url}`,
+        url,
+      });
+    } catch (e: any) {
+      Alert.alert('Share Failed', e.message);
+    }
+  };
+
   const renderItem = ({ item }: { item: JobCardItem }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -86,6 +117,32 @@ export default function JobCardsScreen() {
           <Text style={styles.subLabel}>Est. Cost</Text>
           <Text style={styles.cost}>₹{(item.estimatedCost || 0).toLocaleString('en-IN')}</Text>
         </View>
+      </View>
+
+      {/* PDF Actions */}
+      <View style={styles.pdfActionsRow}>
+        <TouchableOpacity
+          style={styles.pdfBtnYellow}
+          onPress={() => handleOpenPdf(item.id, 'jobcard')}
+        >
+          <MaterialCommunityIcons name="file-document-outline" size={14} color="#713F12" />
+          <Text style={styles.pdfBtnYellowText}>Job Card (PDF)</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.pdfBtnRed}
+          onPress={() => handleOpenPdf(item.id, 'estimate')}
+        >
+          <MaterialCommunityIcons name="calculator-variant-outline" size={14} color="#FFF" />
+          <Text style={styles.pdfBtnRedText}>Estimate (PDF)</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.shareIconBtn}
+          onPress={() => handleSharePdf(item.jobNumber, item.id)}
+        >
+          <MaterialCommunityIcons name="share-variant-outline" size={16} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -195,6 +252,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginTop: 2,
+  },
+  pdfActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  pdfBtnYellow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FDE047',
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  pdfBtnYellowText: {
+    color: '#713F12',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  pdfBtnRed: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  pdfBtnRedText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  shareIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 168, 76, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyContainer: {
     alignItems: 'center',

@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Linking,
+  Share,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
+import { API } from '../services/api';
 
 export default function CheckoutScreen() {
   const [activeTab, setActiveTab] = useState<'quick' | 'detailed'>('quick');
@@ -37,6 +40,37 @@ export default function CheckoutScreen() {
         },
       ]
     );
+  };
+
+  const handleOpenInvoicePdf = async (jobId: string, vehicle: string) => {
+    try {
+      const url = API.getInvoicePdfUrl(jobId, 'INVOICE');
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        await Share.share({
+          title: `Bill / Invoice - ${vehicle}`,
+          message: `Tax Invoice for ${vehicle}: ${url}`,
+          url,
+        });
+      }
+    } catch {
+      Alert.alert('Invoice Viewer', `Opening PDF Bill for ${vehicle}: ${API.getInvoicePdfUrl(jobId)}`);
+    }
+  };
+
+  const handleShareInvoicePdf = async (vehicle: string, jobId: string) => {
+    try {
+      const url = API.getInvoicePdfUrl(jobId, 'INVOICE');
+      await Share.share({
+        title: `Bill - ${vehicle}`,
+        message: `Tax Invoice Bill for ${vehicle}: ${url}`,
+        url,
+      });
+    } catch (e: any) {
+      Alert.alert('Share Failed', e.message);
+    }
   };
 
   return (
@@ -123,13 +157,22 @@ export default function CheckoutScreen() {
                   <Text style={[styles.jobAmount, { color: COLORS.primary }]}>₹{job.amount.toLocaleString('en-IN')}</Text>
                   <Text style={styles.itemCountText}>{job.itemsCount} line items to verify</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.reviewBtn}
-                  onPress={() => Alert.alert('Itemized Breakdown', `Full invoice review for ${job.vehicle} with ${job.itemsCount} parts & labor entries.`)}
-                >
-                  <MaterialCommunityIcons name="file-search-outline" size={18} color={COLORS.background} />
-                  <Text style={styles.reviewBtnText}>View Bill</Text>
-                </TouchableOpacity>
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                  <TouchableOpacity
+                    style={styles.reviewBtn}
+                    onPress={() => handleOpenInvoicePdf(job.id, job.vehicle)}
+                  >
+                    <MaterialCommunityIcons name="file-pdf-box" size={18} color={COLORS.background} />
+                    <Text style={styles.reviewBtnText}>PDF Bill</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.shareBtnMini}
+                    onPress={() => handleShareInvoicePdf(job.vehicle, job.id)}
+                  >
+                    <MaterialCommunityIcons name="share-variant" size={15} color={COLORS.primary} />
+                    <Text style={styles.shareBtnMiniText}>Share</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>
@@ -257,18 +300,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   reviewBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#DC2626',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
     gap: 4,
   },
   reviewBtnText: {
-    color: COLORS.background,
+    color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 13,
+    fontSize: 12,
+  },
+  shareBtnMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(201, 168, 76, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 168, 76, 0.3)',
+    gap: 3,
+  },
+  shareBtnMiniText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: '600',
   },
   emptyCard: {
     padding: 24,
