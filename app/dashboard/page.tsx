@@ -1,15 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  Users,
-  FileText,
-  Car,
-  TrendingUp,
-  AlertCircle,
-  Calendar,
-  IndianRupee,
-} from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 export default function DashboardPage() {
@@ -17,7 +9,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
+    void fetchStats();
   }, []);
 
   const fetchStats = async () => {
@@ -67,7 +59,7 @@ export default function DashboardPage() {
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold w-fit">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            LIVE LEDGER
+            <span>LIVE LEDGER</span>
           </div>
         </div>
 
@@ -122,55 +114,12 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({
-  title,
-  value,
-  icon,
-  color,
-}: {
-  title: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-}) {
-  return (
-    <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20 hover:shadow-2xl transition-shadow duration-300">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark">{value}</p>
-        </div>
-        <div className={`${color} text-luxury-ink-light p-3 rounded-lg`}>{icon}</div>
-      </div>
-    </div>
-  );
+interface QuickActionProps {
+  readonly title: string;
+  readonly href: string;
 }
 
-function Alert({
-  title,
-  value,
-  amount,
-  color,
-}: {
-  title: string;
-  value: number;
-  amount?: number;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-luxury-gold/10 last:border-b-0">
-      <span className="text-luxury-ink-light dark:text-luxury-ink-dark">{title}</span>
-      <div className="text-right">
-        <p className={`font-semibold ${color}`}>{value}</p>
-        {amount !== undefined && (
-          <p className="text-xs text-luxury-ink-light/50 dark:text-luxury-ink-dark/50">{formatCurrency(amount)}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({ title, href }: { title: string; href: string }) {
+function QuickAction({ title, href }: QuickActionProps) {
   return (
     <a
       href={href}

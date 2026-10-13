@@ -40,7 +40,7 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   return (
@@ -81,7 +81,7 @@ export default function DashboardScreen() {
         <Text style={styles.balanceAmount}>
           ₹{stats.revenueThisMonth.toLocaleString('en-IN')}
         </Text>
-        <Text style={styles.balanceSubtext}>Net Cashflow Settled (This Month)</Text>
+        <Text style={styles.balanceSubtext}>Net Cash Flow Settled (This Month)</Text>
 
         <View style={styles.bankCardFooter}>
           <View style={styles.footerMetric}>
@@ -132,9 +132,9 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Recent Cashflow & Job Ledger Section */}
+      {/* Recent Cash Flow & Job Ledger Section */}
       <View style={styles.ledgerHeader}>
-        <Text style={styles.sectionTitle}>Today's Garage Cashflow</Text>
+        <Text style={styles.sectionTitle}>Today&apos;s Garage Cash Flow</Text>
         <TouchableOpacity>
           <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
