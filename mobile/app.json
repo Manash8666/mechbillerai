@@ -3,19 +3,26 @@
     "name": "MechBillerAI",
     "slug": "mechbillerai",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.hybridstudioz.mechbillerai",
       "adaptiveIcon": {
-        "backgroundColor": "#0F172A",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0F172A"
       },
       "predictiveBackGestureEnabled": false
     },
