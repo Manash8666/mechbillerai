@@ -237,7 +237,7 @@ function liveIndex(column: HTMLElement) {
 
   const translate = getComputedStyle(column).translate
   const y = translate === "none" ? "0" : (translate.split(" ")[1] ?? "0")
-  const amount = parseFloat(y) || 0
+  const amount = Number.parseFloat(y) || 0
 
   return y.endsWith("%") ? (-amount / 100) * rows : (-amount / height) * rows
 }
@@ -319,14 +319,14 @@ function NumberFlow({
       return
     }
 
-    const direction =
-      trend !== "auto"
-        ? trend
-        : value > previousValue
-          ? "up"
-          : value < previousValue
-            ? "down"
-            : "shortest"
+    let direction: "up" | "down" | "shortest" = "shortest"
+    if (trend !== "auto") {
+      direction = trend
+    } else if (value > previousValue) {
+      direction = "up"
+    } else if (value < previousValue) {
+      direction = "down"
+    }
     const timing = { duration, easing }
     const started: Animation[] = []
     const cells = root.querySelectorAll<HTMLElement>(
@@ -346,20 +346,13 @@ function NumberFlow({
         "[data-slot=number-flow-column]"
       )
       const entering = !item.exiting && (!before || before.exiting)
-      const leaving = item.exiting && (!before || !before.exiting)
+      const leaving = item.exiting && !before?.exiting
 
       if (entering || leaving) {
         const running = cell.getAnimations()
-        const fromWidth = running.length
-          ? cell.getBoundingClientRect().width
-          : entering
-            ? 0
-            : cell.getBoundingClientRect().width
-        const fromOpacity = running.length
-          ? Number(getComputedStyle(cell).opacity)
-          : entering
-            ? 0
-            : 1
+        const cellWidth = cell.getBoundingClientRect().width
+        const fromWidth = running.length ? cellWidth : (entering ? 0 : cellWidth)
+        const fromOpacity = running.length ? Number(getComputedStyle(cell).opacity) : (entering ? 0 : 1)
         running.forEach((animation) => animation.cancel())
         const toWidth = entering ? cell.getBoundingClientRect().width : 0
         const animation = cell.animate(
@@ -387,14 +380,14 @@ function NumberFlow({
       const running = column.getAnimations()
       const live = running.length ? liveIndex(column) : null
       running.forEach((animation) => animation.cancel())
-      const from =
-        live !== null
-          ? live - 10
-          : entering
-            ? 0
-            : before && before.digit !== null
-              ? before.digit
-              : target
+      let from = target
+      if (live !== null) {
+        from = live - 10
+      } else if (entering) {
+        from = 0
+      } else if (before?.digit !== null && before?.digit !== undefined) {
+        from = before.digit
+      }
 
       if (live === null && from === target && !entering) {
         continue

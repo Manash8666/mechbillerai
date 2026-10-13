@@ -177,7 +177,7 @@ function inlineGap(element: HTMLElement) {
     style.display.includes("grid") ||
     (style.display.includes("flex") && style.flexDirection.startsWith("row"))
 
-  return flowsInline ? parseFloat(style.columnGap) || 0 : 0
+  return flowsInline ? Number.parseFloat(style.columnGap) || 0 : 0
 }
 
 function isText(child: React.ReactNode) {
@@ -195,20 +195,23 @@ function wrapText(children: React.ReactNode, labelId: string) {
   const items = React.Children.toArray(children)
   const first = items.findIndex(isText)
 
-  return items.map((child, index) =>
-    isText(child) ? (
+  return items.map((child, index) => {
+    if (!isText(child)) {
+      return child
+    }
+
+    const key = React.isValidElement(child) && child.key ? child.key : `badge-label-${labelId}-${String(child).slice(0, 10)}`
+    return (
       <span
-        key={`badge-label-${index}`}
+        key={key}
         id={index === first ? labelId : undefined}
         data-slot="badge-label"
         className="min-w-0 truncate"
       >
         {child}
       </span>
-    ) : (
-      child
     )
-  )
+  })
 }
 
 type BadgeProps = useRender.ComponentProps<"span"> & {
@@ -469,12 +472,12 @@ type BadgeCountProps = Omit<
 
 function BadgeCount({ className, value, max = 99, ...props }: BadgeCountProps) {
   const safe = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
-  const cap =
-    max === Infinity
-      ? Infinity
-      : Number.isFinite(max) && max >= 1
-        ? Math.floor(max)
-        : 99
+  let cap = 99
+  if (max === Infinity) {
+    cap = Infinity
+  } else if (Number.isFinite(max) && max >= 1) {
+    cap = Math.floor(max)
+  }
   const over = safe > cap
 
   return (
