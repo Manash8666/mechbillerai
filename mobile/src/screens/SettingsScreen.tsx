@@ -1,19 +1,50 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
+  const [gstEnabled, setGstEnabled] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
+
+  React.useEffect(() => {
+    import('../services/offlineSync').then(({ offlineSyncManager }) => {
+      offlineSyncManager.getGstEnabled().then(setGstEnabled);
+    });
+  }, []);
+
+  const handleToggleGST = async () => {
+    const nextVal = !gstEnabled;
+    setGstEnabled(nextVal);
+    const { offlineSyncManager } = await import('../services/offlineSync');
+    await offlineSyncManager.setGstEnabled(nextVal);
+  };
+
+  const handleSyncNow = async () => {
+    try {
+      setSyncing(true);
+      const { offlineSyncManager } = await import('../services/offlineSync');
+      const res = await offlineSyncManager.syncQueueWithServer();
+      Alert.alert(
+        'Offline Sync Status',
+        `Synced: ${res.synced} job cards\nPending/Offline: ${res.failed}`
+      );
+    } catch {
+      Alert.alert('Sync Offline', 'Local queue preserved safely on device storage.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const menuItems = [
     { icon: 'shield-key-outline', title: 'License Status', subtitle: 'Lifetime License Active' },
     { icon: 'palette-outline', title: 'Garage Branding', subtitle: 'Gold & Slate Theme' },
     { icon: 'printer-outline', title: 'Thermal Printer Setup', subtitle: 'Bluetooth & USB' },
     { icon: 'translate', title: 'Language', subtitle: 'English (ગુજરાતી, हिंदी)' },
-    { icon: 'database-sync-outline', title: 'Cloud Sync', subtitle: 'Connected to local server' },
   ];
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.profileCard}>
         <MaterialCommunityIcons name="shield-check" size={32} color={COLORS.primary} />
         <View style={{ marginLeft: 14 }}>
@@ -21,6 +52,65 @@ export default function SettingsScreen() {
           <Text style={styles.plan}>Version 1.0.0 (Android) · Powered by Hybrid StudioZ</Text>
         </View>
       </View>
+
+      {/* MSME GST Switch Card */}
+      <View style={styles.gstCard}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.gstTitle}>GST Registered Business</Text>
+            <Text style={styles.gstSubtitle}>
+              {gstEnabled
+                ? 'GST Mode: 18% CGST/SGST applied to invoices'
+                : 'MSME Mode: 0% Tax, simplified bill of supply'}
+            </Text>
+          </View>
+          <Switch
+            value={gstEnabled}
+            onValueChange={handleToggleGST}
+            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            thumbColor="#FFF"
+          />
+        </View>
+
+        {/* Live Invoice Preview */}
+        <View style={styles.previewBox}>
+          <Text style={styles.previewHeader}>SAMPLE INVOICE PREVIEW</Text>
+          <View style={styles.previewRow}>
+            <Text style={styles.previewText}>Engine Oil (1L)</Text>
+            <Text style={styles.previewText}>₹400</Text>
+          </View>
+          <View style={styles.previewRow}>
+            <Text style={styles.previewText}>Labor Charges</Text>
+            <Text style={styles.previewText}>₹600</Text>
+          </View>
+          {gstEnabled ? (
+            <View style={styles.taxBox}>
+              <View style={styles.previewRow}>
+                <Text style={styles.taxText}>CGST (9%)</Text>
+                <Text style={styles.taxText}>₹90</Text>
+              </View>
+              <View style={styles.previewRow}>
+                <Text style={styles.taxText}>SGST (9%)</Text>
+                <Text style={styles.taxText}>₹90</Text>
+              </View>
+            </View>
+          ) : null}
+          <View style={[styles.previewRow, { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 8, marginTop: 4 }]}>
+            <Text style={[styles.previewText, { fontWeight: 'bold' }]}>Grand Total</Text>
+            <Text style={[styles.previewText, { fontWeight: 'bold', color: COLORS.primary }]}>
+              {gstEnabled ? '₹1,180' : '₹1,000'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Cloud & Local Offline Sync */}
+      <TouchableOpacity style={styles.syncBtn} onPress={handleSyncNow} disabled={syncing}>
+        <MaterialCommunityIcons name="cloud-sync" size={22} color={COLORS.background} />
+        <Text style={styles.syncBtnText}>
+          {syncing ? 'Syncing Queue...' : 'Sync Offline Queue to Cloud'}
+        </Text>
+      </TouchableOpacity>
 
       <View style={styles.menuList}>
         {menuItems.map((item, index) => (
@@ -34,7 +124,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -87,5 +177,74 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 12,
     marginTop: 2,
+  },
+  gstCard: {
+    backgroundColor: COLORS.surface,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(201, 168, 76, 0.4)',
+    marginBottom: 16,
+  },
+  gstTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  gstSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  previewBox: {
+    marginTop: 14,
+    backgroundColor: COLORS.background,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  previewHeader: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  previewText: {
+    color: COLORS.text,
+    fontSize: 12,
+  },
+  taxBox: {
+    marginVertical: 4,
+    paddingVertical: 4,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(201, 168, 76, 0.2)',
+  },
+  taxText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontStyle: 'italic',
+  },
+  syncBtn: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 16,
+  },
+  syncBtnText: {
+    color: COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

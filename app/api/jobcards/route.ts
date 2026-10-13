@@ -184,6 +184,8 @@ export async function POST(request: Request) {
       estimatedCost,
       assignedTo,
       tasks,
+      voiceNote,
+      preInspectionShield,
       userId,
     } = body;
 
@@ -241,6 +243,8 @@ export async function POST(request: Request) {
         status: 'pending',
         estimatedCost: estimatedCost || 0,
         assignedTo,
+        voiceNote: voiceNote || null,
+        preInspectionShield: typeof preInspectionShield === 'object' ? JSON.stringify(preInspectionShield) : (preInspectionShield || null),
         userId,
         tasks: tasks && Array.isArray(tasks) && tasks.length > 0 ? {
           create: tasks.map((task: any, index: number) => ({

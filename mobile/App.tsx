@@ -5,7 +5,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
 import DashboardScreen from './src/screens/DashboardScreen';
+import IntakeScreen from './src/screens/IntakeScreen';
 import JobCardsScreen from './src/screens/JobCardsScreen';
+import CheckoutScreen from './src/screens/CheckoutScreen';
 import CustomersScreen from './src/screens/CustomersScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { COLORS } from './src/constants/theme';
@@ -44,10 +46,12 @@ export default function App() {
 
               if (route.name === 'Dashboard') {
                 iconName = 'view-dashboard-outline';
+              } else if (route.name === 'Intake') {
+                iconName = 'shield-camera-outline';
               } else if (route.name === 'Job Cards') {
                 iconName = 'car-wrench';
-              } else if (route.name === 'Customers') {
-                iconName = 'account-group-outline';
+              } else if (route.name === 'Checkout') {
+                iconName = 'cash-fast';
               } else if (route.name === 'Settings') {
                 iconName = 'cog-outline';
               }
@@ -57,8 +61,9 @@ export default function App() {
           })}
         >
           <Tab.Screen name="Dashboard" component={DashboardScreen} />
+          <Tab.Screen name="Intake" component={IntakeScreen} options={{ title: 'Express Intake' }} />
           <Tab.Screen name="Job Cards" component={JobCardsScreen} />
-          <Tab.Screen name="Customers" component={CustomersScreen} />
+          <Tab.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Evening Triage' }} />
           <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
       </NavigationContainer>

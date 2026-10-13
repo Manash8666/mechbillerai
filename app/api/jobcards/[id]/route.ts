@@ -55,6 +55,8 @@ export async function PUT(
       completedDate,
       deliveryDate,
       notes,
+      voiceNote,
+      preInspectionShield,
     } = body;
 
     const updateData: any = {};
@@ -66,6 +68,10 @@ export async function PUT(
     if (actualCost !== undefined) updateData.actualCost = actualCost;
     if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
     if (notes !== undefined) updateData.notes = notes;
+    if (voiceNote !== undefined) updateData.voiceNote = voiceNote;
+    if (preInspectionShield !== undefined) {
+      updateData.preInspectionShield = typeof preInspectionShield === 'object' ? JSON.stringify(preInspectionShield) : preInspectionShield;
+    }
     
     if (completedDate !== undefined) {
       updateData.completedDate = completedDate ? new Date(completedDate) : null;

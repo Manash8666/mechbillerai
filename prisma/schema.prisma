@@ -18,6 +18,7 @@ model User {
   phone         String?
   role          String    @default("owner") // owner, admin, staff
   garageType    String    @default("four_wheeler") // two_wheeler, four_wheeler
+  gstEnabled    Boolean   @default(false) // MSME toggle: false = flat billing, true = CGST/SGST breakdown
   licenseKey    String?   @unique
   licenseStatus String    @default("trial") // trial, active, expired
   deviceId      String?
@@ -111,6 +112,8 @@ model JobCard {
   notes          String?
   beforePhotos   String? // JSON array of photo URLs
   afterPhotos    String? // JSON array of photo URLs
+  voiceNote      String? // Voice note recording URL or transcribed text
+  preInspectionShield String? // JSON object containing 4-sided inspection photos {front, back, left, right}
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   userId         String
