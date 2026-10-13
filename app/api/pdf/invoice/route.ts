@@ -147,7 +147,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${docType}_${docNumber}.pdf"`,
+        'Content-Disposition': `attachment; filename="${docType}_${docNumber}.pdf"`,
       },
     });
   } catch (error) {

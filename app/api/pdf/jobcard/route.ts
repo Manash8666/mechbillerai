@@ -72,7 +72,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="JobCard_${jobCard.jobNumber}.pdf"`,
+        'Content-Disposition': `attachment; filename="JobCard_${jobCard.jobNumber}.pdf"`,
       },
     });
   } catch (error) {

@@ -86,49 +86,18 @@ export default function JobCardsPage() {
 
   const handleDownloadEstimatePdf = (job: JobCard) => {
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const est = job.estimatedCost || 800;
-      const subtotal = Math.round(est * 0.82);
-      const tax = est - subtotal;
-      const doc = generateInvoiceOrEstimatePdf({
-        documentType: 'ESTIMATE',
-        documentNumber: job.jobNumber.replace('JC', 'EST'),
-        date: new Date(job.createdAt).toLocaleDateString('en-GB'),
-        customer: {
-          name: job.customer.name,
-          phone: job.customer.phone,
-        },
-        garage: {
-          name: user.name || 'Demo Garage',
-          phone: user.phone || '+91 99999 88888',
-        },
-        items: [
-          {
-            description: job.description || 'Estimated Vehicle Service',
-            quantity: 1,
-            unitPrice: subtotal,
-            total: subtotal,
-          },
-        ],
-        subtotal,
-        tax,
-        total: est,
-        balance: est,
-      });
       const fileName = `Estimate_${job.jobNumber}.pdf`;
-      const blob = doc.output('blob');
-      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
+      link.href = `/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`;
       link.download = fileName;
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      alert(`Estimate PDF (${fileName}) downloaded! Check your browser Downloads.`);
+      toast.success(`Estimate PDF (${fileName}) generated!`);
     } catch (err) {
-      console.error('Error generating Estimate PDF:', err);
-      window.open(`/api/pdf/jobcard?id=${job.jobNumber}`, '_blank');
+      console.error('Error downloading Estimate PDF:', err);
+      window.open(`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`, '_blank');
     }
   };
 
