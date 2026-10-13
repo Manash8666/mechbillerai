@@ -272,8 +272,8 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   } else {
     tableRows.push(
       ['SVC-101', 'General Vehicle Inspection & Diagnosis', '1', 'Included', 'COMPLETED'],
-      ['PRT-202', 'Engine Oil Synthetic 4T / 5W-40 (1L)', '1', '₹450', 'COMPLETED'],
-      ['LBR-303', 'Scheduled Labor & Multipoint Lubrication', '1', '₹350', 'COMPLETED']
+      ['PRT-202', 'Engine Oil Synthetic 4T / 5W-40 (1L)', '1', 'Rs. 450', 'COMPLETED'],
+      ['LBR-303', 'Scheduled Labor & Multipoint Lubrication', '1', 'Rs. 350', 'COMPLETED']
     );
   }
 
@@ -323,7 +323,7 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(201, 168, 76);
-  doc.text(`₹${(data.estimatedCost || 800).toLocaleString('en-IN')}`, margin + 6, finalY + 17);
+  doc.text(`Rs. ${(data.estimatedCost || 800).toLocaleString('en-IN')}`, margin + 6, finalY + 17);
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');

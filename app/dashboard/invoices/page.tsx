@@ -415,25 +415,31 @@ export default function InvoicesPage() {
                   </div>
                 </div>
 
-                {/* Right Section - Actions */}
-                <div className="flex lg:flex-col gap-2">
-                  <button
-                    onClick={() => handleDownloadBillPdf(invoice, 'INVOICE')}
-                    className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
-                    title="Download Tax Invoice / Bill (Red, Black & White format)"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Bill PDF
-                  </button>
-                  <button
-                    onClick={() => handleDownloadBillPdf(invoice, 'ESTIMATE')}
-                    className="flex-1 lg:flex-none px-3 py-1.5 bg-luxury-surface-light dark:bg-luxury-surface-dark text-luxury-ink-light dark:text-luxury-ink-dark border border-luxury-gold/40 font-semibold rounded-lg hover:border-luxury-gold transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
-                    title="Download Estimate / Quote (Red, Black & White format)"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Estimate PDF
-                  </button>
-                </div>
+                  {/* Right Section - Actions */}
+                  <div className="flex lg:flex-col gap-2">
+                    <a
+                      href={`/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE`}
+                      download={`Invoice_${invoice.invoiceNumber}.pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Download Tax Invoice / Bill (Red, Black & White format)"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Bill PDF
+                    </a>
+                    <a
+                      href={`/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=ESTIMATE`}
+                      download={`Estimate_${invoice.invoiceNumber}.pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-luxury-surface-light dark:bg-luxury-surface-dark text-luxury-ink-light dark:text-luxury-ink-dark border border-luxury-gold/40 font-semibold rounded-lg hover:border-luxury-gold transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Download Estimate / Quote (Red, Black & White format)"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Estimate PDF
+                    </a>
+                  </div>
               </div>
             </div>
           ))

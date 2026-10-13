@@ -469,22 +469,28 @@ export default function JobCardsPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
-                    <button
-                      onClick={() => handleDownloadJobCardPdf(job)}
+                    <a
+                      href={`/api/pdf/jobcard?id=${job.jobNumber}`}
+                      download={`JobCard_${job.jobNumber}.pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex-1 lg:flex-none px-3 py-1.5 bg-yellow-400/90 text-yellow-950 font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
                       title="Download Vehicle Job Card (Yellow format)"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Job Card PDF
-                    </button>
-                    <button
-                      onClick={() => handleDownloadEstimatePdf(job)}
+                    </a>
+                    <a
+                      href={`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`}
+                      download={`Estimate_${job.jobNumber}.pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
                       title="Download Estimate (Red & Black format)"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Estimate PDF
-                    </button>
+                    </a>
                     {job.status === 'completed' && (
                       <PearlButton className="text-xs">
                         Generate Invoice

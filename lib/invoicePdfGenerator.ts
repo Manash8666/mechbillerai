@@ -175,8 +175,8 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
     `#0${idx + 1}`,
     item.description,
     item.quantity.toString(),
-    `₹${item.unitPrice.toLocaleString('en-IN')}`,
-    `₹${item.total.toLocaleString('en-IN')}`,
+    `Rs. ${item.unitPrice.toLocaleString('en-IN')}`,
+    `Rs. ${item.total.toLocaleString('en-IN')}`,
   ]);
 
   autoTable(doc, {
@@ -254,19 +254,19 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
     doc.text(val, summaryBoxX + summaryBoxW - 4, y, { align: 'right' });
   };
 
-  addLedgerRow('Subtotal:', `₹${(data.subtotal || 0).toLocaleString('en-IN')}`, finalY + 8);
-  addLedgerRow('Tax (GST / VAT):', `₹${(data.tax || 0).toLocaleString('en-IN')}`, finalY + 15);
+  addLedgerRow('Subtotal:', `Rs. ${(data.subtotal || 0).toLocaleString('en-IN')}`, finalY + 8);
+  addLedgerRow('Tax (GST / VAT):', `Rs. ${(data.tax || 0).toLocaleString('en-IN')}`, finalY + 15);
   
   doc.setDrawColor(209, 213, 219);
   doc.line(summaryBoxX + 4, finalY + 19, summaryBoxX + summaryBoxW - 4, finalY + 19);
 
-  addLedgerRow('Total Payable:', `₹${(data.total || 0).toLocaleString('en-IN')}`, finalY + 25, true, true);
-  addLedgerRow('Amount Received:', `₹${(data.paid || 0).toLocaleString('en-IN')}`, finalY + 32, false);
+  addLedgerRow('Total Payable:', `Rs. ${(data.total || 0).toLocaleString('en-IN')}`, finalY + 25, true, true);
+  addLedgerRow('Amount Received:', `Rs. ${(data.paid || 0).toLocaleString('en-IN')}`, finalY + 32, false);
 
   const bal = data.balance ?? (data.total - (data.paid || 0));
   doc.setFillColor(bal > 0 ? 254 : 240, bal > 0 ? 242 : 253, bal > 0 ? 242 : 244);
   doc.roundedRect(summaryBoxX + 3, finalY + 36, summaryBoxW - 6, 8, 1, 1, 'F');
-  addLedgerRow('Balance Remaining:', `₹${bal.toLocaleString('en-IN')}`, finalY + 41.5, true, bal > 0);
+  addLedgerRow('Balance Remaining:', `Rs. ${bal.toLocaleString('en-IN')}`, finalY + 41.5, true, bal > 0);
 
   // 5. Signature and Certification Footer
   const signY = finalY + 54;
