@@ -79,6 +79,48 @@ function digitGlyphs(
   return Array.from({ length: 10 }, (_, digit) => plain.format(digit))
 }
 
+function formatIntegerGlyphs(
+  value: string,
+  integerCount: number,
+  glyphs: string[],
+  integerIndexRef: { current: number }
+): NumberFlowChar[] {
+  const chars: NumberFlowChar[] = []
+  for (const glyph of Array.from(value)) {
+    const place = integerCount - 1 - integerIndexRef.current
+    const digit = glyphs.indexOf(glyph)
+    chars.push({
+      key: `i${place}`,
+      section: 2,
+      order: -place,
+      value: glyph,
+      digit: digit === -1 ? null : digit,
+    })
+    integerIndexRef.current += 1
+  }
+  return chars
+}
+
+function formatFractionGlyphs(
+  value: string,
+  glyphs: string[],
+  fractionIndexRef: { current: number }
+): NumberFlowChar[] {
+  const chars: NumberFlowChar[] = []
+  for (const glyph of Array.from(value)) {
+    const digit = glyphs.indexOf(glyph)
+    chars.push({
+      key: `f${fractionIndexRef.current}`,
+      section: 4,
+      order: fractionIndexRef.current,
+      value: glyph,
+      digit: digit === -1 ? null : digit,
+    })
+    fractionIndexRef.current += 1
+  }
+  return chars
+}
+
 function formatPartChars(
   part: Intl.NumberFormatPart,
   integerCount: number,
@@ -88,57 +130,39 @@ function formatPartChars(
   symbol: (section: number, type: string, text: string) => void,
   seenNumberRef: { current: boolean }
 ): NumberFlowChar[] {
-  const chars: NumberFlowChar[] = []
-
   if (part.type === "integer") {
     seenNumberRef.current = true
-    for (const glyph of Array.from(part.value)) {
-      const place = integerCount - 1 - integerIndexRef.current
-      const digit = glyphs.indexOf(glyph)
-      chars.push({
-        key: `i${place}`,
-        section: 2,
-        order: -place,
-        value: glyph,
-        digit: digit === -1 ? null : digit,
-      })
-      integerIndexRef.current += 1
-    }
-  } else if (part.type === "group") {
+    return formatIntegerGlyphs(part.value, integerCount, glyphs, integerIndexRef)
+  }
+
+  if (part.type === "group") {
     const place = integerCount - 1 - integerIndexRef.current
-    chars.push({
+    return [{
       key: `g${place}`,
       section: 2,
       order: -place - 0.5,
       value: part.value,
       digit: null,
-    })
-  } else if (part.type === "decimal") {
+    }]
+  }
+
+  if (part.type === "decimal") {
     seenNumberRef.current = true
-    chars.push({
+    return [{
       key: "decimal",
       section: 3,
       order: 0,
       value: part.value,
       digit: null,
-    })
-  } else if (part.type === "fraction") {
-    for (const glyph of Array.from(part.value)) {
-      const digit = glyphs.indexOf(glyph)
-      chars.push({
-        key: `f${fractionIndexRef.current}`,
-        section: 4,
-        order: fractionIndexRef.current,
-        value: glyph,
-        digit: digit === -1 ? null : digit,
-      })
-      fractionIndexRef.current += 1
-    }
-  } else {
-    symbol(seenNumberRef.current ? 5 : 1, part.type, part.value)
+    }]
   }
 
-  return chars
+  if (part.type === "fraction") {
+    return formatFractionGlyphs(part.value, glyphs, fractionIndexRef)
+  }
+
+  symbol(seenNumberRef.current ? 5 : 1, part.type, part.value)
+  return []
 }
 
 function formatChars(
