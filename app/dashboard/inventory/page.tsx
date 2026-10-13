@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Package, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Search, Filter, Package, AlertTriangle, TrendingUp, TrendingDown, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
 
@@ -29,8 +30,20 @@ export default function InventoryPage() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStock, setFilterStock] = useState('all');
 
+  // Add Item Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [category, setCategory] = useState('Lubricants');
+  const [quantity, setQuantity] = useState('10');
+  const [unit, setUnit] = useState('Liters');
+  const [costPrice, setCostPrice] = useState('350');
+  const [sellingPrice, setSellingPrice] = useState('500');
+  const [gstRate, setGstRate] = useState('18');
+
   useEffect(() => {
-    fetchInventory();
+    void fetchInventory();
   }, []);
 
   const fetchInventory = async () => {
@@ -47,7 +60,56 @@ export default function InventoryPage() {
     }
   };
 
-  const categories = Array.from(new Set(items.map(item => item.category)));
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !code.trim()) {
+      toast.error('Item name and SKU/Code are required');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
+
+      const payload = {
+        userId,
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        category,
+        quantity: Number(quantity) || 0,
+        unit,
+        minQuantity: 5,
+        costPrice: Number(costPrice) || 0,
+        sellingPrice: Number(sellingPrice) || 0,
+        gstRate: Number(gstRate) || 18,
+      };
+
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to create item');
+      }
+
+      toast.success(`Item "${name}" added to inventory!`);
+      setIsModalOpen(false);
+      setName('');
+      setCode('');
+      await fetchInventory();
+    } catch (err: any) {
+      console.error('Error adding inventory item:', err);
+      toast.error(err.message || 'Failed to add item');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const categories = Array.from(new Set(items.map((item) => item.category)));
 
   const getStockStatus = (item: InventoryItem) => {
     if (item.quantity === 0) return 'out-of-stock';
@@ -68,31 +130,26 @@ export default function InventoryPage() {
     }
   };
 
-  const getMarginPercentage = (item: InventoryItem): string => {
-    if (item.costPrice === 0) return '0.0';
-    return ((item.sellingPrice - item.costPrice) / item.costPrice * 100).toFixed(1);
-  };
-
-  const filteredItems = items.filter(item => {
-    const matchesSearch = 
+  const filteredItems = items.filter((item) => {
+    const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
-    
+
     const stockStatus = getStockStatus(item);
-    const matchesStock = 
-      filterStock === 'all' || 
-      (filterStock === 'low' && (stockStatus === 'low-stock' || stockStatus === 'out-of-stock')) ||
-      (filterStock === 'in-stock' && stockStatus === 'in-stock');
-    
+    const matchesStock =
+      filterStock === 'all' ||
+      (filterStock === 'in-stock' && stockStatus === 'in-stock') ||
+      (filterStock === 'low' && (stockStatus === 'low-stock' || stockStatus === 'out-of-stock'));
+
     return matchesSearch && matchesCategory && matchesStock;
   });
 
-  const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
-  const lowStockCount = items.filter(item => getStockStatus(item) === 'low-stock' || getStockStatus(item) === 'out-of-stock').length;
-  const inStockCount = items.filter(item => getStockStatus(item) === 'in-stock').length;
+  const totalValue = items.reduce((sum, item) => sum + item.quantity * item.costPrice, 0);
+  const lowStockCount = items.filter((item) => item.quantity < item.minQuantity && item.quantity > 0).length;
+  const outOfStockCount = items.filter((item) => item.quantity === 0).length;
 
   if (loading) {
     return (
@@ -110,7 +167,7 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
           <p className="text-muted-foreground mt-1">Manage parts and supplies stock</p>
         </div>
-        <PearlButton className="text-xs">
+        <PearlButton onClick={() => setIsModalOpen(true)} className="text-xs">
           <Plus className="w-4 h-4 mr-1 text-luxury-gold" />
           Add Item
         </PearlButton>
@@ -139,8 +196,10 @@ export default function InventoryPage() {
             className="w-full pl-10 pr-4 py-2.5 bg-luxury-surface-light dark:bg-luxury-surface-dark text-luxury-ink-light dark:text-luxury-ink-dark border border-luxury-gold/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-gold appearance-none cursor-pointer"
           >
             <option value="all">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
           </select>
         </div>
@@ -177,11 +236,11 @@ export default function InventoryPage() {
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Total Value</p>
+              <p className="text-sm text-muted-foreground">Inventory Value</p>
               <p className="text-2xl font-bold text-foreground mt-1">₹{totalValue.toLocaleString('en-IN')}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-green-500" />
             </div>
           </div>
         </div>
@@ -189,11 +248,11 @@ export default function InventoryPage() {
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">In Stock</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{inStockCount}</p>
+              <p className="text-sm text-muted-foreground">Low Stock Alerts</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{lowStockCount}</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-              <Package className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-yellow-500" />
             </div>
           </div>
         </div>
@@ -201,103 +260,79 @@ export default function InventoryPage() {
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Low Stock Alert</p>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{lowStockCount}</p>
+              <p className="text-sm text-muted-foreground">Out of Stock</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{outOfStockCount}</p>
             </div>
-            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="w-12 h-12 bg-red-500/10 rounded-lg flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-red-500" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Low Stock Alert Banner */}
-      {lowStockCount > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                {lowStockCount} {lowStockCount === 1 ? 'item' : 'items'} need restocking
-              </p>
-              <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                Items are below minimum quantity or out of stock
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Inventory Table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50">
+            <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Item Details
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Category
                 </th>
-                <th className="text-center px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Stock
                 </th>
-                <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Cost Price
                 </th>
-                <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Selling Price
                 </th>
-                <th className="text-center px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Margin
                 </th>
-                <th className="text-center px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Status
-                </th>
-                <th className="text-center px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
-                    <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No Items Found</h3>
-                    <p className="text-muted-foreground">
-                      {searchQuery || filterCategory !== 'all' || filterStock !== 'all'
-                        ? 'Try adjusting your search or filters'
-                        : 'Add your first inventory item to get started'}
-                    </p>
+                  <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                    No items found
                   </td>
                 </tr>
               ) : (
                 filteredItems.map((item) => {
                   const stockStatus = getStockStatus(item);
-                  const margin = getMarginPercentage(item);
-                  
+                  const margin = (((item.sellingPrice - item.costPrice) / item.sellingPrice) * 100).toFixed(1);
+
                   return (
-                    <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={item.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
                         <div>
                           <p className="text-sm font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.code}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{item.code}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
-                          {item.category}
-                        </span>
+                        <span className="text-sm text-foreground">{item.category}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div>
-                          <p className={`text-sm font-semibold ${
-                            stockStatus === 'out-of-stock' ? 'text-red-600 dark:text-red-400' :
-                            stockStatus === 'low-stock' ? 'text-yellow-600 dark:text-yellow-400' :
-                            'text-foreground'
-                          }`}>
+                          <p
+                            className={`text-sm font-medium ${
+                              item.quantity === 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : item.quantity < item.minQuantity
+                                ? 'text-yellow-600 dark:text-yellow-400'
+                                : 'text-foreground'
+                            }`}
+                          >
                             {item.quantity} {item.unit}
                           </p>
                           <p className="text-xs text-muted-foreground">Min: {item.minQuantity}</p>
@@ -312,33 +347,30 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {parseFloat(margin) > 0 ? (
+                          {Number.parseFloat(margin) > 0 ? (
                             <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
                           ) : (
                             <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
                           )}
-                          <span className={`text-sm font-medium ${
-                            parseFloat(margin) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                          }`}>
+                          <span
+                            className={`text-sm font-medium ${
+                              Number.parseFloat(margin) > 0
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-red-600 dark:text-red-400'
+                            }`}
+                          >
                             {margin}%
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStockColor(stockStatus)}`}>
-                          {stockStatus === 'out-of-stock' ? 'OUT OF STOCK' :
-                           stockStatus === 'low-stock' ? 'LOW STOCK' : 'IN STOCK'}
+                          {stockStatus === 'out-of-stock'
+                            ? 'OUT OF STOCK'
+                            : stockStatus === 'low-stock'
+                            ? 'LOW STOCK'
+                            : 'IN STOCK'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">
-                            Edit
-                          </button>
-                          <button className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                            Restock
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   );
@@ -348,6 +380,157 @@ export default function InventoryPage() {
           </table>
         </div>
       </div>
+
+      {/* Add Item Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-luxury-gold/30 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-foreground">Add Inventory Item</h2>
+              <p className="text-sm text-muted-foreground mt-1">Track parts, oils, consumables and spares</p>
+            </div>
+
+            <form onSubmit={handleAddItem} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Item Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Synthetic Engine Oil 5W-40"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    SKU / Item Code *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. OIL-5W40-01"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold uppercase"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  >
+                    <option value="Lubricants">Lubricants</option>
+                    <option value="Brakes">Brakes</option>
+                    <option value="Filters">Filters</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Consumables">Consumables</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Stock Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Unit
+                  </label>
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  >
+                    <option value="Liters">Liters</option>
+                    <option value="Pieces">Pieces</option>
+                    <option value="Sets">Sets</option>
+                    <option value="Bottles">Bottles</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Cost (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={costPrice}
+                    onChange={(e) => setCostPrice(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Selling (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    GST (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={gstRate}
+                    onChange={(e) => setGstRate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted text-foreground"
+                >
+                  Cancel
+                </button>
+                <PearlButton type="submit" disabled={submitting}>
+                  {submitting ? 'Adding...' : 'Save Item'}
+                </PearlButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
