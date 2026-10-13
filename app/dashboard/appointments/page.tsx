@@ -237,7 +237,7 @@ export default function AppointmentsPage() {
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Today's Bookings</p>
+              <p className="text-sm text-muted-foreground">Today&apos;s Bookings</p>
               <p className="text-2xl font-bold text-foreground mt-1">{todayCount}</p>
             </div>
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
