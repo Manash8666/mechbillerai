@@ -29,7 +29,7 @@ export default function BrandingSettingsPage() {
     if (userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      fetchBranding(parsedUser.id);
+      void fetchBranding(parsedUser.id);
     }
   }, []);
 
@@ -101,8 +101,6 @@ export default function BrandingSettingsPage() {
   };
 
   const applyThemeImmediately = (palette: ColorPalette) => {
-    const root = document.documentElement;
-    
     // Create or update dynamic style element
     const styleId = 'custom-branding-styles';
     let styleElement = document.getElementById(styleId) as HTMLStyleElement;
@@ -114,7 +112,7 @@ export default function BrandingSettingsPage() {
     }
 
     // Generate CSS with custom colors
-    const css = `
+    const css = String.raw`
       :root {
         --custom-primary: ${palette.primary};
         --custom-secondary: ${palette.secondary};
@@ -140,7 +138,7 @@ export default function BrandingSettingsPage() {
         border-color: ${palette.primary} !important;
       }
 
-      .hover\\:bg-luxury-gold-light:hover {
+      .hover\:bg-luxury-gold-light:hover {
         background-color: ${palette.light} !important;
       }
 
@@ -169,42 +167,42 @@ export default function BrandingSettingsPage() {
       }
 
       /* Focus rings */
-      .focus\\:ring-luxury-gold:focus {
+      .focus\:ring-luxury-gold:focus {
         --tw-ring-color: ${palette.primary} !important;
       }
 
       /* Borders with opacity */
-      .border-luxury-gold\\/20 {
+      .border-luxury-gold\/20 {
         border-color: ${palette.primary}33 !important;
       }
 
-      .border-luxury-gold\\/30 {
+      .border-luxury-gold\/30 {
         border-color: ${palette.primary}4D !important;
       }
 
-      .border-luxury-gold\\/50 {
+      .border-luxury-gold\/50 {
         border-color: ${palette.primary}80 !important;
       }
 
       /* Backgrounds with opacity */
-      .bg-luxury-gold\\/10 {
+      .bg-luxury-gold\/10 {
         background-color: ${palette.primary}1A !important;
       }
 
-      .bg-luxury-gold\\/20 {
+      .bg-luxury-gold\/20 {
         background-color: ${palette.primary}33 !important;
       }
 
       /* Hover states */
-      .hover\\:text-luxury-gold:hover {
+      .hover\:text-luxury-gold:hover {
         color: ${palette.primary} !important;
       }
 
-      .hover\\:border-luxury-gold:hover {
+      .hover\:border-luxury-gold:hover {
         border-color: ${palette.primary} !important;
       }
 
-      .hover\\:border-luxury-gold\\/50:hover {
+      .hover\:border-luxury-gold\/50:hover {
         border-color: ${palette.primary}80 !important;
       }
 
@@ -221,11 +219,11 @@ export default function BrandingSettingsPage() {
         border-color: ${palette.primary} !important;
       }
 
-      .hover\\:bg-primary\\/90:hover {
+      .hover\:bg-primary\/90:hover {
         background-color: ${palette.primary}E6 !important;
       }
 
-      .focus\\:ring-primary:focus {
+      .focus\:ring-primary:focus {
         --tw-ring-color: ${palette.primary} !important;
       }
 
@@ -363,10 +361,14 @@ export default function BrandingSettingsPage() {
               Garage Information
             </h2>
             <div>
-              <label className="block text-sm font-medium text-luxury-ink-light dark:text-luxury-ink-dark mb-2">
+              <label
+                htmlFor="garage-name-input"
+                className="block text-sm font-medium text-luxury-ink-light dark:text-luxury-ink-dark mb-2"
+              >
                 Garage Name
               </label>
               <input
+                id="garage-name-input"
                 type="text"
                 value={formData.garageName}
                 onChange={(e) =>
@@ -441,10 +443,14 @@ export default function BrandingSettingsPage() {
                   className="w-20 h-20 rounded-lg cursor-pointer border-2 border-luxury-gold/30"
                 />
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-2">
+                  <label
+                    htmlFor="hex-code-input"
+                    className="block text-sm font-medium text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-2"
+                  >
                     Hex Code
                   </label>
                   <input
+                    id="hex-code-input"
                     type="text"
                     value={formData.primaryColor}
                     onChange={(e) => handleColorChange(e.target.value)}
@@ -564,7 +570,11 @@ export default function BrandingSettingsPage() {
         >
           <Save className="h-5 w-5" />
           <span>
-            {uploading ? 'Uploading...' : loading ? 'Saving...' : 'Save Branding'}
+            {(() => {
+              if (uploading) return 'Uploading...';
+              if (loading) return 'Saving...';
+              return 'Save Branding';
+            })()}
           </span>
         </button>
       </div>
@@ -572,7 +582,7 @@ export default function BrandingSettingsPage() {
   );
 }
 
-function ColorSwatch({ label, color }: { label: string; color: string }) {
+function ColorSwatch({ label, color }: Readonly<{ label: string; color: string }>) {
   return (
     <div className="space-y-2">
       <div
