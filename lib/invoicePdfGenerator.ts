@@ -48,10 +48,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
   const pageHeight = 297;
   const margin = 14;
 
-  // Colors based on Red, Black & White reference image
   const COLOR_BLACK = [34, 34, 34]; // Charcoal dark #222222
-  const COLOR_RED = [227, 27, 35]; // Racing Red #E31B23
-  const COLOR_LIGHT_GRAY = [245, 245, 247]; // Soft table zebra tint
   const COLOR_MUTED_TEXT = [100, 100, 100];
 
   // 1. Top Angular Header Background: Dark charcoal block on left, angled to the right
@@ -255,7 +252,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(34, 34, 34);
-  const balanceDue = data.balance !== undefined ? data.balance : data.total;
+  const balanceDue = data.balance ?? data.total;
   doc.text(`TOTAL DUE: ₹${balanceDue.toLocaleString('en-IN')}`, margin, totalDueY);
 
   if (data.paid && data.paid > 0) {

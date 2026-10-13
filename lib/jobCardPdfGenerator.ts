@@ -46,7 +46,6 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   const pageWidth = 210;
   const pageHeight = 297;
   const margin = 10;
-  const contentWidth = pageWidth - margin * 2; // 190mm
 
   // 1. Full Page Canary Yellow Background (#FCF88F / RGB: 252, 248, 143)
   doc.setFillColor(252, 248, 143);
