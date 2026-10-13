@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap } from 'lucide-react';
+import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download } from 'lucide-react';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
+import { generateJobCardPdf } from '@/lib/jobCardPdfGenerator';
+import { generateInvoiceOrEstimatePdf } from '@/lib/invoicePdfGenerator';
 
 interface JobCard {
   id: string;
@@ -59,6 +61,59 @@ export default function JobCardsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownloadJobCardPdf = (job: JobCard) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const doc = generateJobCardPdf({
+      jobNumber: job.jobNumber,
+      createdAt: job.createdAt,
+      status: job.status,
+      description: job.description,
+      estimatedCost: job.estimatedCost,
+      actualCost: job.actualCost,
+      voiceNote: job.voiceNote,
+      preInspectionShield: job.preInspectionShield,
+      customer: job.customer,
+      vehicle: job.vehicle,
+      tasks: job.tasks,
+      garageName: user.name || 'Demo Garage',
+      garagePhone: user.phone || '+91 99999 88888',
+    });
+    doc.save(`JobCard_${job.jobNumber}.pdf`);
+  };
+
+  const handleDownloadEstimatePdf = (job: JobCard) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const est = job.estimatedCost || 800;
+    const subtotal = Math.round(est * 0.82);
+    const tax = est - subtotal;
+    const doc = generateInvoiceOrEstimatePdf({
+      documentType: 'ESTIMATE',
+      documentNumber: job.jobNumber.replace('JC', 'EST'),
+      date: new Date(job.createdAt).toLocaleDateString('en-GB'),
+      customer: {
+        name: job.customer.name,
+        phone: job.customer.phone,
+      },
+      garage: {
+        name: user.name || 'Demo Garage',
+        phone: user.phone || '+91 99999 88888',
+      },
+      items: [
+        {
+          description: job.description || 'Estimated Vehicle Service',
+          quantity: 1,
+          unitPrice: subtotal,
+          total: subtotal,
+        },
+      ],
+      subtotal,
+      tax,
+      total: est,
+      balance: est,
+    });
+    doc.save(`Estimate_${job.jobNumber}.pdf`);
   };
 
   const getStatusColor = (status: string) => {
@@ -429,8 +484,21 @@ export default function JobCardsPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
-                    <button className="flex-1 lg:flex-none px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm">
-                      View Details
+                    <button
+                      onClick={() => handleDownloadJobCardPdf(job)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-yellow-400/90 text-yellow-950 font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Download Vehicle Job Card (Yellow format)"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Job Card PDF
+                    </button>
+                    <button
+                      onClick={() => handleDownloadEstimatePdf(job)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Download Estimate (Red & Black format)"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Estimate PDF
                     </button>
                     {job.status === 'completed' && (
                       <PearlButton className="text-xs">

@@ -5,6 +5,7 @@ import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee } from 'luci
 
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
+import { generateInvoiceOrEstimatePdf } from '@/lib/invoicePdfGenerator';
 
 interface Invoice {
   id: string;
@@ -41,8 +42,43 @@ export default function InvoicesPage() {
   const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
-    fetchInvoices();
+    void fetchInvoices();
   }, []);
+
+  const handleDownloadBillPdf = (invoice: Invoice, docType: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const doc = generateInvoiceOrEstimatePdf({
+      documentType: docType,
+      documentNumber: invoice.invoiceNumber,
+      date: new Date(invoice.createdAt).toLocaleDateString('en-GB'),
+      dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-GB') : undefined,
+      customer: {
+        name: invoice.customer.name,
+        phone: invoice.customer.phone,
+        email: invoice.customer.email,
+      },
+      garage: {
+        name: user.name || 'Demo Garage',
+        phone: user.phone || '+91 99999 88888',
+        email: user.email || 'support@garagesaas.com',
+      },
+      items: invoice.items.length > 0 ? invoice.items : [
+        {
+          description: 'General Workshop Service & Parts',
+          quantity: 1,
+          unitPrice: invoice.subtotal,
+          total: invoice.subtotal,
+        },
+      ],
+      subtotal: invoice.subtotal,
+      tax: invoice.tax,
+      total: invoice.total,
+      paid: invoice.paid,
+      balance: invoice.balance,
+      paymentMode: invoice.paymentMode,
+    });
+    doc.save(`${docType}_${invoice.invoiceNumber}.pdf`);
+  };
 
   const fetchInvoices = async () => {
     try {
@@ -279,9 +315,21 @@ export default function InvoicesPage() {
                     <Eye className="w-4 h-4" />
                     View
                   </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm flex items-center justify-center gap-2">
-                    <Download className="w-4 h-4" />
-                    PDF
+                  <button
+                    onClick={() => handleDownloadBillPdf(invoice, 'INVOICE')}
+                    className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    title="Download Tax Invoice / Bill (Red, Black & White format)"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Bill PDF
+                  </button>
+                  <button
+                    onClick={() => handleDownloadBillPdf(invoice, 'ESTIMATE')}
+                    className="flex-1 lg:flex-none px-3 py-1.5 bg-luxury-surface-light dark:bg-luxury-surface-dark text-luxury-ink-light dark:text-luxury-ink-dark border border-luxury-gold/40 font-semibold rounded-lg hover:border-luxury-gold transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    title="Download Estimate / Quote (Red, Black & White format)"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Estimate PDF
                   </button>
                   {invoice.balance > 0 && (
                     <button className="flex-1 lg:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">

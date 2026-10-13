@@ -30,7 +30,7 @@ export default function AppointmentsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   useEffect(() => {
-    fetchAppointments();
+    void fetchAppointments();
   }, []);
 
   const fetchAppointments = async () => {
