@@ -8,9 +8,15 @@ export default function SettingsScreen({ navigation }: any) {
   const [syncing, setSyncing] = React.useState(false);
 
   React.useEffect(() => {
-    import('../services/offlineSync').then(({ offlineSyncManager }) => {
-      offlineSyncManager.getGstEnabled().then(setGstEnabled);
-    });
+    void (async () => {
+      try {
+        const { offlineSyncManager } = await import('../services/offlineSync');
+        const enabled = await offlineSyncManager.getGstEnabled();
+        setGstEnabled(enabled);
+      } catch (err) {
+        console.error('Failed to load GST status:', err);
+      }
+    })();
   }, []);
 
   const handleToggleGST = async () => {
@@ -139,9 +145,9 @@ export default function SettingsScreen({ navigation }: any) {
       </TouchableOpacity>
 
       <View style={styles.menuList}>
-        {menuItems.map((item, index) => (
+        {menuItems.map((item) => (
           <TouchableOpacity
-            key={index}
+            key={item.title}
             style={styles.menuItem}
             onPress={item.onPress}
           >

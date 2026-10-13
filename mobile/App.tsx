@@ -39,10 +39,15 @@ function TabBarIcon({ routeName, color, size }: { readonly routeName: string; re
   return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
 }
 
+const renderTabBarIcon = (routeName: string) =>
+  function TabIcon({ color, size }: { color: string; size: number }) {
+    return <TabBarIcon routeName={routeName} color={color} size={size} />;
+  };
+
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerStyle: {
           backgroundColor: COLORS.surface,
           borderBottomWidth: 1,
@@ -61,16 +66,33 @@ function MainTabs() {
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarIcon: ({ color, size }) => (
-          <TabBarIcon routeName={route.name} color={color} size={size} />
-        ),
-      })}
+      }}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Job Cards" component={JobCardsScreen} />
-      <Tab.Screen name="Invoices" component={InvoicesScreen} options={{ title: 'Billing' }} />
-      <Tab.Screen name="Inventory" component={InventoryScreen} options={{ title: 'Parts Stock' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ tabBarIcon: renderTabBarIcon('Dashboard') }}
+      />
+      <Tab.Screen
+        name="Job Cards"
+        component={JobCardsScreen}
+        options={{ tabBarIcon: renderTabBarIcon('Job Cards') }}
+      />
+      <Tab.Screen
+        name="Invoices"
+        component={InvoicesScreen}
+        options={{ title: 'Billing', tabBarIcon: renderTabBarIcon('Invoices') }}
+      />
+      <Tab.Screen
+        name="Inventory"
+        component={InventoryScreen}
+        options={{ title: 'Parts Stock', tabBarIcon: renderTabBarIcon('Inventory') }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ tabBarIcon: renderTabBarIcon('Settings') }}
+      />
     </Tab.Navigator>
   );
 }
