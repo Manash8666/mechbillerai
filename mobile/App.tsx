@@ -15,6 +15,8 @@ import InvoicesScreen from './src/screens/InvoicesScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import AppointmentsScreen from './src/screens/AppointmentsScreen';
 import BrandingScreen from './src/screens/BrandingScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import { Storage, UserSession } from './src/services/api';
 
 import { COLORS } from './src/constants/theme';
 
@@ -98,6 +100,20 @@ function MainTabs() {
 }
 
 export default function App() {
+  const [currentUser, setCurrentUser] = React.useState<UserSession | null>(null);
+  const [authChecked, setAuthChecked] = React.useState(false);
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const u = await Storage.getUser();
+        setCurrentUser(u);
+      } finally {
+        setAuthChecked(true);
+      }
+    })();
+  }, []);
+
   return (
     <>
       <StatusBar style="light" />
@@ -116,6 +132,20 @@ export default function App() {
             },
           }}
         >
+          <Stack.Screen
+            name="Login"
+            options={{ headerShown: false }}
+          >
+            {(props) => (
+              <LoginScreen
+                {...props}
+                onLoginSuccess={(user: UserSession) => {
+                  setCurrentUser(user);
+                  props.navigation.replace('MainTabs');
+                }}
+              />
+            )}
+          </Stack.Screen>
           <Stack.Screen
             name="MainTabs"
             component={MainTabs}

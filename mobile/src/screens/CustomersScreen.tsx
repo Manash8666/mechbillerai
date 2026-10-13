@@ -1,16 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  Modal,
+  TextInput,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileLoader from '../components/MobileLoader';
+import MobilePearlButton from '../components/MobilePearlButton';
 
 interface CustomerItem {
   id: string;
   name: string;
   phone: string;
+  email?: string;
+  address?: string;
   balance?: number;
-  vehicles?: Array<{ id: string; registrationNo: string }>;
+  vehicles?: Array<{ id: string; registrationNo: string; make?: string; model?: string }>;
   _count?: {
     vehicles?: number;
     jobCards?: number;
@@ -21,6 +35,14 @@ export default function CustomersScreen() {
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // New Customer Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [custEmail, setCustEmail] = useState('');
+  const [regNo, setRegNo] = useState('');
 
   const fetchCustomers = async () => {
     try {
@@ -41,6 +63,56 @@ export default function CustomersScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchCustomers();
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!custName.trim() || !custPhone.trim()) {
+      Alert.alert('Required', 'Customer Name and Phone Number are required.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const user = await API.getDashboardStats();
+      const baseUrl = API.getJobCardPdfUrl('').replace('/pdf/jobcard?id=', '');
+      
+      const res = await fetch(`${baseUrl}/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: custName.trim(),
+          phone: custPhone.trim(),
+          email: custEmail.trim() || undefined,
+          userId: user?.id,
+        }),
+      });
+
+      const newCustomer = await res.json();
+
+      if (regNo.trim() && newCustomer.id) {
+        await fetch(`${baseUrl}/customers/${newCustomer.id}/vehicles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            registrationNo: regNo.trim().toUpperCase(),
+            make: 'Standard Vehicle',
+            model: 'General',
+          }),
+        });
+      }
+
+      Alert.alert('Success', `Customer "${custName}" created!`);
+      setIsModalOpen(false);
+      setCustName('');
+      setCustPhone('');
+      setCustEmail('');
+      setRegNo('');
+      await fetchCustomers();
+    } catch {
+      Alert.alert('Error', 'Failed to save customer. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderItem = ({ item }: { item: CustomerItem }) => {
@@ -69,6 +141,18 @@ export default function CustomersScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top Header */}
+      <View style={styles.topActions}>
+        <Text style={styles.topTitle}>Customer Accounts</Text>
+        <MobilePearlButton
+          variant="gold"
+          onPress={() => setIsModalOpen(true)}
+        >
+          <MaterialCommunityIcons name="account-plus" size={18} color={COLORS.background} style={{ marginRight: 4 }} />
+          <Text style={styles.pearlBtnText}>Add Customer</Text>
+        </MobilePearlButton>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <MobileLoader text="Loading Customers" />
@@ -88,9 +172,90 @@ export default function CustomersScreen() {
           }
         />
       )}
-      <TouchableOpacity style={styles.fab}>
+
+      {/* Floating Plus Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setIsModalOpen(true)}
+      >
         <MaterialCommunityIcons name="account-plus" size={26} color={COLORS.background} />
       </TouchableOpacity>
+
+      {/* Add Customer Modal */}
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Customer</Text>
+              <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Full Name *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Vikram Sharma"
+                placeholderTextColor={COLORS.textMuted}
+                value={custName}
+                onChangeText={setCustName}
+              />
+
+              <Text style={styles.inputLabel}>Mobile Phone Number *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 9876543210"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="phone-pad"
+                value={custPhone}
+                onChangeText={setCustPhone}
+              />
+
+              <Text style={styles.inputLabel}>Email Address (Optional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="customer@example.com"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={custEmail}
+                onChangeText={setCustEmail}
+              />
+
+              <Text style={styles.inputLabel}>Vehicle Number Plate (Optional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. DL01AB1234"
+                placeholderTextColor={COLORS.textMuted}
+                autoCapitalize="characters"
+                value={regNo}
+                onChangeText={setRegNo}
+              />
+
+              <MobilePearlButton
+                variant="gold"
+                onPress={handleCreateCustomer}
+                style={{ marginTop: 22 }}
+              >
+                {saving ? (
+                  <MobileLoader text="Saving" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check" size={18} color={COLORS.background} style={{ marginRight: 6 }} />
+                    <Text style={styles.pearlBtnText}>Register Customer</Text>
+                  </>
+                )}
+              </MobilePearlButton>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -99,6 +264,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  topTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  pearlBtnText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.background,
   },
   center: {
     flex: 1,
@@ -129,39 +312,39 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarText: {
-    color: COLORS.primary,
     fontSize: 18,
     fontWeight: 'bold',
+    color: COLORS.primary,
   },
   details: {
     flex: 1,
   },
   name: {
-    color: COLORS.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: COLORS.text,
   },
   phone: {
-    color: COLORS.textMuted,
     fontSize: 12,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   subText: {
-    color: COLORS.primaryLight,
     fontSize: 11,
-    marginTop: 4,
+    color: COLORS.primary,
+    marginTop: 2,
   },
   balanceCol: {
     alignItems: 'flex-end',
   },
   balanceLabel: {
-    color: COLORS.textMuted,
     fontSize: 10,
+    color: COLORS.textMuted,
   },
   balanceValue: {
-    color: COLORS.success,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
+    color: COLORS.text,
     marginTop: 2,
   },
   emptyContainer: {
@@ -172,7 +355,7 @@ const styles = StyleSheet.create({
   emptyText: {
     color: COLORS.textMuted,
     marginTop: 12,
-    fontSize: 15,
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',
@@ -185,5 +368,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalForm: {
+    paddingVertical: 14,
+    paddingBottom: 30,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: COLORS.text,
+    fontSize: 14,
   },
 });
