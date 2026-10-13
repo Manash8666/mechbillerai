@@ -8,11 +8,28 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import IntakeScreen from './src/screens/IntakeScreen';
 import JobCardsScreen from './src/screens/JobCardsScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
-import CustomersScreen from './src/screens/CustomersScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { COLORS } from './src/constants/theme';
 
 const Tab = createBottomTabNavigator();
+
+function TabBarIcon({ routeName, color, size }: { readonly routeName: string; readonly color: string; readonly size: number }) {
+  let iconName: any = 'home';
+
+  if (routeName === 'Dashboard') {
+    iconName = 'view-dashboard-outline';
+  } else if (routeName === 'Intake') {
+    iconName = 'shield-camera-outline';
+  } else if (routeName === 'Job Cards') {
+    iconName = 'car-wrench';
+  } else if (routeName === 'Checkout') {
+    iconName = 'cash-fast';
+  } else if (routeName === 'Settings') {
+    iconName = 'cog-outline';
+  }
+
+  return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+}
 
 export default function App() {
   return (
@@ -41,23 +58,9 @@ export default function App() {
             },
             tabBarActiveTintColor: COLORS.primary,
             tabBarInactiveTintColor: COLORS.textMuted,
-            tabBarIcon: ({ color, size }) => {
-              let iconName: any = 'home';
-
-              if (route.name === 'Dashboard') {
-                iconName = 'view-dashboard-outline';
-              } else if (route.name === 'Intake') {
-                iconName = 'shield-camera-outline';
-              } else if (route.name === 'Job Cards') {
-                iconName = 'car-wrench';
-              } else if (route.name === 'Checkout') {
-                iconName = 'cash-fast';
-              } else if (route.name === 'Settings') {
-                iconName = 'cog-outline';
-              }
-
-              return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
-            },
+            tabBarIcon: ({ color, size }) => (
+              <TabBarIcon routeName={route.name} color={color} size={size} />
+            ),
           })}
         >
           <Tab.Screen name="Dashboard" component={DashboardScreen} />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, FileText } from 'lucide-react';
+import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap } from 'lucide-react';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 
 interface JobCard {
@@ -40,7 +40,7 @@ export default function JobCardsPage() {
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
 
   useEffect(() => {
-    fetchJobCards();
+    void fetchJobCards();
   }, []);
 
   const fetchJobCards = async () => {
@@ -448,7 +448,7 @@ export default function JobCardsPage() {
         isOpen={isIntakeOpen}
         onClose={() => setIsIntakeOpen(false)}
         onSuccess={() => {
-          fetchJobCards();
+          void fetchJobCards();
         }}
       />
     </div>

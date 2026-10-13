@@ -12,9 +12,9 @@ interface PreInspectionData {
 }
 
 interface ExpressIntakeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
 }
 
 export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: ExpressIntakeModalProps) {
@@ -55,7 +55,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
     }
   };
 
-  const handleSaveIntake = async (e: React.FormEvent) => {
+  const handleSaveIntake = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!vehicleNumber.trim()) {
       alert('Please enter vehicle registration number');
@@ -133,7 +133,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
           vehicleId,
           description: serviceDescription,
           priority: 'normal',
-          estimatedCost: parseFloat(estimatedCost) || 500,
+          estimatedCost: Number.parseFloat(estimatedCost) || 500,
           voiceNote: voiceNote || 'Quick Morning Intake recorded on garage floor.',
           preInspectionShield,
           tasks: [
@@ -184,10 +184,11 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
           {/* Vehicle info grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
+              <label htmlFor="vehiclePlate" className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
                 Vehicle Plate Number *
               </label>
               <input
+                id="vehiclePlate"
                 type="text"
                 required
                 placeholder="e.g. GJ-01-AB-1234"
@@ -197,11 +198,12 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
+              <label htmlFor="customerName" className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
                 Customer Name & Phone
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <input
+                  id="customerName"
                   type="text"
                   placeholder="Ramesh Patel"
                   value={customerName}
@@ -209,6 +211,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
                   className="w-full px-3 py-2 text-sm rounded-lg border border-luxury-gold/30 bg-luxury-canvas-light dark:bg-luxury-canvas-dark text-luxury-ink-light dark:text-luxury-ink-dark focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                 />
                 <input
+                  id="customerPhone"
                   type="text"
                   placeholder="9898XXXXXX"
                   value={customerPhone}
@@ -260,9 +263,9 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
 
           {/* Hands-Free Voice Note */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-2">
+            <div className="block text-xs font-bold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-2">
               Mechanic Voice Note (Hands-Free Grease Protection)
-            </label>
+            </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
@@ -297,10 +300,11 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
           {/* Job Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-luxury-gold/20">
             <div>
-              <label className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
+              <label htmlFor="serviceDescription" className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
                 Requested Work
               </label>
               <input
+                id="serviceDescription"
                 type="text"
                 value={serviceDescription}
                 onChange={e => setServiceDescription(e.target.value)}
@@ -308,10 +312,11 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
+              <label htmlFor="estimatedCost" className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
                 Estimated Amount (₹)
               </label>
               <input
+                id="estimatedCost"
                 type="number"
                 value={estimatedCost}
                 onChange={e => setEstimatedCost(e.target.value)}
