@@ -6,6 +6,18 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...');
 
+  // Clean existing non-user data to enable idempotent re-seeding
+  await prisma.brandingSettings.deleteMany({});
+  await prisma.appointment.deleteMany({});
+  await prisma.invoiceItem.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.invoice.deleteMany({});
+  await prisma.jobTask.deleteMany({});
+  await prisma.jobCard.deleteMany({});
+  await prisma.inventoryItem.deleteMany({});
+  await prisma.vehicle.deleteMany({});
+  await prisma.customer.deleteMany({});
+
   // Create test users
   const hashedPassword = await bcrypt.hash('test123', 10);
 

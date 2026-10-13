@@ -39,6 +39,20 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+input, select, textarea {
+  color: var(--ink-text);
+}
+
+select option {
+  background-color: var(--surface-bg);
+  color: var(--ink-text);
+}
+
+.dark select option {
+  background-color: #2B2B2B;
+  color: #F3EDE2;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

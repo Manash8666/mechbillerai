@@ -23,6 +23,19 @@ const config: Config = {
           800: '#075985',
           900: '#0c4a6e',
         },
+        // Semantic theme tokens mapping to luxury CSS variables
+        background: 'var(--canvas-bg)',
+        foreground: 'var(--ink-text)',
+        card: {
+          DEFAULT: 'var(--surface-bg)',
+          foreground: 'var(--ink-text)',
+        },
+        border: 'color-mix(in srgb, var(--ink-text) 15%, transparent)',
+        input: 'var(--surface-bg)',
+        muted: {
+          DEFAULT: 'color-mix(in srgb, var(--canvas-bg) 80%, var(--ink-text) 20%)',
+          foreground: 'color-mix(in srgb, var(--ink-text) 60%, transparent)',
+        },
         // Luxury Design System - Oatmeal & Ink
         luxury: {
           // Canvas backgrounds (60% distribution)
