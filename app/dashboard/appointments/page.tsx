@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Calendar, Clock, MapPin, CheckCircle, XCircle, X } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Clock, MapPin, CheckCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
@@ -87,7 +87,7 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleCreateAppointment = async (e: React.FormEvent) => {
+  const handleCreateAppointment = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedCustomerId) {
       toast.error('Please select a customer');
@@ -375,10 +375,11 @@ export default function AppointmentsPage() {
 
             <form onSubmit={handleCreateAppointment} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="appointmentCustomer" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Select Customer *
                 </label>
                 <select
+                  id="appointmentCustomer"
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
@@ -393,10 +394,11 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="appointmentServiceType" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Service Type *
                 </label>
                 <select
+                  id="appointmentServiceType"
                   value={serviceType}
                   onChange={(e) => setServiceType(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
@@ -412,10 +414,11 @@ export default function AppointmentsPage() {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="appointmentDate" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Date
                   </label>
                   <input
+                    id="appointmentDate"
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -424,10 +427,11 @@ export default function AppointmentsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="appointmentStartTime" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Start
                   </label>
                   <input
+                    id="appointmentStartTime"
                     type="text"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
@@ -436,10 +440,11 @@ export default function AppointmentsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="appointmentEndTime" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     End
                   </label>
                   <input
+                    id="appointmentEndTime"
                     type="text"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
@@ -450,10 +455,11 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="appointmentBay" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Service Bay
                 </label>
                 <select
+                  id="appointmentBay"
                   value={bay}
                   onChange={(e) => setBay(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
@@ -466,10 +472,11 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="appointmentNotes" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Customer Notes / Symptoms
                 </label>
                 <textarea
+                  id="appointmentNotes"
                   rows={2}
                   placeholder="e.g. Squeaking noise when braking, oil change requested"
                   value={description}
