@@ -127,19 +127,22 @@ export default function SettingsPage() {
               Toggle OFF if you are below ₹40L turnover or under the Composition Scheme. Strips away all GST fields across invoices.
             </p>
           </div>
-          <button
-            onClick={handleToggleGST}
-            disabled={loadingGst}
-            className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
-              gstEnabled ? 'bg-luxury-gold' : 'bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-gold/40'
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
-                gstEnabled ? 'translate-x-7' : 'translate-x-1'
-              }`}
+          {/* Neumorphic LED Toggle Switch (from Uiverse by chase2k25) */}
+          <div className="switch-container shrink-0">
+            <input
+              type="checkbox"
+              id="gstNeumorphicToggle"
+              className="toggle-checkbox"
+              checked={gstEnabled}
+              disabled={loadingGst}
+              onChange={handleToggleGST}
             />
-          </button>
+            <label htmlFor="gstNeumorphicToggle" className="switch-label-area" aria-label="Toggle GST Registration">
+              <div className="toggle-thumb">
+                <div className="led-indicator" />
+              </div>
+            </label>
+          </div>
         </div>
 
         {/* Live Invoice Preview */}
@@ -246,19 +249,21 @@ export default function SettingsPage() {
   );
 }
 
+interface QuickSettingProps {
+  readonly label: string;
+  readonly description: string;
+  readonly type: 'toggle' | 'select';
+  readonly checked?: boolean;
+  readonly onToggle?: () => void;
+}
+
 function QuickSetting({
   label,
   description,
   type,
   checked,
   onToggle,
-}: {
-  label: string;
-  description: string;
-  type: 'toggle' | 'select';
-  checked?: boolean;
-  onToggle?: () => void;
-}) {
+}: QuickSettingProps) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-luxury-gold/10 last:border-b-0">
       <div>

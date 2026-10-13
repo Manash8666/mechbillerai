@@ -73,3 +73,113 @@ body {
     display: none !important;
   }
 }
+
+/* ===================================================
+   Neumorphic LED Toggle Switch (from Uiverse by chase2k25)
+   =================================================== */
+.switch-container {
+  position: relative;
+  width: 130px;
+  height: 52px;
+  background: #d6d6d6;
+  border-radius: 50px;
+  box-shadow:
+    inset -6px -6px 12px #ffffff,
+    inset 6px 6px 12px #b0b0b0;
+}
+
+.dark .switch-container {
+  background: #252830;
+  box-shadow:
+    inset -4px -4px 8px #333842,
+    inset 4px 4px 8px #181a20;
+}
+
+/* Hidden Checkbox */
+.toggle-checkbox {
+  display: none;
+}
+
+/* Switch Label (Interactive Area) */
+.switch-label-area {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateY(-50%);
+  border-radius: 50px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Toggle Button */
+.toggle-thumb {
+  position: absolute;
+  width: 68px;
+  height: 42px;
+  background: linear-gradient(145deg, #d9d9d9, #bfbfbf);
+  border-radius: 50px;
+  top: 5px;
+  left: 5px;
+  box-shadow:
+    -3px -3px 6px #ffffff,
+    3px 3px 6px #b0b0b0;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 10px;
+}
+
+.dark .toggle-thumb {
+  background: linear-gradient(145deg, #323846, #242934);
+  box-shadow:
+    -3px -3px 6px #3b4252,
+    3px 3px 6px #161920;
+}
+
+/* LED Light */
+.led-indicator {
+  width: 10px;
+  height: 10px;
+  background: #888888;
+  border-radius: 50%;
+  box-shadow: 0 0 8px 1px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease-in-out;
+}
+
+/* Active State for Toggle (ON) */
+.toggle-checkbox:checked + .switch-label-area .toggle-thumb {
+  left: 57px;
+  background: linear-gradient(145deg, #e6ca65, #c9a84c);
+  box-shadow:
+    -3px -3px 6px rgba(255, 255, 255, 0.6),
+    3px 3px 6px rgba(138, 115, 45, 0.6);
+}
+
+.dark .toggle-checkbox:checked + .switch-label-area .toggle-thumb {
+  background: linear-gradient(145deg, #d4b455, #b8933b);
+  box-shadow:
+    -3px -3px 6px #4a4025,
+    3px 3px 6px #1b170c;
+}
+
+.toggle-checkbox:checked + .switch-label-area .led-indicator {
+  background: #facc15;
+  box-shadow: 0 0 14px 4px #facc15;
+}
+
+/* Hover Effect */
+.switch-label-area:hover .toggle-thumb {
+  box-shadow:
+    -4px -4px 10px #ffffff,
+    4px 4px 10px #9b9b9b;
+}
+
+.dark .switch-label-area:hover .toggle-thumb {
+  box-shadow:
+    -4px -4px 10px #41495a,
+    4px 4px 10px #13151b;
+}
+
