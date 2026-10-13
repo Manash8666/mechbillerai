@@ -64,9 +64,9 @@ const tableVariants = cva(
           "isolate overflow-clip rounded-xl bg-(--table-bg) ring-(length:--hairline) ring-border [--table-bg:var(--card)] [--table-head-bg:color-mix(in_oklab,var(--muted)_85%,var(--table-bg))] in-data-[slot=card]:[--table-bg:var(--card)] forced-colors:border",
       },
       size: {
-        sm: "[--table-cell-px:--spacing(2.5)] [--table-cell-py:--spacing(1.5)] [--table-head-h:--spacing(8)]",
+        sm: "[--table-cell-px:0.625rem] [--table-cell-py:0.375rem] [--table-head-h:2rem]",
         default:
-          "[--table-cell-px:--spacing(3)] [--table-cell-py:--spacing(2.5)] [--table-head-h:--spacing(10)]",
+          "[--table-cell-px:0.75rem] [--table-cell-py:0.625rem] [--table-head-h:2.5rem]",
       },
     },
     defaultVariants: {
