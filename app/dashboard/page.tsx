@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import Loader from '@/components/Loader';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -27,8 +28,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold"></div>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader text="Generating" />
       </div>
     );
   }
