@@ -53,10 +53,16 @@ export async function POST(request: Request) {
       message: 'Login successful',
       user: userData,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: error?.message || 'Internal server error',
+        code: error?.code || 'AUTH_FAILURE',
+        details: process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL?.includes('neon') && !process.env.DATABASE_URL?.includes('postgres')
+          ? `${error?.message || 'Database connection error'} (Check DATABASE_URL on Vercel)`
+          : undefined
+      },
       { status: 500 }
     );
   }
