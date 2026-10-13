@@ -218,7 +218,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
   const splitTerms = doc.splitTextToSize(termsText, termsW);
   doc.text(splitTerms, margin, totalsY + 9);
 
-  // Right: SUB-TOTAL, TAX, TOTAL BOX
+  // Right: Subtotal, Tax, Total Box
   let rightRowY = totalsY + 4;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');

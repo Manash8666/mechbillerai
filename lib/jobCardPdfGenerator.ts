@@ -36,7 +36,7 @@ export interface JobCardPdfData {
 }
 
 export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
-  // A4 dimensions: 210 x 297 mm
+  // Standard dimensions: 210 x 297 mm
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -47,7 +47,7 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   const pageHeight = 297;
   const margin = 10;
 
-  // 1. Full Page Canary Yellow Background (#FCF88F / RGB: 252, 248, 143)
+  // 1. Canary Yellow Background
   doc.setFillColor(252, 248, 143);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
@@ -315,7 +315,7 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   drawFieldBox('Technician Signature', '✓ Verified', margin + sigW + 4, bottomBoxY, sigW);
   drawFieldBox('Date', dateStr, margin + (sigW * 2) + 8, bottomBoxY, 28);
 
-  // Totals Breakdown (Right side of bottom)
+  // Totals summary at bottom right
   const totalBoxX = margin + 130;
   const totalBoxW = 60;
 
