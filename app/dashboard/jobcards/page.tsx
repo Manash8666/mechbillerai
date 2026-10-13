@@ -50,11 +50,14 @@ export default function JobCardsPage() {
   const fetchJobCards = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId');
+      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
       const response = await fetch(`/api/jobcards?userId=${userId}`);
       if (response.ok) {
-        const result = await response.json();
-        setJobCards(Array.isArray(result) ? result : result.data || []);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const result = await response.json();
+          setJobCards(Array.isArray(result) ? result : result.data || []);
+        }
       }
     } catch (error) {
       console.error('Error fetching job cards:', error);
