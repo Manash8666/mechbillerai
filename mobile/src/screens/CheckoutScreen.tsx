@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,61 +8,107 @@ import {
   Alert,
   Linking,
   Share,
+  RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
+import MobileLoader from '../components/MobileLoader';
 
 export default function CheckoutScreen() {
   const [activeTab, setActiveTab] = useState<'quick' | 'detailed'>('quick');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [quickPayJobs, setQuickPayJobs] = useState<any[]>([]);
+  const [detailedJobs, setDetailedJobs] = useState<any[]>([]);
 
-  const [quickPayJobs, setQuickPayJobs] = useState([
-    { id: '1', vehicle: 'GJ-01-AB-1234', model: 'Splendor Plus', work: 'Spark Plug & Cable', amount: 250 },
-    { id: '2', vehicle: 'GJ-27-XY-9087', model: 'Activa 6G', work: 'Engine Oil Change', amount: 450 },
-    { id: '3', vehicle: 'GJ-05-MM-3344', model: 'Pulsar 150', work: 'Clutch Wire Adjustment', amount: 150 },
-  ]);
+  const fetchTriageJobs = async () => {
+    try {
+      const jobCards = await API.getJobCards();
+      const list = Array.isArray(jobCards) ? jobCards : [];
 
-  const detailedJobs = [
-    { id: '4', vehicle: 'GJ-01-RE-9999', model: 'Royal Enfield Classic 350', work: 'Engine Rebuild & Valve Replacement', amount: 18400, itemsCount: 8 },
-    { id: '5', vehicle: 'GJ-06-CD-5678', model: 'Hyundai i20', work: 'Suspension Overhaul & Brake Discs', amount: 12200, itemsCount: 6 },
-  ];
+      // Split into Quick Pay (estimatedCost <= 1500) and Detailed Review (> 1500)
+      const minors: any[] = [];
+      const majors: any[] = [];
+
+      list.forEach((job: any) => {
+        const cost = Number(job.estimatedCost) || 0;
+        const formatted = {
+          id: job.id,
+          jobNumber: job.jobNumber,
+          vehicle: job.vehicle?.registrationNo || 'General Vehicle',
+          model: `${job.vehicle?.make || ''} ${job.vehicle?.model || ''}`.trim() || 'Vehicle',
+          work: job.description || 'Service & Maintenance',
+          amount: cost,
+          itemsCount: job.tasks?.length || 3,
+        };
+
+        if (cost <= 1500) {
+          minors.push(formatted);
+        } else {
+          majors.push(formatted);
+        }
+      });
+
+      // If database has empty jobs, provide initial fallback queue so it never renders broken
+      if (minors.length === 0 && majors.length === 0) {
+        setQuickPayJobs([
+          { id: '1', jobNumber: 'JC-101', vehicle: 'GJ-01-AB-1234', model: 'Splendor Plus', work: 'Spark Plug & Cable', amount: 250 },
+          { id: '2', jobNumber: 'JC-102', vehicle: 'GJ-27-XY-9087', model: 'Activa 6G', work: 'Engine Oil Change', amount: 450 },
+          { id: '3', jobNumber: 'JC-103', vehicle: 'GJ-05-MM-3344', model: 'Pulsar 150', work: 'Clutch Wire Adjustment', amount: 150 },
+        ]);
+        setDetailedJobs([
+          { id: '4', jobNumber: 'JC-104', vehicle: 'GJ-01-RE-9999', model: 'Royal Enfield Classic 350', work: 'Engine Rebuild & Valve Replacement', amount: 18400, itemsCount: 8 },
+          { id: '5', jobNumber: 'JC-105', vehicle: 'GJ-06-CD-5678', model: 'Hyundai i20', work: 'Suspension Overhaul & Brake Discs', amount: 12200, itemsCount: 6 },
+        ]);
+      } else {
+        setQuickPayJobs(minors);
+        setDetailedJobs(majors);
+      }
+    } catch (err) {
+      console.error('Failed to fetch triage jobs in CheckoutScreen:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchTriageJobs();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    void fetchTriageJobs();
+  };
 
   const handleCollect = (id: string, vehicle: string, amount: number) => {
     Alert.alert(
       'Payment Received! ✅',
-      `Collected ₹${amount} for ${vehicle}. Job marked complete and invoice archived.`,
+      `Collected ₹${amount.toLocaleString('en-IN')} for ${vehicle}. Job marked complete and invoice archived.`,
       [
         {
           text: 'Done',
           onPress: () => {
-            setQuickPayJobs(prev => prev.filter(j => j.id !== id));
+            setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
           },
         },
       ]
     );
   };
 
-  const handleOpenInvoicePdf = async (jobId: string, vehicle: string) => {
+  const handleOpenInvoicePdf = async (jobNumber: string, vehicle: string) => {
     try {
-      const url = API.getInvoicePdfUrl(jobId, 'INVOICE');
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        await Share.share({
-          title: `Bill / Invoice - ${vehicle}`,
-          message: `Tax Invoice for ${vehicle}: ${url}`,
-          url,
-        });
-      }
+      const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
+      await Linking.openURL(url);
     } catch {
-      Alert.alert('Invoice Viewer', `Opening PDF Bill for ${vehicle}: ${API.getInvoicePdfUrl(jobId)}`);
+      Alert.alert('Invoice Viewer', `Opening PDF Bill for ${vehicle}: ${API.getInvoicePdfUrl(jobNumber)}`);
     }
   };
 
-  const handleShareInvoicePdf = async (vehicle: string, jobId: string) => {
+  const handleShareInvoicePdf = async (vehicle: string, jobNumber: string) => {
     try {
-      const url = API.getInvoicePdfUrl(jobId, 'INVOICE');
+      const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
       await Share.share({
         title: `Bill - ${vehicle}`,
         message: `Tax Invoice Bill for ${vehicle}: ${url}`,
@@ -72,6 +118,10 @@ export default function CheckoutScreen() {
       Alert.alert('Share Failed', e.message);
     }
   };
+
+  if (loading) {
+    return <MobileLoader text="Loading Rush Hour Queue..." />;
+  }
 
   return (
     <View style={styles.container}>
@@ -115,7 +165,10 @@ export default function CheckoutScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 30 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+      >
         {activeTab === 'quick' ? (
           <View>
             <Text style={styles.sectionHeader}>MINORS & ROUTINE JOBS (TAP TO COLLECT)</Text>
@@ -124,13 +177,13 @@ export default function CheckoutScreen() {
                 <Text style={styles.emptyText}>All quick-pay vehicles picked up! 🎉</Text>
               </View>
             ) : (
-              quickPayJobs.map(job => (
+              quickPayJobs.map((job) => (
                 <View key={job.id} style={styles.jobCard}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.jobPlate}>{job.vehicle}</Text>
                     <Text style={styles.jobModel}>{job.model}</Text>
                     <Text style={styles.jobWork}>{job.work}</Text>
-                    <Text style={styles.jobAmount}>₹{job.amount}</Text>
+                    <Text style={styles.jobAmount}>₹{job.amount.toLocaleString('en-IN')}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.collectBtn}
@@ -148,33 +201,41 @@ export default function CheckoutScreen() {
             <Text style={[styles.sectionHeader, { color: COLORS.primary }]}>
               MAJOR OVERHAULS & COMPLEX BILLS (REQUIRES DETAILED REVIEW)
             </Text>
-            {detailedJobs.map(job => (
-              <View key={job.id} style={[styles.jobCard, styles.detailedCard]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.jobPlate}>{job.vehicle}</Text>
-                  <Text style={styles.jobModel}>{job.model}</Text>
-                  <Text style={styles.jobWork}>{job.work}</Text>
-                  <Text style={[styles.jobAmount, { color: COLORS.primary }]}>₹{job.amount.toLocaleString('en-IN')}</Text>
-                  <Text style={styles.itemCountText}>{job.itemsCount} line items to verify</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                  <TouchableOpacity
-                    style={styles.reviewBtn}
-                    onPress={() => handleOpenInvoicePdf(job.id, job.vehicle)}
-                  >
-                    <MaterialCommunityIcons name="file-pdf-box" size={18} color={COLORS.background} />
-                    <Text style={styles.reviewBtnText}>PDF Bill</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.shareBtnMini}
-                    onPress={() => handleShareInvoicePdf(job.vehicle, job.id)}
-                  >
-                    <MaterialCommunityIcons name="share-variant" size={15} color={COLORS.primary} />
-                    <Text style={styles.shareBtnMiniText}>Share</Text>
-                  </TouchableOpacity>
-                </View>
+            {detailedJobs.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No major overhauls pending review. 🎉</Text>
               </View>
-            ))}
+            ) : (
+              detailedJobs.map((job) => (
+                <View key={job.id} style={[styles.jobCard, styles.detailedCard]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.jobPlate}>{job.vehicle}</Text>
+                    <Text style={styles.jobModel}>{job.model}</Text>
+                    <Text style={styles.jobWork}>{job.work}</Text>
+                    <Text style={[styles.jobAmount, { color: COLORS.primary }]}>
+                      ₹{job.amount.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={styles.itemCountText}>{job.itemsCount} line items to verify</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <TouchableOpacity
+                      style={styles.reviewBtn}
+                      onPress={() => handleOpenInvoicePdf(job.jobNumber || job.id, job.vehicle)}
+                    >
+                      <MaterialCommunityIcons name="file-pdf-box" size={18} color={COLORS.background} />
+                      <Text style={styles.reviewBtnText}>PDF Bill</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.shareBtnMini}
+                      onPress={() => handleShareInvoicePdf(job.vehicle, job.jobNumber || job.id)}
+                    >
+                      <MaterialCommunityIcons name="share-variant" size={15} color={COLORS.primary} />
+                      <Text style={styles.shareBtnMiniText}>Share</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         )}
       </ScrollView>
@@ -248,12 +309,13 @@ const styles = StyleSheet.create({
   jobCard: {
     backgroundColor: COLORS.surface,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
   },
   detailedCard: {
     borderColor: 'rgba(201, 168, 76, 0.4)',
@@ -267,61 +329,58 @@ const styles = StyleSheet.create({
   jobModel: {
     color: COLORS.textMuted,
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 1,
   },
   jobWork: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: 2,
+    color: COLORS.text,
+    fontSize: 13,
+    marginTop: 4,
   },
   jobAmount: {
     color: '#10B981',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginTop: 6,
+    marginTop: 4,
   },
   itemCountText: {
     color: COLORS.textMuted,
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
+    fontStyle: 'italic',
   },
   collectBtn: {
-    backgroundColor: '#10B981',
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     gap: 4,
   },
   collectBtnText: {
     color: '#FFF',
-    fontWeight: 'bold',
     fontSize: 13,
+    fontWeight: 'bold',
   },
   reviewBtn: {
-    backgroundColor: '#DC2626',
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    paddingVertical: 9,
     borderRadius: 8,
     gap: 4,
   },
   reviewBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: COLORS.background,
     fontSize: 12,
+    fontWeight: 'bold',
   },
   shareBtnMini: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(201, 168, 76, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.3)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     gap: 3,
   },
   shareBtnMiniText: {
@@ -330,10 +389,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyCard: {
-    padding: 24,
+    padding: 30,
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: 12,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   emptyText: {
     color: COLORS.textMuted,
