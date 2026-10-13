@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap } from 'lucide-react';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 import Loader from '@/components/Loader';
+import PearlButton from '@/components/PearlButton';
 
 interface JobCard {
   id: string;
@@ -135,21 +136,21 @@ export default function JobCardsPage() {
           <h1 className="text-3xl font-bold text-foreground">Job Cards</h1>
           <p className="text-muted-foreground mt-1">Manage service jobs, Express Morning Intake & Evening Triage</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
+        <div className="flex flex-wrap items-center gap-3">
+          <PearlButton
             onClick={() => setIsIntakeOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-luxury-gold text-luxury-ink-light font-bold rounded-lg shadow-md hover:brightness-105 transition-all cursor-pointer"
+            className="text-xs"
           >
-            <ShieldAlert className="w-5 h-5 mr-2 text-luxury-ink-light" />
+            <ShieldAlert className="w-4 h-4 mr-1 text-luxury-gold" />
             Express Intake (Shield)
-          </button>
-          <button
+          </PearlButton>
+          <PearlButton
             onClick={() => setIsIntakeOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            className="text-xs"
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-4 h-4 mr-1" />
             New Job Card
-          </button>
+          </PearlButton>
         </div>
       </div>
 

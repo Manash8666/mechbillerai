@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Camera, Mic, Square, Check, X, ShieldAlert, Sparkles } from 'lucide-react';
+import PearlButton from '@/components/PearlButton';
 
 interface PreInspectionData {
   front: string | null;
@@ -334,13 +335,13 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
             >
               Cancel
             </button>
-            <button
+            <PearlButton
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl font-bold text-sm bg-luxury-gold text-luxury-ink-light shadow-lg hover:shadow-xl transition-all cursor-pointer disabled:opacity-50"
+              className="text-xs"
             >
               {saving ? 'Saving Intake Card...' : 'Save Job Card & Shield'}
-            </button>
+            </PearlButton>
           </div>
         </form>
       </div>
