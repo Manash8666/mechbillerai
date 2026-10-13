@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Calendar, Clock, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import Loader from '@/components/Loader';
+import PearlButton from '@/components/PearlButton';
 
 interface Appointment {
   id: string;
@@ -105,8 +107,8 @@ export default function AppointmentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader text="Loading Appointments" />
       </div>
     );
   }
@@ -119,17 +121,17 @@ export default function AppointmentsPage() {
           <h1 className="text-3xl font-bold text-foreground">Appointments</h1>
           <p className="text-muted-foreground mt-1">Manage service bookings and schedules</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
             className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
           >
             {viewMode === 'list' ? 'Calendar View' : 'List View'}
           </button>
-          <button className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-            <Plus className="w-5 h-5 mr-2" />
+          <PearlButton className="text-xs">
+            <Plus className="w-4 h-4 mr-1 text-luxury-gold" />
             New Appointment
-          </button>
+          </PearlButton>
         </div>
       </div>
 

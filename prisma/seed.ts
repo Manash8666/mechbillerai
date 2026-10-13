@@ -31,7 +31,9 @@ async function main() {
   // Test User 2 - Speed Garage (Two-Wheeler)
   const user2 = await prisma.user.upsert({
     where: { email: 'demo@garagesaas.com' },
-    update: {},
+    update: {
+      garageType: 'two_wheeler',
+    },
     create: {
       email: 'demo@garagesaas.com',
       password: hashedPassword,

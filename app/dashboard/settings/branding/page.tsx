@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Upload, Palette, Save, RotateCcw, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PearlButton from '@/components/PearlButton';
 import {
   extractDominantColor,
   generateLuxuryPalette,
@@ -563,12 +564,12 @@ export default function BrandingSettingsPage() {
           <span>Preview Changes</span>
         </button>
 
-        <button
+        <PearlButton
           onClick={handleSave}
           disabled={loading || uploading}
-          className="flex items-center space-x-2 px-6 py-3 bg-luxury-gold text-luxury-ink-light rounded-lg hover:bg-luxury-gold-light hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+          className="text-xs"
         >
-          <Save className="h-5 w-5" />
+          <Save className="h-4 w-4 mr-1 text-luxury-gold" />
           <span>
             {(() => {
               if (uploading) return 'Uploading...';
@@ -576,7 +577,7 @@ export default function BrandingSettingsPage() {
               return 'Save Branding';
             })()}
           </span>
-        </button>
+        </PearlButton>
       </div>
     </div>
   );

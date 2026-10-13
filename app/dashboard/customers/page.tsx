@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, Phone, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Loader from '@/components/Loader';
+import PearlButton from '@/components/PearlButton';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -34,8 +36,8 @@ export default function CustomersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold"></div>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader text="Loading Customers" />
       </div>
     );
   }
@@ -50,10 +52,10 @@ export default function CustomersPage() {
             Manage your customers and their vehicles
           </p>
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 bg-luxury-gold text-luxury-ink-light rounded-lg hover:bg-luxury-gold-light hover:shadow-xl transition-all duration-300">
-          <Plus className="h-5 w-5" />
-          <span>Add Customer</span>
-        </button>
+        <PearlButton className="text-xs">
+          <Plus className="h-4 w-4 mr-1 text-luxury-gold" />
+          Add Customer
+        </PearlButton>
       </div>
 
       {/* Search */}

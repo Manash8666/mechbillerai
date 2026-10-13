@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee } from 'lucide-react';
 
+import Loader from '@/components/Loader';
+import PearlButton from '@/components/PearlButton';
+
 interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -89,8 +92,8 @@ export default function InvoicesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader text="Loading Invoices" />
       </div>
     );
   }
@@ -103,10 +106,10 @@ export default function InvoicesPage() {
           <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
           <p className="text-muted-foreground mt-1">Manage billing and payments</p>
         </div>
-        <button className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-          <Plus className="w-5 h-5 mr-2" />
+        <PearlButton className="text-xs">
+          <Plus className="w-4 h-4 mr-1 text-luxury-gold" />
           New Invoice
-        </button>
+        </PearlButton>
       </div>
 
       {/* Filters */}
