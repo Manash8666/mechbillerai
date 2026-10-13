@@ -79,6 +79,68 @@ function digitGlyphs(
   return Array.from({ length: 10 }, (_, digit) => plain.format(digit))
 }
 
+function formatPartChars(
+  part: Intl.NumberFormatPart,
+  integerCount: number,
+  glyphs: string[],
+  integerIndexRef: { current: number },
+  fractionIndexRef: { current: number },
+  symbol: (section: number, type: string, text: string) => void,
+  seenNumberRef: { current: boolean }
+): NumberFlowChar[] {
+  const chars: NumberFlowChar[] = []
+
+  if (part.type === "integer") {
+    seenNumberRef.current = true
+    for (const glyph of Array.from(part.value)) {
+      const place = integerCount - 1 - integerIndexRef.current
+      const digit = glyphs.indexOf(glyph)
+      chars.push({
+        key: `i${place}`,
+        section: 2,
+        order: -place,
+        value: glyph,
+        digit: digit === -1 ? null : digit,
+      })
+      integerIndexRef.current += 1
+    }
+  } else if (part.type === "group") {
+    const place = integerCount - 1 - integerIndexRef.current
+    chars.push({
+      key: `g${place}`,
+      section: 2,
+      order: -place - 0.5,
+      value: part.value,
+      digit: null,
+    })
+  } else if (part.type === "decimal") {
+    seenNumberRef.current = true
+    chars.push({
+      key: "decimal",
+      section: 3,
+      order: 0,
+      value: part.value,
+      digit: null,
+    })
+  } else if (part.type === "fraction") {
+    for (const glyph of Array.from(part.value)) {
+      const digit = glyphs.indexOf(glyph)
+      chars.push({
+        key: `f${fractionIndexRef.current}`,
+        section: 4,
+        order: fractionIndexRef.current,
+        value: glyph,
+        digit: digit === -1 ? null : digit,
+      })
+      fractionIndexRef.current += 1
+    }
+  } else {
+    symbol(seenNumberRef.current ? 5 : 1, part.type, part.value)
+  }
+
+  return chars
+}
+
 function formatChars(
   value: number,
   locales: Intl.LocalesArgument,
@@ -94,9 +156,9 @@ function formatChars(
     .reduce((count, part) => count + Array.from(part.value).length, 0)
   const chars: NumberFlowChar[] = []
   const occurrences = new Map<string, number>()
-  let integerIndex = 0
-  let fractionIndex = 0
-  let seenNumber = false
+  const integerIndexRef = { current: 0 }
+  const fractionIndexRef = { current: 0 }
+  const seenNumberRef = { current: false }
 
   function symbol(section: number, type: string, text: string) {
     const name = `${section}-${type}`
@@ -122,53 +184,16 @@ function formatChars(
   }
 
   for (const part of parts) {
-    if (part.type === "integer") {
-      seenNumber = true
-      for (const glyph of Array.from(part.value)) {
-        const place = integerCount - 1 - integerIndex
-        const digit = glyphs.indexOf(glyph)
-        chars.push({
-          key: `i${place}`,
-          section: 2,
-          order: -place,
-          value: glyph,
-          digit: digit === -1 ? null : digit,
-        })
-        integerIndex += 1
-      }
-    } else if (part.type === "group") {
-      const place = integerCount - 1 - integerIndex
-      chars.push({
-        key: `g${place}`,
-        section: 2,
-        order: -place - 0.5,
-        value: part.value,
-        digit: null,
-      })
-    } else if (part.type === "decimal") {
-      seenNumber = true
-      chars.push({
-        key: "decimal",
-        section: 3,
-        order: 0,
-        value: part.value,
-        digit: null,
-      })
-    } else if (part.type === "fraction") {
-      for (const glyph of Array.from(part.value)) {
-        const digit = glyphs.indexOf(glyph)
-        chars.push({
-          key: `f${fractionIndex}`,
-          section: 4,
-          order: fractionIndex,
-          value: glyph,
-          digit: digit === -1 ? null : digit,
-        })
-        fractionIndex += 1
-      }
-    } else {
-      symbol(seenNumber ? 5 : 1, part.type, part.value)
-    }
+    const partChars = formatPartChars(
+      part,
+      integerCount,
+      glyphs,
+      integerIndexRef,
+      fractionIndexRef,
+      symbol,
+      seenNumberRef
+    )
+    chars.push(...partChars)
   }
 
   if (suffix) {
@@ -240,6 +265,100 @@ function liveIndex(column: HTMLElement) {
   const amount = Number.parseFloat(y) || 0
 
   return y.endsWith("%") ? (-amount / 100) * rows : (-amount / height) * rows
+}
+
+function animateCellTransitions(
+  cell: HTMLElement,
+  itemKey: string,
+  entering: boolean,
+  leaving: boolean,
+  exitId: number,
+  timing: KeyframeAnimationOptions,
+  finishExit: (key: string, exitId: number) => void
+): Animation | null {
+  if (!entering && !leaving) {
+    return null
+  }
+
+  const running = cell.getAnimations()
+  const cellWidth = cell.getBoundingClientRect().width
+  let fromWidth = cellWidth
+  if (!running.length && entering) {
+    fromWidth = 0
+  }
+  let fromOpacity = 1
+  if (running.length) {
+    fromOpacity = Number(getComputedStyle(cell).opacity)
+  } else if (entering) {
+    fromOpacity = 0
+  }
+  running.forEach((animation) => animation.cancel())
+  const toWidth = entering ? cell.getBoundingClientRect().width : 0
+  const animation = cell.animate(
+    [
+      { width: `${fromWidth}px`, opacity: fromOpacity },
+      { width: `${toWidth}px`, opacity: entering ? 1 : 0 },
+    ],
+    { ...timing, fill: leaving ? "forwards" : "none" }
+  )
+
+  if (leaving) {
+    animation.finished.then(
+      () => finishExit(itemKey, exitId),
+      () => {}
+    )
+  }
+
+  return animation
+}
+
+function animateDigitColumn(
+  column: HTMLElement | null,
+  target: number | null,
+  isExiting: boolean,
+  beforeDigit: number | null | undefined,
+  entering: boolean,
+  direction: "up" | "down" | "shortest",
+  timing: KeyframeAnimationOptions
+): Animation | null {
+  if (!column || target === null || isExiting) {
+    return null
+  }
+
+  const running = column.getAnimations()
+  const live = running.length ? liveIndex(column) : null
+  running.forEach((animation) => animation.cancel())
+
+  let from = target
+  if (live !== null) {
+    from = live - 10
+  } else if (entering) {
+    from = 0
+  } else if (beforeDigit !== null && beforeDigit !== undefined) {
+    from = beforeDigit
+  }
+
+  if (live === null && from === target && !entering) {
+    return null
+  }
+
+  const delta = getSpinDelta(
+    from,
+    target,
+    entering && live === null ? "up" : direction
+  )
+
+  if (delta === 0) {
+    return null
+  }
+
+  return column.animate(
+    [
+      { translate: `0 ${(-(target + 10 - delta) / rows) * 100}%` },
+      { translate: `0 ${(-(target + 10) / rows) * 100}%` },
+    ],
+    timing
+  )
 }
 
 function NumberFlow({
@@ -332,7 +451,6 @@ function NumberFlow({
     const cells = root.querySelectorAll<HTMLElement>(
       ":scope > [data-number-flow-key]"
     )
-
     for (const cell of cells) {
       const itemKey = cell.dataset.numberFlowKey!
       const item = current.get(itemKey)
@@ -348,70 +466,31 @@ function NumberFlow({
       const entering = !item.exiting && (!before || before.exiting)
       const leaving = item.exiting && !before?.exiting
 
-      if (entering || leaving) {
-        const running = cell.getAnimations()
-        const cellWidth = cell.getBoundingClientRect().width
-        const fromWidth = running.length ? cellWidth : (entering ? 0 : cellWidth)
-        const fromOpacity = running.length ? Number(getComputedStyle(cell).opacity) : (entering ? 0 : 1)
-        running.forEach((animation) => animation.cancel())
-        const toWidth = entering ? cell.getBoundingClientRect().width : 0
-        const animation = cell.animate(
-          [
-            { width: `${fromWidth}px`, opacity: fromOpacity },
-            { width: `${toWidth}px`, opacity: entering ? 1 : 0 },
-          ],
-          { ...timing, fill: leaving ? "forwards" : "none" }
-        )
-        started.push(animation)
-        if (leaving) {
-          const exitId = item.exitId
-          animation.finished.then(
-            () => finishExitRef.current(itemKey, exitId),
-            () => {}
-          )
-        }
-      }
-
-      if (!column || item.digit === null || item.exiting) {
-        continue
-      }
-
-      const target = item.digit
-      const running = column.getAnimations()
-      const live = running.length ? liveIndex(column) : null
-      running.forEach((animation) => animation.cancel())
-      let from = target
-      if (live !== null) {
-        from = live - 10
-      } else if (entering) {
-        from = 0
-      } else if (before?.digit !== null && before?.digit !== undefined) {
-        from = before.digit
-      }
-
-      if (live === null && from === target && !entering) {
-        continue
-      }
-
-      const delta = getSpinDelta(
-        from,
-        target,
-        entering && live === null ? "up" : direction
+      const transitionAnim = animateCellTransitions(
+        cell,
+        itemKey,
+        entering,
+        leaving,
+        item.exitId,
+        timing,
+        finishExitRef.current
       )
-
-      if (delta === 0) {
-        continue
+      if (transitionAnim) {
+        started.push(transitionAnim)
       }
 
-      started.push(
-        column.animate(
-          [
-            { translate: `0 ${(-(target + 10 - delta) / rows) * 100}%` },
-            { translate: `0 ${(-(target + 10) / rows) * 100}%` },
-          ],
-          timing
-        )
+      const digitAnim = animateDigitColumn(
+        column,
+        item.digit,
+        item.exiting,
+        before?.digit,
+        entering,
+        direction,
+        timing
       )
+      if (digitAnim) {
+        started.push(digitAnim)
+      }
     }
 
     if (!started.length) {

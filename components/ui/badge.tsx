@@ -200,7 +200,8 @@ function wrapText(children: React.ReactNode, labelId: string) {
       return child
     }
 
-    const key = React.isValidElement(child) && child.key ? child.key : `badge-label-${labelId}-${String(child).slice(0, 10)}`
+    const textStr = typeof child === "string" || typeof child === "number" ? String(child) : ""
+    const key = React.isValidElement(child) && child.key ? child.key : `badge-label-${labelId}-${index}-${textStr.slice(0, 10)}`
     return (
       <span
         key={key}
