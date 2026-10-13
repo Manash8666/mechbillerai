@@ -185,12 +185,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate date is not in the past
+    // Validate date (allow today or future dates)
     const appointmentDate = new Date(date);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
 
-    if (appointmentDate < now) {
+    if (appointmentDate < yesterday) {
       return NextResponse.json(
         buildErrorResponse('Cannot create appointment in the past', 'INVALID_DATE'),
         { status: 400 }
