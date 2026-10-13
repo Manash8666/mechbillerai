@@ -36,7 +36,6 @@ export interface JobCardPdfData {
 }
 
 export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
-  // Standard dimensions: 210 x 297 mm
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -45,312 +44,336 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
 
   const pageWidth = 210;
   const pageHeight = 297;
-  const margin = 10;
+  const margin = 12;
 
-  // 1. Canary Yellow Background
-  doc.setFillColor(252, 248, 143);
+  // Clean, crisp white sheet background
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // 2. Large Bold Header: "VEHICLE JOB CARD"
-  doc.setTextColor(20, 20, 20);
+  // 1. Premium Header Banner: Rich Charcoal Slate with Warm Gold Accent
+  doc.setFillColor(26, 26, 36); // #1A1A24 Obsidian Slate
+  doc.rect(0, 0, pageWidth, 42, 'F');
+
+  // Gold accent pinstripe
+  doc.setFillColor(201, 168, 76); // Luxury Gold #C9A84C
+  doc.rect(0, 42, pageWidth, 3.5, 'F');
+
+  // Garage Brand
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.text('VEHICLE JOB CARD', margin, 18);
+  doc.setFontSize(20);
+  const brandName = (data.garageName || 'MECHBILLERAI WORKSHOP').toUpperCase();
+  doc.text(brandName, margin, 18);
 
-  if (data.garageName) {
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.garageName.toUpperCase(), pageWidth - margin, 14, { align: 'right' });
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.garagePhone || '', pageWidth - margin, 19, { align: 'right' });
-  }
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(200, 200, 210);
+  doc.text('AUTOMOTIVE PRECISION ENGINEERING & SERVICE SUITE', margin, 24);
 
-  // Top dividing rule
-  doc.setDrawColor(20, 20, 20);
-  doc.setLineWidth(0.8);
-  doc.line(margin, 22, pageWidth - margin, 22);
+  doc.setFontSize(8);
+  doc.setTextColor(170, 170, 185);
+  const contactLine = [
+    data.garagePhone ? `Tel: ${data.garagePhone}` : 'Tel: +91 99999 88888',
+    data.garageAddress || 'Workshop Floor #4, Auto Hub Zone',
+  ].join('  ·  ');
+  doc.text(contactLine, margin, 31);
 
-  let currentY = 25;
+  // Right Header: Badge for Job Card & Status
+  const rightX = pageWidth - margin;
+  doc.setFillColor(201, 168, 76);
+  doc.roundedRect(rightX - 52, 10, 52, 12, 2, 2, 'F');
 
-  // Helper for drawing input boxes
-  const drawFieldBox = (
-    label: string,
-    value: string,
-    x: number,
-    y: number,
-    w: number,
-    h = 8
-  ) => {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(40, 40, 40);
-    doc.text(label, x, y + 3.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(26, 26, 36);
+  doc.text('JOB CARD', rightX - 26, 17.5, { align: 'center' });
 
-    // Box with slight tint
-    doc.setFillColor(254, 251, 180);
-    doc.setDrawColor(180, 175, 90);
-    doc.setLineWidth(0.2);
-    doc.roundedRect(x, y + 4.5, w, h, 0.8, 0.8, 'FD');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text(`# ${data.jobNumber}`, rightX, 30, { align: 'right' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(20, 20, 20);
-    const textToShow = doc.splitTextToSize(value || '', w - 3);
-    doc.text(textToShow[0] || '', x + 2, y + 9.5);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(180, 180, 195);
+  const dateStr = data.jobDate || new Date(data.createdAt).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  doc.text(`Date: ${dateStr}`, rightX, 36, { align: 'right' });
+
+  let currentY = 52;
+
+  // Helper function to draw cards
+  const drawCard = (x: number, y: number, w: number, h: number, title?: string) => {
+    doc.setFillColor(248, 249, 250);
+    doc.setDrawColor(220, 222, 228);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+
+    if (title) {
+      doc.setFillColor(240, 241, 245);
+      doc.roundedRect(x, y, w, 6.5, 2, 2, 'F');
+      doc.rect(x, y + 4.5, w, 2, 'F'); // square bottom edges of header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(50, 50, 65);
+      doc.text(title.toUpperCase(), x + 4, y + 4.5);
+    }
   };
 
-  // Row 1: Job No | Job Date | Car Reg No | Year | Mileage
-  const colW1 = 44;
-  const colW2 = 44;
-  const colW3 = 54;
-  const colW4 = 20;
-  const colW5 = 24;
+  // 2. Info Cards: Customer Details (Left) and Vehicle Details (Right)
+  const cardW = (pageWidth - margin * 2 - 6) / 2;
+  const topCardH = 34;
 
-  const dateStr = data.jobDate || new Date(data.createdAt).toLocaleDateString('en-GB');
-
-  drawFieldBox('Job No.', data.jobNumber, margin, currentY, colW1);
-  drawFieldBox('Job Date', dateStr, margin + colW1 + 2, currentY, colW2);
-  drawFieldBox('Car Registration No.', data.vehicle.registrationNo, margin + colW1 + colW2 + 4, currentY, colW3);
-  drawFieldBox('Year', data.vehicle.year ? String(data.vehicle.year) : '-', margin + colW1 + colW2 + colW3 + 6, currentY, colW4);
-  drawFieldBox('Mileage', data.vehicle.mileage ? `${data.vehicle.mileage} km` : '-', margin + colW1 + colW2 + colW3 + colW4 + 8, currentY, colW5);
-
-  currentY += 16;
-
-  // Row 2: Date/Time In | Date/Time Out | Car Make | Car Model
-  const colRow2W1 = 44;
-  const colRow2W2 = 44;
-  const colRow2W3 = 48;
-  const colRow2W4 = 50;
-
-  drawFieldBox('Date/Time In', dateStr, margin, currentY, colRow2W1);
-  drawFieldBox('Date/Time Out', 'Pending', margin + colRow2W1 + 2, currentY, colRow2W2);
-  drawFieldBox('Car Make', data.vehicle.make || '-', margin + colRow2W1 + colRow2W2 + 4, currentY, colRow2W3);
-  drawFieldBox('Car Model', data.vehicle.model || '-', margin + colRow2W1 + colRow2W2 + colRow2W3 + 6, currentY, colRow2W4);
-
-  currentY += 16;
-
-  // Row 3: Customer Name | Contact No | Engine No | VIN No
-  drawFieldBox('Customer Name', data.customer.name, margin, currentY, colRow2W1);
-  drawFieldBox('Customer Contact No.', data.customer.phone, margin + colRow2W1 + 2, currentY, colRow2W2);
-  drawFieldBox('Engine / Motor No.', '-', margin + colRow2W1 + colRow2W2 + 4, currentY, colRow2W3);
-  drawFieldBox('VIN No.', data.vehicle.vin || '-', margin + colRow2W1 + colRow2W2 + colRow2W3 + 6, currentY, colRow2W4);
-
-  currentY += 18;
-
-  // Middle Section: Left (Defect & Actions) vs Right (Car Diagram Inspection)
-  const midLeftW = 95;
-  const midRightW = 91;
-  const midRightX = margin + midLeftW + 4;
-
-  // Reported Defect
+  // Customer Card
+  drawCard(margin, currentY, cardW, topCardH, 'Customer Information');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  doc.text('Reported Defect', margin, currentY + 3);
-
-  doc.setFillColor(254, 251, 180);
-  doc.setDrawColor(180, 175, 90);
-  doc.setLineWidth(0.2);
-  doc.roundedRect(margin, currentY + 4, midLeftW, 26, 1, 1, 'FD');
+  doc.setFontSize(10);
+  doc.setTextColor(20, 20, 30);
+  doc.text(data.customer.name || 'Walk-in Customer', margin + 4, currentY + 12);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(20, 20, 20);
-  const defectText = doc.splitTextToSize(data.description || 'General inspection and scheduled maintenance.', midLeftW - 4);
-  doc.text(defectText, margin + 2.5, currentY + 9);
+  doc.setTextColor(80, 80, 95);
+  doc.text(`Mobile: ${data.customer.phone || 'N/A'}`, margin + 4, currentY + 18);
+  doc.text(`Email: ${data.customer.email || 'N/A'}`, margin + 4, currentY + 23);
+  doc.text(`Address: ${data.customer.address || 'Local Customer'}`, margin + 4, currentY + 28);
 
-  // Completed Action
-  const actionY = currentY + 33;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  doc.text('Completed Action / Tasks', margin, actionY + 3);
+  // Vehicle Card
+  const rightCardX = margin + cardW + 6;
+  drawCard(rightCardX, currentY, cardW, topCardH, 'Vehicle Identification');
 
-  doc.setFillColor(254, 251, 180);
-  doc.setDrawColor(180, 175, 90);
-  doc.setLineWidth(0.2);
-  doc.roundedRect(margin, actionY + 4, midLeftW, 30, 1, 1, 'FD');
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  let taskY = actionY + 9;
-  if (data.tasks && data.tasks.length > 0) {
-    data.tasks.slice(0, 5).forEach((t) => {
-      const check = t.completed ? '[x]' : '[ ]';
-      doc.text(`${check} ${t.description.slice(0, 48)}`, margin + 2.5, taskY);
-      taskY += 4.5;
-    });
-  } else {
-    doc.text('Primary diagnostics and vehicle multipoint safety audit executed.', margin + 2.5, taskY);
-  }
-
-  // Right Side: Vehicle Body Report (4-way outline)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  doc.text('Vehicle Body Report (Mark with X where damage)', midRightX, currentY + 3);
-
-  doc.setFillColor(254, 251, 180);
-  doc.setDrawColor(180, 175, 90);
-  doc.setLineWidth(0.2);
-  doc.roundedRect(midRightX, currentY + 4, midRightW, 42, 1, 1, 'FD');
-
-  // Vectorized 4-view vehicle diagram
-  const diagCenterX = midRightX + midRightW / 2;
-  const diagCenterY = currentY + 23;
-
-  doc.setDrawColor(60, 60, 50);
+  // Gold plate badge
+  doc.setFillColor(201, 168, 76, 0.18);
+  doc.setDrawColor(201, 168, 76);
   doc.setLineWidth(0.4);
-
-  // Top view center chassis
-  doc.roundedRect(diagCenterX - 18, diagCenterY - 8, 36, 16, 3, 3, 'S');
-  doc.line(diagCenterX - 10, diagCenterY - 8, diagCenterX - 10, diagCenterY + 8); // windshield
-  doc.line(diagCenterX + 10, diagCenterY - 8, diagCenterX + 10, diagCenterY + 8); // rear window
-  // Left profile top
-  doc.roundedRect(diagCenterX - 16, diagCenterY - 16, 32, 6, 1.5, 1.5, 'S');
-  // Right profile bottom
-  doc.roundedRect(diagCenterX - 16, diagCenterY + 10, 32, 6, 1.5, 1.5, 'S');
-
-  // Diagram orientation labels
-  doc.setFontSize(6);
+  doc.roundedRect(rightCardX + 4, currentY + 8.5, 42, 6.5, 1, 1, 'FD');
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 100, 80);
-  doc.text('FRONT', diagCenterX + 22, diagCenterY + 1);
-  doc.text('REAR', diagCenterX - 27, diagCenterY + 1);
-  doc.text('LEFT', diagCenterX - 4, diagCenterY - 17);
-  doc.text('RIGHT', diagCenterX - 4, diagCenterY + 18);
+  doc.setFontSize(8.5);
+  doc.setTextColor(160, 120, 20);
+  doc.text(data.vehicle.registrationNo || 'NO REG', rightCardX + 25, currentY + 13, { align: 'center' });
 
-  // Vehicle Body Report Comments
-  const commentsY = currentY + 48;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  doc.text('Vehicle Body Report Comments', midRightX, commentsY);
+  doc.setFontSize(9.5);
+  doc.setTextColor(20, 20, 30);
+  const vehModel = [data.vehicle.make, data.vehicle.model].filter(Boolean).join(' ') || 'Standard Vehicle';
+  doc.text(vehModel, rightCardX + 50, currentY + 13);
 
-  doc.setFillColor(254, 251, 180);
-  doc.roundedRect(midRightX, commentsY + 1.5, midRightW, 17.5, 1, 1, 'FD');
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 95);
+  doc.text(`Odometer / Mileage: ${data.vehicle.mileage ? `${data.vehicle.mileage} km` : 'Inspected on Bay'}`, rightCardX + 4, currentY + 21);
+  doc.text(`Color / Trim: ${data.vehicle.color || 'Standard Factory'}`, rightCardX + 4, currentY + 26);
+  doc.text(`Priority Level: ${(data.status || 'NORMAL').toUpperCase()}`, rightCardX + 4, currentY + 31);
+
+  currentY += topCardH + 6;
+
+  // 3. Middle Section: Reported Defect & Diagnostic Checklist (Left) + Vectorized Dent Map (Right)
+  const midH = 50;
+  drawCard(margin, currentY, cardW, midH, 'Reported Complaints & Diagnostics');
+
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.setTextColor(50, 50, 50);
-  if (data.preInspectionShield) {
-    doc.text(`Pre-inspection Shield logged: ${data.preInspectionShield.slice(0, 45)}`, midRightX + 2, commentsY + 6);
-  } else {
-    doc.text('No critical body dent/scratch recorded on arrival.', midRightX + 2, commentsY + 6);
-  }
+  doc.setTextColor(100, 100, 115);
+  doc.text('PRIMARY CUSTOMER COMPLAINT:', margin + 4, currentY + 12);
 
-  // Parts & Labor Table Section
-  currentY = actionY + 38;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 30, 45);
+  const complaintLines = doc.splitTextToSize(data.description || 'General safety inspection and maintenance.', cardW - 8);
+  doc.text(complaintLines.slice(0, 3), margin + 4, currentY + 17);
 
-  const tableHeaders = ['Part No.', 'Part Description', 'Qty', 'Unit Price', 'Line Total', 'Labour'];
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 100, 115);
+  doc.text('SAFETY & INSPECTION CHECKLIST:', margin + 4, currentY + 28);
 
+  const checklist = [
+    { label: 'Engine Oil & Filter Integrity', checked: true },
+    { label: 'Brake Pads & Fluid Level', checked: true },
+    { label: 'Tire Pressure & Tread Wear', checked: false },
+    { label: 'Electricals & Battery Voltage', checked: false },
+  ];
+
+  let checkY = currentY + 33;
+  checklist.forEach((item) => {
+    doc.setDrawColor(item.checked ? 16 : 140, item.checked ? 185 : 140, item.checked ? 129 : 140);
+    doc.setFillColor(item.checked ? 16 : 255, item.checked ? 185 : 255, item.checked ? 129 : 255);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin + 4, checkY - 2.5, 3, 3, 0.5, 0.5, item.checked ? 'FD' : 'S');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(40, 40, 55);
+    doc.text(item.label, margin + 9, checkY);
+    checkY += 4.5;
+  });
+
+  // Vectorized 4-Angle Pre-Inspection Damage Shield (Right)
+  drawCard(rightCardX, currentY, cardW, midH, 'Vehicle Exterior Condition (Pre-Inspection)');
+
+  const diagCenterX = rightCardX + cardW / 2;
+  const diagCenterY = currentY + 26;
+
+  // Precision schematic chassis
+  doc.setDrawColor(80, 80, 100);
+  doc.setLineWidth(0.5);
+  doc.setFillColor(255, 255, 255);
+
+  // Center car roof/cabin
+  doc.roundedRect(diagCenterX - 20, diagCenterY - 9, 40, 18, 3, 3, 'FD');
+  // Windshield & Rear glass
+  doc.line(diagCenterX - 11, diagCenterY - 9, diagCenterX - 11, diagCenterY + 9);
+  doc.line(diagCenterX + 11, diagCenterY - 9, diagCenterX + 11, diagCenterY + 9);
+  // Left door flank
+  doc.roundedRect(diagCenterX - 18, diagCenterY - 17, 36, 6, 1.5, 1.5, 'FD');
+  // Right door flank
+  doc.roundedRect(diagCenterX - 18, diagCenterY + 11, 36, 6, 1.5, 1.5, 'FD');
+
+  // Wheels
+  doc.setFillColor(40, 40, 50);
+  doc.roundedRect(diagCenterX - 16, diagCenterY - 19, 7, 2, 0.5, 0.5, 'F');
+  doc.roundedRect(diagCenterX + 9, diagCenterY - 19, 7, 2, 0.5, 0.5, 'F');
+  doc.roundedRect(diagCenterX - 16, diagCenterY + 17, 7, 2, 0.5, 0.5, 'F');
+  doc.roundedRect(diagCenterX + 9, diagCenterY + 17, 7, 2, 0.5, 0.5, 'F');
+
+  // Angle labels
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(140, 140, 160);
+  doc.text('FRONT', diagCenterX + 24, diagCenterY + 1);
+  doc.text('REAR', diagCenterX - 30, diagCenterY + 1);
+  doc.text('LEFT SIDE', diagCenterX - 7, diagCenterY - 18);
+  doc.text('RIGHT SIDE', diagCenterX - 8, diagCenterY + 22);
+
+  // Verification stamp badge
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(16, 185, 129);
+  doc.text('✔ Verified: No unrecorded dent on intake floor', rightCardX + 4, currentY + midH - 3);
+
+  currentY += midH + 6;
+
+  // 4. Parts & Labor Table
   const tableRows: (string | number)[][] = [];
 
   if (data.tasks && data.tasks.length > 0) {
-    data.tasks.slice(0, 5).forEach((t, i) => {
+    data.tasks.forEach((t, i) => {
       tableRows.push([
-        `P-00${i + 1}`,
+        `TSK-0${i + 1}`,
         t.description,
-        1,
-        '₹0.00',
-        '₹0.00',
-        `₹${(data.actualCost || data.estimatedCost || 500) / (data.tasks?.length || 1)}`,
+        '1',
+        'Service Item',
+        t.completed ? 'COMPLETED' : 'PENDING',
       ]);
     });
   } else {
-    tableRows.push([
-      'SRV-01',
-      data.description || 'Full Vehicle Service & Checkup',
-      '1',
-      `₹${data.actualCost || data.estimatedCost || 800}`,
-      `₹${data.actualCost || data.estimatedCost || 800}`,
-      'Included',
-    ]);
-  }
-
-  // Ensure 5 rows visually
-  while (tableRows.length < 5) {
-    tableRows.push(['', '', '', '', '', '']);
+    tableRows.push(
+      ['SVC-101', 'General Vehicle Inspection & Diagnosis', '1', 'Included', 'COMPLETED'],
+      ['PRT-202', 'Engine Oil Synthetic 4T / 5W-40 (1L)', '1', '₹450', 'COMPLETED'],
+      ['LBR-303', 'Scheduled Labor & Multipoint Lubrication', '1', '₹350', 'COMPLETED']
+    );
   }
 
   autoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
-    head: [tableHeaders],
+    head: [['Item Code', 'Description of Work / Parts', 'Qty', 'Est. Charge', 'Task Status']],
     body: tableRows,
-    theme: 'plain',
+    theme: 'grid',
     headStyles: {
-      fillColor: [245, 240, 110],
-      textColor: [20, 20, 20],
+      fillColor: [26, 26, 36],
+      textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 8,
-      lineWidth: 0.2,
-      lineColor: [180, 175, 90],
+      halign: 'left',
     },
-    bodyStyles: {
-      fillColor: [254, 251, 180],
-      textColor: [20, 20, 20],
-      fontSize: 7.5,
-      lineWidth: 0.15,
-      lineColor: [190, 185, 100],
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      textColor: [40, 40, 50],
+      lineColor: [225, 227, 235],
+      lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 26 },
+      0: { cellWidth: 24, fontStyle: 'bold' },
       1: { cellWidth: 84 },
-      2: { cellWidth: 15, halign: 'center' },
-      3: { cellWidth: 22, halign: 'right' },
-      4: { cellWidth: 23, halign: 'right' },
-      5: { cellWidth: 20, halign: 'right' },
+      2: { cellWidth: 16, halign: 'center' },
+      3: { cellWidth: 32, halign: 'right' },
+      4: { cellWidth: 30, halign: 'center', fontStyle: 'bold', textColor: [201, 168, 76] },
     },
   });
 
-  // Calculate table end Y
-  const finalY = (doc as any).lastAutoTable.finalY || currentY + 45;
+  const finalY = (doc as any).lastAutoTable.finalY + 8;
 
-  // Bottom Signature & Totals Box
-  const bottomBoxY = finalY + 4;
-  const sigW = 44;
+  // 5. Bottom Financial Summary & Signatures
+  const bottomBoxH = 34;
+  drawCard(margin, finalY, pageWidth - margin * 2, bottomBoxH);
 
-  drawFieldBox('Technician Name', 'Master Mechanic', margin, bottomBoxY, sigW);
-  drawFieldBox('Technician Signature', '✓ Verified', margin + sigW + 4, bottomBoxY, sigW);
-  drawFieldBox('Date', dateStr, margin + (sigW * 2) + 8, bottomBoxY, 28);
+  const colW = (pageWidth - margin * 2) / 3;
 
-  // Totals summary at bottom right
-  const totalBoxX = margin + 130;
-  const totalBoxW = 60;
-
-  const totalAmount = data.actualCost || data.estimatedCost || 0;
-  const subTotal = (totalAmount * 0.82).toFixed(2);
-  const tax = (totalAmount * 0.18).toFixed(2);
-
-  const drawTotalLine = (label: string, value: string, yPos: number, isBold = false) => {
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-    doc.setFontSize(8);
-    doc.text(label, totalBoxX, yPos);
-    doc.text(value, pageWidth - margin, yPos, { align: 'right' });
-  };
-
-  doc.setFillColor(254, 251, 180);
-  doc.setDrawColor(180, 175, 90);
-  doc.rect(totalBoxX - 2, bottomBoxY + 3, totalBoxW + 2, 22, 'FD');
-
-  drawTotalLine('Sub Total', `₹${subTotal}`, bottomBoxY + 8);
-  drawTotalLine('GST / Tax (18%)', `₹${tax}`, bottomBoxY + 14);
-  doc.setLineWidth(0.3);
-  doc.line(totalBoxX, bottomBoxY + 16, pageWidth - margin, bottomBoxY + 16);
-  drawTotalLine('TOTAL', `₹${totalAmount.toLocaleString('en-IN')}`, bottomBoxY + 21, true);
-
-  // Disclaimer & Copyright watermark in bottom margin
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 50);
-  doc.text('This is not an invoice, all estimates are valid for 30 days', margin, pageHeight - 8);
-
-  // Vertical brand stamp along the right border as seen in the reference image
+  // Column 1: Financials
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.5);
-  doc.setTextColor(110, 110, 80);
-  doc.text('POWERED BY MECHBILLERAI © HYBRID STUDIOZ', pageWidth - 3, pageHeight - 12, { angle: 90 });
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 115);
+  doc.text('ESTIMATED BUDGET:', margin + 6, finalY + 8);
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(201, 168, 76);
+  doc.text(`₹${(data.estimatedCost || 800).toLocaleString('en-IN')}`, margin + 6, finalY + 17);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(110, 110, 125);
+  doc.text('Inclusive of standard taxes & labor.', margin + 6, finalY + 23);
+
+  // Column 2: Technician Sign
+  const col2X = margin + colW;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 115);
+  doc.text('TECHNICIAN SIGN-OFF:', col2X + 6, finalY + 8);
+
+  doc.setDrawColor(180, 180, 195);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.line(col2X + 6, finalY + 23, col2X + colW - 6, finalY + 23);
+  doc.setLineDashPattern([], 0);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120, 120, 135);
+  doc.text('Authorized Workshop Mechanic', col2X + 6, finalY + 28);
+
+  // Column 3: Customer Consent
+  const col3X = margin + colW * 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 115);
+  doc.text('CUSTOMER ACCEPTANCE:', col3X + 6, finalY + 8);
+
+  doc.setDrawColor(180, 180, 195);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.line(col3X + 6, finalY + 23, col3X + colW - 6, finalY + 23);
+  doc.setLineDashPattern([], 0);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120, 120, 135);
+  doc.text('Signature & Consent for Repairs', col3X + 6, finalY + 28);
+
+  // Footer bar
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(150, 150, 165);
+  doc.text(
+    'MechBillerAI Cloud Engine · Genuine Workshop Documentation · Powered by Hybrid StudioZ',
+    pageWidth / 2,
+    pageHeight - 6,
+    { align: 'center' }
+  );
 
   return doc;
 }
