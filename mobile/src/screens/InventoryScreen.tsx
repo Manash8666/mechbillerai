@@ -12,6 +12,7 @@ import {
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MobileLoader from '../components/MobileLoader';
 
 interface InventoryItem {
   id: string;
@@ -202,8 +203,7 @@ export default function InventoryScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading Parts Stock...</Text>
+          <MobileLoader text="Loading Inventory" />
         </View>
       ) : (
         <FlatList

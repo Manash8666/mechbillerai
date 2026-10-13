@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Act
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MobileLoader from '../components/MobileLoader';
 
 interface CustomerItem {
   id: string;
@@ -70,7 +71,7 @@ export default function CustomersScreen() {
     <View style={styles.container}>
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <MobileLoader text="Loading Customers" />
         </View>
       ) : (
         <FlatList

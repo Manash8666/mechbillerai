@@ -1,8 +1,13 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base API config for mobile app
-// On Android Emulator, 10.0.2.2 points to host machine localhost:3000
-export const API_BASE_URL = 'http://10.0.2.2:3000/api';
+// On Web preview in browser: http://localhost:3000/api
+// On Android Emulator: http://10.0.2.2:3000/api
+export const API_BASE_URL =
+  Platform.OS === 'web'
+    ? 'http://localhost:3000/api'
+    : 'http://10.0.2.2:3000/api';
 
 export interface UserSession {
   id: string;
@@ -13,13 +18,22 @@ export interface UserSession {
   licenseStatus: string;
 }
 
+const DEFAULT_DEMO_USER: UserSession = {
+  id: 'cmv4zl4620001d96sd1e0qto2',
+  name: 'Demo Garage',
+  email: 'demo@garagesaas.com',
+  role: 'owner',
+  garageType: 'two_wheeler',
+  licenseStatus: 'active',
+};
+
 export const Storage = {
   getUser: async (): Promise<UserSession | null> => {
     try {
       const data = await AsyncStorage.getItem('user');
-      return data ? JSON.parse(data) : null;
+      return data ? JSON.parse(data) : DEFAULT_DEMO_USER;
     } catch {
-      return null;
+      return DEFAULT_DEMO_USER;
     }
   },
   setUser: async (user: UserSession) => {
@@ -109,6 +123,26 @@ export const API = {
   updateBranding: async (payload: any) => {
     const user = await Storage.getUser();
     const res = await fetch(`${API_BASE_URL}/branding`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    });
+    return res.json();
+  },
+
+  createJobCard: async (payload: any) => {
+    const user = await Storage.getUser();
+    const res = await fetch(`${API_BASE_URL}/jobcards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    });
+    return res.json();
+  },
+
+  createInvoice: async (payload: any) => {
+    const user = await Storage.getUser();
+    const res = await fetch(`${API_BASE_URL}/invoices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: user?.id }),

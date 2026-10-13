@@ -6,15 +6,18 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   TextInput,
   Linking,
   Share,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MobileLoader from '../components/MobileLoader';
+import MobilePearlButton from '../components/MobilePearlButton';
 
 interface InvoiceItem {
   id: string;
@@ -43,6 +46,17 @@ export default function InvoicesScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
 
+  // Modal creation state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [serviceDesc, setServiceDesc] = useState('Vehicle Service & Parts');
+  const [laborCharge, setLaborCharge] = useState('600');
+  const [partsCharge, setPartsCharge] = useState('400');
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'CARD'>('UPI');
+  const [isPaid, setIsPaid] = useState(true);
+
   const fetchInvoices = async () => {
     try {
       const data = await API.getInvoices();
@@ -66,14 +80,10 @@ export default function InvoicesScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'paid':
-        return '#10B981';
-      case 'partial':
-        return '#F59E0B';
-      case 'unpaid':
-        return '#EF4444';
-      default:
-        return COLORS.textMuted;
+      case 'paid': return '#10B981';
+      case 'partial': return '#F59E0B';
+      case 'unpaid': return '#EF4444';
+      default: return COLORS.textMuted;
     }
   };
 
@@ -91,7 +101,88 @@ export default function InvoicesScreen() {
         });
       }
     } catch {
-      Alert.alert('PDF Viewer', 'Opening PDF in external browser or viewer...');
+      Alert.alert('PDF Viewer', `Opening ${type} PDF: ${API.getInvoicePdfUrl(invoiceId, type)}`);
+    }
+  };
+
+  const handleCreateInvoice = async () => {
+    if (!custName.trim() && !custPhone.trim()) {
+      Alert.alert('Validation Error', 'Customer Name or Phone is required.');
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      // 1. Get or create customer
+      const existingCustomers = await API.getCustomers();
+      let customerId = '';
+      const matched = existingCustomers.find(
+        (c: any) => c.phone === custPhone || c.name.toLowerCase() === custName.toLowerCase()
+      );
+
+      if (matched) {
+        customerId = matched.id;
+      } else {
+        const user = await API.getDashboardStats();
+        const newCustRes = await fetch(`${API.getInvoicePdfUrl('').replace('/pdf/invoice?id=&type=INVOICE', '')}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: custName || 'Walk-in Customer',
+            phone: custPhone || '9876543210',
+            userId: user?.id,
+          }),
+        });
+        const newCust = await newCustRes.json();
+        customerId = newCust.id || existingCustomers[0]?.id;
+      }
+
+      const labor = Number.parseFloat(laborCharge) || 0;
+      const parts = Number.parseFloat(partsCharge) || 0;
+      const subtotal = labor + parts;
+      const tax = 0; // Simplified
+      const total = subtotal + tax;
+      const paid = isPaid ? total : 0;
+      const balance = total - paid;
+
+      await API.createInvoice({
+        customerId,
+        items: [
+          {
+            description: serviceDesc || 'General Maintenance & Labor',
+            quantity: 1,
+            unitPrice: labor,
+            total: labor,
+          },
+          ...(parts > 0
+            ? [
+                {
+                  description: 'Replacement Parts & Consumables',
+                  quantity: 1,
+                  unitPrice: parts,
+                  total: parts,
+                },
+              ]
+            : []),
+        ],
+        subtotal,
+        tax,
+        total,
+        paid,
+        balance,
+        paymentMode,
+      });
+
+      Alert.alert('Success', 'Invoice generated successfully!');
+      setIsModalOpen(false);
+      setCustName('');
+      setCustPhone('');
+      await fetchInvoices();
+    } catch {
+      Alert.alert('Error', 'Failed to generate invoice. Please check connection.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -188,6 +279,18 @@ export default function InvoicesScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top Header with New Invoice button */}
+      <View style={styles.topActions}>
+        <Text style={styles.topTitle}>Billing Ledger</Text>
+        <MobilePearlButton
+          variant="gold"
+          onPress={() => setIsModalOpen(true)}
+        >
+          <MaterialCommunityIcons name="plus" size={18} color={COLORS.background} style={{ marginRight: 4 }} />
+          <Text style={styles.pearlBtnText}>New Invoice</Text>
+        </MobilePearlButton>
+      </View>
+
       {/* Top Ledger Summary */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryMetric}>
@@ -244,8 +347,7 @@ export default function InvoicesScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading Billing Ledgers...</Text>
+          <MobileLoader text="Loading Invoices" />
         </View>
       ) : (
         <FlatList
@@ -264,6 +366,138 @@ export default function InvoicesScreen() {
           }
         />
       )}
+
+      {/* Floating Plus Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setIsModalOpen(true)}
+      >
+        <MaterialCommunityIcons name="plus" size={28} color={COLORS.background} />
+      </TouchableOpacity>
+
+      {/* New Invoice & Estimate Modal */}
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Generate New Bill / Invoice</Text>
+              <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Customer Name *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Ramesh Patel"
+                placeholderTextColor={COLORS.textMuted}
+                value={custName}
+                onChangeText={setCustName}
+              />
+
+              <Text style={styles.inputLabel}>Customer Phone Number</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 9876543210"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="phone-pad"
+                value={custPhone}
+                onChangeText={setCustPhone}
+              />
+
+              <Text style={styles.inputLabel}>Service / Repair Description</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="General Service & Diagnostic"
+                placeholderTextColor={COLORS.textMuted}
+                value={serviceDesc}
+                onChangeText={setServiceDesc}
+              />
+
+              <View style={styles.twoColRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Labor Amount (₹)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="600"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="numeric"
+                    value={laborCharge}
+                    onChangeText={setLaborCharge}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Parts Amount (₹)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="400"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="numeric"
+                    value={partsCharge}
+                    onChangeText={setPartsCharge}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Payment Mode</Text>
+              <View style={styles.modeRow}>
+                {(['UPI', 'CASH', 'CARD'] as const).map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[
+                      styles.modePill,
+                      paymentMode === m && styles.modePillActive,
+                    ]}
+                    onPress={() => setPaymentMode(m)}
+                  >
+                    <Text
+                      style={[
+                        styles.modeText,
+                        paymentMode === m && styles.modeTextActive,
+                      ]}
+                    >
+                      {m}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setIsPaid(!isPaid)}
+              >
+                <MaterialCommunityIcons
+                  name={isPaid ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                  size={22}
+                  color={isPaid ? COLORS.primary : COLORS.textMuted}
+                />
+                <Text style={styles.checkboxLabel}>Mark Bill as Paid Immediately</Text>
+              </TouchableOpacity>
+
+              <MobilePearlButton
+                variant="gold"
+                onPress={handleCreateInvoice}
+                style={{ marginTop: 20 }}
+              >
+                {creating ? (
+                  <MobileLoader text="Creating" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="receipt" size={18} color={COLORS.background} style={{ marginRight: 6 }} />
+                    <Text style={styles.pearlBtnText}>Generate Invoice & PDF</Text>
+                  </>
+                )}
+              </MobilePearlButton>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -273,12 +507,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  topTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  pearlBtnText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.background,
+  },
   summaryCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
     marginHorizontal: 16,
-    marginTop: 14,
+    marginTop: 10,
     marginBottom: 10,
     paddingVertical: 14,
     paddingHorizontal: 12,
@@ -355,6 +607,7 @@ const styles = StyleSheet.create({
   list: {
     padding: 16,
     paddingTop: 4,
+    paddingBottom: 80,
   },
   card: {
     backgroundColor: COLORS.surface,
@@ -478,11 +731,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    color: COLORS.textMuted,
-    marginTop: 10,
-    fontSize: 13,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -492,5 +740,106 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 12,
     fontSize: 14,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    backgroundColor: COLORS.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalForm: {
+    paddingVertical: 14,
+    paddingBottom: 30,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  modePill: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modePillActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+  },
+  modeText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  modeTextActive: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    gap: 8,
+  },
+  checkboxLabel: {
+    color: COLORS.text,
+    fontSize: 13,
   },
 });

@@ -13,6 +13,7 @@ import {
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MobileLoader from '../components/MobileLoader';
 
 interface AppointmentItem {
   id: string;
@@ -196,8 +197,7 @@ export default function AppointmentsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading Service Bookings...</Text>
+          <MobileLoader text="Loading Appointments" />
         </View>
       ) : (
         <FlatList
