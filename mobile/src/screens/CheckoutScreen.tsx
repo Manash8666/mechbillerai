@@ -22,10 +22,10 @@ export default function CheckoutScreen() {
     { id: '3', vehicle: 'GJ-05-MM-3344', model: 'Pulsar 150', work: 'Clutch Wire Adjustment', amount: 150 },
   ]);
 
-  const [detailedJobs, setDetailedJobs] = useState([
+  const detailedJobs = [
     { id: '4', vehicle: 'GJ-01-RE-9999', model: 'Royal Enfield Classic 350', work: 'Engine Rebuild & Valve Replacement', amount: 18400, itemsCount: 8 },
     { id: '5', vehicle: 'GJ-06-CD-5678', model: 'Hyundai i20', work: 'Suspension Overhaul & Brake Discs', amount: 12200, itemsCount: 6 },
-  ]);
+  ];
 
   const handleCollect = (id: string, vehicle: string, amount: number) => {
     Alert.alert(

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } f
 import { COLORS } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }: any) {
   const [gstEnabled, setGstEnabled] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
 
@@ -37,10 +37,36 @@ export default function SettingsScreen() {
   };
 
   const menuItems = [
-    { icon: 'shield-key-outline', title: 'License Status', subtitle: 'Lifetime License Active' },
-    { icon: 'palette-outline', title: 'Garage Branding', subtitle: 'Gold & Slate Theme' },
-    { icon: 'printer-outline', title: 'Thermal Printer Setup', subtitle: 'Bluetooth & USB' },
-    { icon: 'translate', title: 'Language', subtitle: 'English (ગુજરાતી, हिंदी)' },
+    {
+      icon: 'palette-outline',
+      title: 'Garage Branding',
+      subtitle: 'Color theme & workshop identity',
+      onPress: () => navigation?.navigate('Branding'),
+    },
+    {
+      icon: 'account-group-outline',
+      title: 'Customer Directory',
+      subtitle: 'View vehicle owners & accounts',
+      onPress: () => navigation?.navigate('Customers'),
+    },
+    {
+      icon: 'calendar-clock',
+      title: 'Service Appointments',
+      subtitle: 'View bookings & work bay schedule',
+      onPress: () => navigation?.navigate('Appointments'),
+    },
+    {
+      icon: 'shield-key-outline',
+      title: 'License Status',
+      subtitle: 'Lifetime License Active (MechBillerAI Pro)',
+      onPress: () => Alert.alert('License Active', 'Lifetime Pro license verified on device.'),
+    },
+    {
+      icon: 'printer-outline',
+      title: 'Thermal Printer Setup',
+      subtitle: 'Bluetooth 58mm / 80mm & USB',
+      onPress: () => Alert.alert('Printer Setup', 'Standard 58mm/80mm ESC/POS and Network printers supported.'),
+    },
   ];
 
   return (
@@ -114,7 +140,11 @@ export default function SettingsScreen() {
 
       <View style={styles.menuList}>
         {menuItems.map((item, index) => (
-          <TouchableOpacity key={index} style={styles.menuItem}>
+          <TouchableOpacity
+            key={index}
+            style={styles.menuItem}
+            onPress={item.onPress}
+          >
             <MaterialCommunityIcons name={item.icon as any} size={22} color={COLORS.primary} style={{ marginRight: 14 }} />
             <View style={{ flex: 1 }}>
               <Text style={styles.itemTitle}>{item.title}</Text>

@@ -81,6 +81,41 @@ export const API = {
     return Array.isArray(result) ? result : result.data || [];
   },
 
+  getAppointments: async () => {
+    const user = await Storage.getUser();
+    const query = user?.id ? `?userId=${user.id}` : '';
+    const res = await fetch(`${API_BASE_URL}/appointments${query}`);
+    const result = await res.json();
+    return Array.isArray(result) ? result : result.data || [];
+  },
+
+  createAppointment: async (payload: any) => {
+    const user = await Storage.getUser();
+    const res = await fetch(`${API_BASE_URL}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    });
+    return res.json();
+  },
+
+  getBranding: async () => {
+    const user = await Storage.getUser();
+    const query = user?.id ? `?userId=${user.id}` : '';
+    const res = await fetch(`${API_BASE_URL}/branding${query}`);
+    return res.json();
+  },
+
+  updateBranding: async (payload: any) => {
+    const user = await Storage.getUser();
+    const res = await fetch(`${API_BASE_URL}/branding`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    });
+    return res.json();
+  },
+
   getJobCardPdfUrl: (jobCardId: string) => {
     return `${API_BASE_URL}/pdf/jobcard?id=${jobCardId}`;
   },

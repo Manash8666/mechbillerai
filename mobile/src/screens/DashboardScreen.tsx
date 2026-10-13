@@ -4,7 +4,7 @@ import { COLORS } from '../constants/theme';
 import { API, Storage, UserSession } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }: any) {
   const [user, setUser] = useState<UserSession | null>(null);
   const [stats, setStats] = useState({
     totalCustomers: 0,
@@ -60,8 +60,11 @@ export default function DashboardScreen() {
             <Text style={styles.garageName}>{user?.name || 'Garage Partner'}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationPill}>
-          <MaterialCommunityIcons name="bell-badge-outline" size={20} color={COLORS.text} />
+        <TouchableOpacity
+          style={styles.notificationPill}
+          onPress={() => navigation?.navigate('Appointments')}
+        >
+          <MaterialCommunityIcons name="calendar-month-outline" size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
@@ -84,51 +87,72 @@ export default function DashboardScreen() {
         <Text style={styles.balanceSubtext}>Net Cash Flow Settled (This Month)</Text>
 
         <View style={styles.bankCardFooter}>
-          <View style={styles.footerMetric}>
+          <TouchableOpacity
+            style={styles.footerMetric}
+            onPress={() => navigation?.navigate('Invoices')}
+          >
             <Text style={styles.footerMetricLabel}>PAID INVOICES</Text>
             <Text style={styles.footerMetricVal}>{stats.invoicesThisMonth}</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.footerDivider} />
-          <View style={styles.footerMetric}>
+          <TouchableOpacity
+            style={styles.footerMetric}
+            onPress={() => navigation?.navigate('Job Cards')}
+          >
             <Text style={styles.footerMetricLabel}>ACTIVE JOBS</Text>
             <Text style={[styles.footerMetricVal, { color: COLORS.primary }]}>{stats.activeJobs}</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.footerDivider} />
-          <View style={styles.footerMetric}>
+          <TouchableOpacity
+            style={styles.footerMetric}
+            onPress={() => navigation?.navigate('Customers')}
+          >
             <Text style={styles.footerMetricLabel}>CUSTOMERS</Text>
             <Text style={styles.footerMetricVal}>{stats.totalCustomers}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* iOS Quick Actions Pills (Send, Receive, Invoice, Intake) */}
       <View style={styles.pillsRow}>
-        <TouchableOpacity style={styles.actionPill}>
+        <TouchableOpacity
+          style={styles.actionPill}
+          onPress={() => navigation?.navigate('Intake')}
+        >
           <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(229, 192, 123, 0.15)' }]}>
             <MaterialCommunityIcons name="camera-plus" size={22} color={COLORS.primary} />
           </View>
-          <Text style={styles.pillLabel}>Express Intake</Text>
+          <Text style={styles.pillLabel}>Intake</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionPill}>
+        <TouchableOpacity
+          style={styles.actionPill}
+          onPress={() => navigation?.navigate('Checkout')}
+        >
           <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
             <MaterialCommunityIcons name="cash-fast" size={22} color="#10B981" />
           </View>
-          <Text style={styles.pillLabel}>Quick Pay</Text>
+          <Text style={styles.pillLabel}>Triage</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionPill}>
+        <TouchableOpacity
+          style={styles.actionPill}
+          onPress={() => navigation?.navigate('Invoices')}
+        >
           <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
             <MaterialCommunityIcons name="file-document-plus" size={22} color="#38BDF8" />
           </View>
-          <Text style={styles.pillLabel}>New Bill</Text>
+          <Text style={styles.pillLabel}>Bills</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionPill}>
+        <TouchableOpacity
+          style={styles.actionPill}
+          onPress={() => navigation?.navigate('Appointments')}
+        >
           <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-            <MaterialCommunityIcons name="qrcode-scan" size={22} color="#C084FC" />
+            <MaterialCommunityIcons name="calendar-clock" size={22} color="#C084FC" />
           </View>
-          <Text style={styles.pillLabel}>UPI QR</Text>
+          <Text style={styles.pillLabel}>Bookings</Text>
         </TouchableOpacity>
       </View>
 
