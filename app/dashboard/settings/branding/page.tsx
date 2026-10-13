@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Upload, Palette, Save, RotateCcw, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -386,9 +387,12 @@ export default function BrandingSettingsPage() {
             <div className="space-y-4">
               {logoPreview && (
                 <div className="flex justify-center p-4 bg-luxury-canvas-light dark:bg-luxury-canvas-dark rounded-lg">
-                  <img
+                  <Image
                     src={logoPreview}
                     alt="Logo preview"
+                    width={180}
+                    height={80}
+                    unoptimized
                     className="max-h-32 object-contain"
                   />
                 </div>
@@ -487,7 +491,7 @@ export default function BrandingSettingsPage() {
             >
               {logoPreview && (
                 <div className="flex justify-center mb-4">
-                  <img src={logoPreview} alt="Logo" className="h-16 object-contain" />
+                  <Image src={logoPreview} alt="Logo" width={120} height={64} unoptimized className="h-16 object-contain" />
                 </div>
               )}
 

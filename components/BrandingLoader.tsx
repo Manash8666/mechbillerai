@@ -1,27 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { generateLuxuryPalette, type ColorPalette } from '@/lib/colorExtractor';
 
 export function BrandingLoader() {
-  const [loaded, setLoaded] = useState(false);
+  const [, setLoaded] = useState(false);
 
-  useEffect(() => {
-    loadBranding();
-
-    // Listen for branding updates
-    const handleBrandingUpdate = () => {
-      loadBranding();
-    };
-
-    window.addEventListener('brandingUpdated', handleBrandingUpdate);
-
-    return () => {
-      window.removeEventListener('brandingUpdated', handleBrandingUpdate);
-    };
-  }, []);
-
-  const loadBranding = async () => {
+  const loadBranding = useCallback(async () => {
     try {
       const user = localStorage.getItem('user');
       if (!user) return;
@@ -66,7 +51,22 @@ export function BrandingLoader() {
       console.error('Error loading branding:', error);
       setLoaded(true);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadBranding();
+
+    // Listen for branding updates
+    const handleBrandingUpdate = () => {
+      loadBranding();
+    };
+
+    window.addEventListener('brandingUpdated', handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener('brandingUpdated', handleBrandingUpdate);
+    };
+  }, [loadBranding]);
 
   const applyTheme = (palette: ColorPalette) => {
     const root = document.documentElement;
