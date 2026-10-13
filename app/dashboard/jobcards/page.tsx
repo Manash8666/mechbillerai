@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download } from 'lucide-react';
+import toast from 'react-hot-toast';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
@@ -67,56 +68,68 @@ export default function JobCardsPage() {
   };
 
   const handleDownloadJobCardPdf = (job: JobCard) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const doc = generateJobCardPdf({
-      jobNumber: job.jobNumber,
-      createdAt: job.createdAt,
-      status: job.status,
-      description: job.description,
-      estimatedCost: job.estimatedCost,
-      actualCost: job.actualCost,
-      voiceNote: job.voiceNote,
-      preInspectionShield: job.preInspectionShield,
-      customer: job.customer,
-      vehicle: job.vehicle,
-      tasks: job.tasks,
-      garageName: user.name || 'Demo Garage',
-      garagePhone: user.phone || '+91 99999 88888',
-    });
-    doc.save(`JobCard_${job.jobNumber}.pdf`);
+    try {
+      const fileName = `JobCard_${job.jobNumber}.pdf`;
+      const link = document.createElement('a');
+      link.href = `/api/pdf/jobcard?id=${job.jobNumber}`;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Job Card PDF (${fileName}) generated!`);
+    } catch (err) {
+      console.error('Error downloading Job Card PDF:', err);
+      window.open(`/api/pdf/jobcard?id=${job.jobNumber}`, '_blank');
+    }
   };
 
   const handleDownloadEstimatePdf = (job: JobCard) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const est = job.estimatedCost || 800;
-    const subtotal = Math.round(est * 0.82);
-    const tax = est - subtotal;
-    const doc = generateInvoiceOrEstimatePdf({
-      documentType: 'ESTIMATE',
-      documentNumber: job.jobNumber.replace('JC', 'EST'),
-      date: new Date(job.createdAt).toLocaleDateString('en-GB'),
-      customer: {
-        name: job.customer.name,
-        phone: job.customer.phone,
-      },
-      garage: {
-        name: user.name || 'Demo Garage',
-        phone: user.phone || '+91 99999 88888',
-      },
-      items: [
-        {
-          description: job.description || 'Estimated Vehicle Service',
-          quantity: 1,
-          unitPrice: subtotal,
-          total: subtotal,
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const est = job.estimatedCost || 800;
+      const subtotal = Math.round(est * 0.82);
+      const tax = est - subtotal;
+      const doc = generateInvoiceOrEstimatePdf({
+        documentType: 'ESTIMATE',
+        documentNumber: job.jobNumber.replace('JC', 'EST'),
+        date: new Date(job.createdAt).toLocaleDateString('en-GB'),
+        customer: {
+          name: job.customer.name,
+          phone: job.customer.phone,
         },
-      ],
-      subtotal,
-      tax,
-      total: est,
-      balance: est,
-    });
-    doc.save(`Estimate_${job.jobNumber}.pdf`);
+        garage: {
+          name: user.name || 'Demo Garage',
+          phone: user.phone || '+91 99999 88888',
+        },
+        items: [
+          {
+            description: job.description || 'Estimated Vehicle Service',
+            quantity: 1,
+            unitPrice: subtotal,
+            total: subtotal,
+          },
+        ],
+        subtotal,
+        tax,
+        total: est,
+        balance: est,
+      });
+      const fileName = `Estimate_${job.jobNumber}.pdf`;
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      alert(`Estimate PDF (${fileName}) downloaded! Check your browser Downloads.`);
+    } catch (err) {
+      console.error('Error generating Estimate PDF:', err);
+      window.open(`/api/pdf/jobcard?id=${job.jobNumber}`, '_blank');
+    }
   };
 
   const getStatusColor = (status: string) => {

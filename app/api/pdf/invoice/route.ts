@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const typeParam = searchParams.get('type')?.toUpperCase();
+    const typeParam = (searchParams.get('docType') || searchParams.get('type'))?.toUpperCase();
     const docType: 'INVOICE' | 'ESTIMATE' | 'WORK ORDER' =
       typeParam === 'ESTIMATE' || typeParam === 'WORK ORDER' ? typeParam : 'INVOICE';
 

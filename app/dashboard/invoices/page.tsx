@@ -83,38 +83,20 @@ export default function InvoicesPage() {
   };
 
   const handleDownloadBillPdf = (invoice: Invoice, docType: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const doc = generateInvoiceOrEstimatePdf({
-      documentType: docType,
-      documentNumber: invoice.invoiceNumber,
-      date: new Date(invoice.createdAt).toLocaleDateString('en-GB'),
-      dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-GB') : undefined,
-      customer: {
-        name: invoice.customer?.name || 'Valued Customer',
-        phone: invoice.customer?.phone || '',
-        email: invoice.customer?.email,
-      },
-      garage: {
-        name: user.name || 'Demo Garage',
-        phone: user.phone || '+91 99999 88888',
-        email: user.email || 'support@garagesaas.com',
-      },
-      items: invoice.items && invoice.items.length > 0 ? invoice.items : [
-        {
-          description: 'General Workshop Service & Parts',
-          quantity: 1,
-          unitPrice: invoice.subtotal,
-          total: invoice.subtotal,
-        },
-      ],
-      subtotal: invoice.subtotal,
-      tax: invoice.tax,
-      total: invoice.total,
-      paid: invoice.paid,
-      balance: invoice.balance,
-      paymentMode: invoice.paymentMode,
-    });
-    doc.save(`${docType}_${invoice.invoiceNumber}.pdf`);
+    try {
+      const fileName = `${docType}_${invoice.invoiceNumber}.pdf`;
+      const link = document.createElement('a');
+      link.href = `/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=${docType}`;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`${docType} PDF (${fileName}) generated!`);
+    } catch (err) {
+      console.error('Error downloading bill PDF:', err);
+      window.open(`/api/pdf/invoice?id=${invoice.invoiceNumber}`, '_blank');
+    }
   };
 
   const fetchInvoices = async () => {
