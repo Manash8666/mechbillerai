@@ -85,7 +85,7 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </View>
 
-      {/* MSME GST Switch Card */}
+      {/* Small Business GST Switch Card */}
       <View style={styles.gstCard}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1, paddingRight: 12 }}>
