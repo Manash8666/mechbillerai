@@ -246,13 +246,13 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   doc.text('FRONT', diagCenterX + 24, diagCenterY + 1);
   doc.text('REAR', diagCenterX - 30, diagCenterY + 1);
   doc.text('LEFT SIDE', diagCenterX - 7, diagCenterY - 18);
-  doc.text('RIGHT SIDE', diagCenterX - 8, diagCenterY + 22);
+  doc.text('RIGHT SIDE', diagCenterX - 8, diagCenterY + 20);
 
   // Verification stamp badge
   doc.setFontSize(7);
-  doc.setFont('helvetica', 'italic');
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(16, 185, 129);
-  doc.text('✔ Verified: No unrecorded dent on intake floor', rightCardX + 4, currentY + midH - 3);
+  doc.text('[PASS] Verified: No unrecorded dent on intake floor', rightCardX + 4, currentY + midH - 1.5);
 
   currentY += midH + 6;
 
