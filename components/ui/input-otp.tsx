@@ -219,7 +219,7 @@ const inputOTPSlotVariants = cva(
 )
 
 const inputOTPInputClassName =
-  "absolute inset-0 m-0 size-full min-w-0 rounded-[inherit] border-0 bg-transparent p-0 text-center caret-foreground outline-none focus-visible:outline-hidden selection:bg-transparent autofill:transition-[background-color] autofill:duration-[100000s] disabled:cursor-not-allowed read-only:cursor-default"
+  "absolute inset-0 m-0 size-full min-w-0 rounded-[inherit] border-0 bg-transparent p-0 text-center caret-foreground outline-none focus-visible:outline-hidden selection:bg-transparent autofill:transition-[background-color] disabled:cursor-not-allowed read-only:cursor-default"
 
 const inputOTPCharClassName =
   "pointer-events-none absolute inset-0 flex items-center justify-center [animation-delay:calc(var(--input-otp-index,0)*90ms)] group-data-[status=loading]/input-otp-slot:motion-safe:animate-input-otp-wave group-data-[status=loading]/input-otp-slot:motion-reduce:animate-input-otp-pulse group-data-[status=success]/input-otp-slot:motion-safe:animate-input-otp-pop group-data-[status=success]/input-otp-slot:[animation-delay:calc(var(--input-otp-index,0)*40ms)]"
