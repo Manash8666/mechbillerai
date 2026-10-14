@@ -2,12 +2,12 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Official MotoBan Cloud API URLs with dual-cloud failover
-export const MOTOBAN_CLOUD_URL = 'https://motoban.in/api';
-export const VERCEL_FALLBACK_URL = 'https://mechbillerai.vercel.app/api';
+export const VERCEL_ACTIVE_URL = 'https://mechbillerai.vercel.app/api';
+export const MOTOBAN_CUSTOM_URL = 'https://motoban.in/api';
 export const LOCAL_API_URL = 'http://localhost:3000/api';
 
-// On physical Android devices, try primary custom domain first, auto-failover to Vercel
-let currentResolvedUrl = MOTOBAN_CLOUD_URL;
+// On physical Android devices, connect directly to active verified cloud API
+let currentResolvedUrl = VERCEL_ACTIVE_URL;
 
 export const getApiBaseUrl = async (): Promise<string> => {
   try {
@@ -21,7 +21,7 @@ export const getApiBaseUrl = async (): Promise<string> => {
   return currentResolvedUrl;
 };
 
-export const API_BASE_URL = MOTOBAN_CLOUD_URL;
+export const API_BASE_URL = VERCEL_ACTIVE_URL;
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 7000): Promise<Response> => {
   const controller = new AbortController();
@@ -34,8 +34,8 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
 };
 
 /**
- * Resilient API fetcher with silent dual-cloud fallback:
- * If motoban.in DNS is not yet ready or unreachable, seamlessly switches to mechbillerai.vercel.app.
+ * Resilient API fetcher with automatic cloud connectivity:
+ * Queries active verified Vercel production endpoint by default.
  */
 async function apiFetch(path: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
   const custom = await AsyncStorage.getItem('custom_api_url');
@@ -46,11 +46,10 @@ async function apiFetch(path: string, options: RequestInit = {}, timeoutMs = 800
     const res = await fetchWithTimeout(targetUrl, options, timeoutMs);
     return res;
   } catch (err: any) {
-    // If primary motoban.in fails, transparently retry with Vercel fallback
-    if (!custom && Platform.OS !== 'web' && currentResolvedUrl === MOTOBAN_CLOUD_URL) {
-      console.warn(`[MotoBan] Primary API (${MOTOBAN_CLOUD_URL}) unreachable, switching to Vercel fallback (${VERCEL_FALLBACK_URL})`);
-      currentResolvedUrl = VERCEL_FALLBACK_URL;
-      const fallbackUrl = `${VERCEL_FALLBACK_URL}${path}`;
+    if (!custom && Platform.OS !== 'web' && currentResolvedUrl !== VERCEL_ACTIVE_URL) {
+      console.warn(`[MotoBan] Falling back to verified Vercel cloud API: ${VERCEL_ACTIVE_URL}`);
+      currentResolvedUrl = VERCEL_ACTIVE_URL;
+      const fallbackUrl = `${VERCEL_ACTIVE_URL}${path}`;
       return await fetchWithTimeout(fallbackUrl, options, timeoutMs);
     }
     throw err;
