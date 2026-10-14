@@ -16,7 +16,7 @@ import MobilePearlButton from '../components/MobilePearlButton';
 
 export default function LoginScreen({ navigation, onLoginSuccess }: any) {
   const [email, setEmail] = useState('demo@garagesaas.com');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('test123');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -82,10 +82,10 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
   const handleFillDemo = (type: 'two_wheeler' | 'four_wheeler') => {
     if (type === 'two_wheeler') {
       setEmail('demo@garagesaas.com');
-      setPassword('password123');
+      setPassword('test123');
     } else {
       setEmail('test@garagesaas.com');
-      setPassword('password123');
+      setPassword('test123');
     }
   };
 
