@@ -3,6 +3,7 @@ import { Inter, Geist } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import TelemetryBeacon from "@/components/TelemetryBeacon";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("dark font-sans", geist.variable)}>
       <body className={inter.className}>
+        <TelemetryBeacon source="mechbillerai" />
         {children}
         <Toaster position="top-right" />
       </body>

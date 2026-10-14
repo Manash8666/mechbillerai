@@ -161,3 +161,24 @@ MechBillerAI/
 **MotoBan** is proudly developed and maintained by **Hybrid StudioZ**.
 
 *Made with ❤️ for Auto Workshops & Garages.*
+
+---
+
+## 📜 End User License Agreement (EULA) & Dual-Licensing Policy
+
+Use of the **MechBillerAI** engine, codebase, algorithms, and associated applications is strictly governed by our formal End User License Agreement.
+
+### ⚖️ Mandatory Notice for Repository & Code Usage
+If any individual, developer, agency, company, or third-party entity accesses, clones, forks, copies, incorporates, modifies, redistributes, or builds upon either:
+1. **The `mechbillerai` Git Repository** ([https://github.com/Manash8666/mechbillerai.git](https://github.com/Manash8666/mechbillerai.git)), and/or
+2. **The MotoBan Website** ([https://motoban.in](https://motoban.in)),
+
+According to EULA policies, you are strictly legally subjected to **either of the following two mandatory options** prior to deployment, distribution, or commercial operation:
+
+- **Option A (100% Reciprocal Open-Source Obligation):** Release **100% of your resulting project, platform, codebase, and derivative software as completely free and public open-source software** under an identical reciprocal copyleft license with all source code publicly accessible on GitHub/GitLab.
+- **Option B (3x Lifetime License Commercial Royalty Payment):** If your project is proprietary, closed-source, commercially distributed, hosted as a paid service, or monetized for commercial gain, you are legally subjected to **pay a mandatory Royalty equivalent to exactly three times (3x) the Lifetime License fee of the MotoBan App and Website** directly to **HybridStudioZ** prior to commercial launch:
+  - **Standard Workshop Commercial Royalty:** `3 × ₹14,999 = ₹44,997 INR`
+  - **Enterprise Multi-Bay Commercial Royalty:** `3 × ₹39,999 = ₹119,997 INR`
+
+- 📄 **View Full Markdown EULA:** [`EULA.md`](./EULA.md)
+- 🌐 **View Web EULA:** [https://motoban.in/eula](https://motoban.in/eula)
