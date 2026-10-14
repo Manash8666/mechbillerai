@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
+    "db:turso:push": "node push-to-turso.mjs",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
@@ -17,6 +18,8 @@
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@hookform/resolvers": "^3.9.1",
+    "@libsql/client": "^0.18.0",
+    "@prisma/adapter-libsql": "^7.10.0",
     "@prisma/client": "^6.2.0",
     "@tabler/icons-react": "^3.49.0",
     "bcryptjs": "^2.4.3",
