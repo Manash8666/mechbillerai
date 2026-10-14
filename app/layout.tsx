@@ -9,8 +9,8 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "MechBillerAI - Powered by Hybrid StudioZ",
-  description: "Next-gen Garage Management, Job Cards & Smart GST Billing Platform. Powered by Hybrid StudioZ.",
+  title: "MotoBan - Automotive Garage Management & Smart Billing SaaS",
+  description: "MotoBan - Next-Gen Garage Management, Job Cards & Smart GST Billing Platform. Powered by Hybrid StudioZ.",
 };
 
 export default function RootLayout({

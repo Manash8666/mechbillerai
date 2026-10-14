@@ -73,31 +73,17 @@ export default function CustomersScreen() {
 
     try {
       setSaving(true);
-      const user = await API.getDashboardStats();
-      const baseUrl = API.getJobCardPdfUrl('').replace('/pdf/jobcard?id=', '');
-      
-      const res = await fetch(`${baseUrl}/customers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: custName.trim(),
-          phone: custPhone.trim(),
-          email: custEmail.trim() || undefined,
-          userId: user?.id,
-        }),
+      const newCustomer = await API.createCustomer({
+        name: custName.trim(),
+        phone: custPhone.trim(),
+        email: custEmail.trim() || undefined,
       });
 
-      const newCustomer = await res.json();
-
       if (regNo.trim() && newCustomer.id) {
-        await fetch(`${baseUrl}/customers/${newCustomer.id}/vehicles`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            registrationNo: regNo.trim().toUpperCase(),
-            make: 'Standard Vehicle',
-            model: 'General',
-          }),
+        await API.addVehicleToCustomer(newCustomer.id, {
+          registrationNo: regNo.trim().toUpperCase(),
+          make: 'Standard Vehicle',
+          model: 'General',
         });
       }
 

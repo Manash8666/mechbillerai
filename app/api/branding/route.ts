@@ -5,7 +5,14 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    let userId = searchParams.get('userId');
+
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'demo@garagesaas.com' },
+      });
+      userId = demoUser?.id || null;
+    }
 
     if (!userId) {
       return NextResponse.json(
@@ -58,7 +65,15 @@ export async function POST(request: Request) {
       customCss,
     } = body;
 
-    if (!userId) {
+    let targetUserId = userId;
+    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'demo@garagesaas.com' },
+      });
+      targetUserId = demoUser?.id || null;
+    }
+
+    if (!targetUserId) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
@@ -66,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     const branding = await prisma.brandingSettings.upsert({
-      where: { userId },
+      where: { userId: targetUserId },
       update: {
         garageName,
         logoUrl,
@@ -82,7 +97,7 @@ export async function POST(request: Request) {
         customCss,
       },
       create: {
-        userId,
+        userId: targetUserId,
         garageName,
         logoUrl,
         primaryColor: primaryColor || '#C9A84C',

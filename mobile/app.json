@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "MechBillerAI",
-    "slug": "mechbillerai",
+    "name": "MotoBan",
+    "slug": "motoban",
+    "scheme": "motoban",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"

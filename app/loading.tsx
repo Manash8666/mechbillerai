@@ -5,7 +5,7 @@ export default function Loading() {
     <div className="min-h-[70vh] flex flex-col items-center justify-center">
       <Loader text="Generating" />
       <p className="text-xs font-mono tracking-widest text-luxury-gold uppercase mt-2 opacity-80">
-        MechBillerAI • Processing
+        MotoBan • Processing
       </p>
     </div>
   );

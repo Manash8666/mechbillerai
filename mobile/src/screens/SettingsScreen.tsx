@@ -64,7 +64,7 @@ export default function SettingsScreen({ navigation }: any) {
     {
       icon: 'shield-key-outline',
       title: 'License Status',
-      subtitle: 'Lifetime License Active (MechBillerAI Pro)',
+      subtitle: 'Lifetime License Active (MotoBan Pro)',
       onPress: () => Alert.alert('License Active', 'Lifetime Pro license verified on device.'),
     },
     {
@@ -80,7 +80,7 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={styles.profileCard}>
         <MaterialCommunityIcons name="shield-check" size={32} color={COLORS.primary} />
         <View style={{ marginLeft: 14 }}>
-          <Text style={styles.garageName}>MechBillerAI</Text>
+          <Text style={styles.garageName}>MotoBan Pro</Text>
           <Text style={styles.plan}>Version 1.0.0 (Android) · Powered by Hybrid StudioZ</Text>
         </View>
       </View>

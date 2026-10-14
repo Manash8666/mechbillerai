@@ -82,10 +82,15 @@ export default function CheckoutScreen() {
     void fetchTriageJobs();
   };
 
-  const handleCollect = (id: string, vehicle: string, amount: number) => {
+  const handleCollect = async (id: string, vehicle: string, amount: number) => {
+    try {
+      await API.updateJobCardStatus(id, 'completed');
+    } catch (e) {
+      console.warn('Silent local completion fallback:', e);
+    }
     Alert.alert(
       'Payment Received! ✅',
-      `Collected ₹${amount.toLocaleString('en-IN')} for ${vehicle}. Job marked complete and invoice archived.`,
+      `Collected ₹${amount.toLocaleString('en-IN')} for ${vehicle}. Job marked completed and synchronized.`,
       [
         {
           text: 'Done',

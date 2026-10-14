@@ -127,53 +127,39 @@ export default function JobCardsScreen({ navigation }: any) {
       const existingCustomers = await API.getCustomers();
       let customerId = '';
       const matched = existingCustomers.find(
-        (c: any) => c.phone === custPhone || c.name.toLowerCase() === custName.toLowerCase()
+        (c: any) => (custPhone && c.phone === custPhone) || (custName && c.name?.toLowerCase() === custName.toLowerCase())
       );
 
       if (matched) {
         customerId = matched.id;
       } else {
-        const user = await API.getDashboardStats();
-        const newCustRes = await fetch(`${API.getJobCardPdfUrl('').replace('/pdf/jobcard?id=', '')}/customers`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: custName || `Owner of ${regNo.toUpperCase()}`,
-            phone: custPhone || '9876543210',
-            userId: user?.id,
-          }),
+        const newCust = await API.createCustomer({
+          name: custName || `Owner of ${regNo.toUpperCase()}`,
+          phone: custPhone || '9876543210',
         });
-        const newCust = await newCustRes.json();
         customerId = newCust.id || existingCustomers[0]?.id;
       }
 
       // 2. Ensure customer vehicle exists
       let vehicleId = '';
       if (customerId) {
-        const custDetailsRes = await fetch(
-          `${API.getJobCardPdfUrl('').replace('/pdf/jobcard?id=', '')}/customers/${customerId}`
-        );
-        const custDetails = await custDetailsRes.json();
-        const matchedVeh = custDetails.vehicles?.find(
-          (v: any) => v.registrationNo.toUpperCase() === regNo.toUpperCase()
-        );
-        if (matchedVeh) {
-          vehicleId = matchedVeh.id;
-        } else {
-          const newVehRes = await fetch(
-            `${API.getJobCardPdfUrl('').replace('/pdf/jobcard?id=', '')}/customers/${customerId}/vehicles`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                registrationNo: regNo.toUpperCase(),
-                make: makeModel || 'Two-Wheeler / Four-Wheeler',
-                model: 'Standard',
-              }),
-            }
+        try {
+          const custDetails = await API.getCustomerById(customerId);
+          const matchedVeh = custDetails.vehicles?.find(
+            (v: any) => v.registrationNo.toUpperCase() === regNo.toUpperCase()
           );
-          const newVeh = await newVehRes.json();
-          vehicleId = newVeh.id;
+          if (matchedVeh) {
+            vehicleId = matchedVeh.id;
+          } else {
+            const newVeh = await API.addVehicleToCustomer(customerId, {
+              registrationNo: regNo.toUpperCase(),
+              make: makeModel || 'Two-Wheeler / Four-Wheeler',
+              model: 'Standard',
+            });
+            vehicleId = newVeh.id;
+          }
+        } catch {
+          // Continue if vehicle fetch fails
         }
       }
 
@@ -205,15 +191,48 @@ export default function JobCardsScreen({ navigation }: any) {
     }
   };
 
+  const handleUpdateStatus = async (item: JobCardItem, nextStatus: string) => {
+    try {
+      await API.updateJobCardStatus(item.id, nextStatus);
+      Alert.alert('Status Updated', `${item.jobNumber} marked as ${nextStatus.toUpperCase()}`);
+      await fetchJobs();
+    } catch {
+      Alert.alert('Update Failed', 'Could not update status. Please check connection.');
+    }
+  };
+
+  const handlePromptStatus = (item: JobCardItem) => {
+    const s = item.status?.toLowerCase();
+    const options: any[] = [];
+    if (s === 'pending') {
+      options.push({ text: 'Start Work (In-Progress)', onPress: () => handleUpdateStatus(item, 'in-progress') });
+    } else if (s === 'in-progress') {
+      options.push({ text: 'Mark Completed', onPress: () => handleUpdateStatus(item, 'completed') });
+    } else if (s === 'completed') {
+      options.push({
+        text: 'Generate Bill & Invoice',
+        onPress: () => {
+          navigation?.navigate('Invoices');
+        },
+      });
+    }
+    options.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert(`Update ${item.jobNumber}`, `Current: ${item.status.toUpperCase()}`, options);
+  };
+
   const renderItem = ({ item }: { item: JobCardItem }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.jobNumber}>{item.jobNumber}</Text>
-        <View style={[styles.statusBadge, { borderColor: getStatusColor(item.status) }]}>
+        <TouchableOpacity
+          style={[styles.statusBadge, { borderColor: getStatusColor(item.status) }]}
+          onPress={() => handlePromptStatus(item)}
+        >
           <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status.toUpperCase()}
+            {item.status.toUpperCase()} ▾
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.vehicleNo}>

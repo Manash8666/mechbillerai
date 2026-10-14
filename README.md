@@ -1,4 +1,4 @@
-# MechBillerAI 🚗⚡
+# MotoBan 🚗⚡
 > **Next-Gen Garage Management & Smart Billing SaaS Platform**  
 > *Powered by Hybrid StudioZ*
 
@@ -13,7 +13,7 @@
 
 ## 📖 Overview
 
-**MechBillerAI** is an AI-ready, dual-platform garage management and billing system engineered specifically for auto garages, service centers, and mechanics (two-wheeler & four-wheeler). Designed from the ground up for independent garage owners, it replaces paper registers with high-speed digital workflows: paperless job cards, GST invoicing, live inventory tracking, customer vehicle histories, and appointment bay management.
+**MotoBan** is an AI-ready, dual-platform garage management and billing system engineered specifically for auto garages, service centers, and mechanics (two-wheeler & four-wheeler). Designed from the ground up for independent garage owners, it replaces paper registers with high-speed digital workflows: paperless job cards, GST invoicing, live inventory tracking, customer vehicle histories, and appointment bay management.
 
 Available seamlessly as a **Next.js 15 Web Application** and a **React Native Android Mobile App**.
 
@@ -158,6 +158,6 @@ MechBillerAI/
 
 ## 👥 Powered by
 
-**MechBillerAI** is proudly developed and maintained by **Hybrid StudioZ**.
+**MotoBan** is proudly developed and maintained by **Hybrid StudioZ**.
 
 *Made with ❤️ for Auto Workshops & Garages.*

@@ -46,7 +46,7 @@ export default function NotFound() {
 
         {/* Branding Footer */}
         <div className="mt-14 font-mono text-xs text-slate-500">
-          <span className="text-cyan-400 font-semibold">MechBillerAI</span> · Autonomous Garage POS
+          <span className="text-cyan-400 font-semibold">MotoBan</span> · Autonomous Garage POS
           <div className="text-[10px] text-slate-600 mt-0.5">Powered by Hybrid StudioZ</div>
         </div>
       </div>

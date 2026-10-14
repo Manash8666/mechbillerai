@@ -100,6 +100,60 @@ export default function JobCardsPage() {
       window.open(`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`, '_blank');
     }
   };
+  const handleUpdateJobCardStatus = async (jobId: string, nextStatus: string) => {
+    try {
+      const res = await fetch(`/api/jobcards/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        toast.success(`Job marked as ${nextStatus.toUpperCase()}`);
+        void fetchJobCards();
+      } else {
+        toast.error('Failed to update job status');
+      }
+    } catch {
+      toast.error('Network error updating job status');
+    }
+  };
+
+  const handleGenerateInvoiceFromJob = async (job: JobCard) => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
+
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          customerId: (job as any).customerId || (job.customer as any).id,
+          jobCardId: job.id,
+          items: [
+            {
+              description: job.description || 'Vehicle Repair & Maintenance',
+              quantity: 1,
+              unitPrice: job.actualCost || job.estimatedCost || 800,
+              total: job.actualCost || job.estimatedCost || 800,
+            },
+          ],
+          total: job.actualCost || job.estimatedCost || 800,
+          paymentMode: 'cash',
+        }),
+      });
+
+      if (res.ok) {
+        toast.success('Invoice generated successfully!');
+        window.location.href = '/dashboard/invoices';
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to generate invoice');
+      }
+    } catch {
+      toast.error('Failed to create invoice');
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -337,7 +391,10 @@ export default function JobCardsPage() {
                       <div className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">₹{job.estimatedCost}</div>
                     </div>
                     <button
-                      onClick={() => alert(`Quick payment collected for ${job.jobNumber}! Keys handed over.`)}
+                      onClick={async () => {
+                        await handleUpdateJobCardStatus(job.id, 'completed');
+                        await handleGenerateInvoiceFromJob(job);
+                      }}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow cursor-pointer transition-colors"
                     >
                       Collect ₹{job.estimatedCost}
@@ -365,7 +422,9 @@ export default function JobCardsPage() {
                       <div className="text-base font-extrabold text-luxury-gold mt-1">₹{job.estimatedCost.toLocaleString('en-IN')}</div>
                     </div>
                     <button
-                      onClick={() => alert(`Opening itemized invoice breakdown for ${job.jobNumber}...`)}
+                      onClick={() => {
+                        window.open(`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`, '_blank');
+                      }}
                       className="px-4 py-2 bg-luxury-gold text-luxury-ink-light font-bold text-xs rounded-lg shadow cursor-pointer hover:brightness-105 transition-colors"
                     >
                       View Bill
@@ -402,10 +461,20 @@ export default function JobCardsPage() {
                       <div>
                         <div className="flex items-center gap-3">
                           <h3 className="text-lg font-semibold text-foreground">{job.jobNumber}</h3>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(job.status)}`}>
-                            {getStatusIcon(job.status)}
-                            {job.status.replace('-', ' ').toUpperCase()}
-                          </span>
+                          <select
+                            value={job.status}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              void handleUpdateJobCardStatus(job.id, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border border-border/60 bg-background cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary ${getStatusColor(job.status)}`}
+                          >
+                            <option value="pending">⏳ PENDING</option>
+                            <option value="in-progress">🔧 IN PROGRESS</option>
+                            <option value="completed">✅ COMPLETED</option>
+                            <option value="cancelled">❌ CANCELLED</option>
+                          </select>
                           <span className={`text-xs font-medium uppercase ${getPriorityColor(job.priority)}`}>
                             {job.priority} Priority
                           </span>
@@ -492,7 +561,13 @@ export default function JobCardsPage() {
                       Estimate PDF
                     </a>
                     {job.status === 'completed' && (
-                      <PearlButton className="text-xs">
+                      <PearlButton
+                        className="text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleGenerateInvoiceFromJob(job);
+                        }}
+                      >
                         Generate Invoice
                       </PearlButton>
                     )}

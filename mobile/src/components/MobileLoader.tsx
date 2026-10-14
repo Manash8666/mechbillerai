@@ -65,7 +65,7 @@ export default function MobileLoader({ text = 'Generating' }: LoaderProps) {
         </View>
         <View style={styles.goldLine} />
       </View>
-      <Text style={styles.subtext}>MechBillerAI Engine</Text>
+      <Text style={styles.subtext}>MotoBan Engine</Text>
     </View>
   );
 }

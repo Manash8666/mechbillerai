@@ -5,7 +5,14 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    let userId = searchParams.get('userId');
+
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'demo@garagesaas.com' },
+      });
+      userId = demoUser?.id || null;
+    }
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -41,8 +48,15 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const { userId, gstEnabled, name } = body;
+    let targetUserId = userId;
+    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'demo@garagesaas.com' },
+      });
+      targetUserId = demoUser?.id || null;
+    }
 
-    if (!userId) {
+    if (!targetUserId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
@@ -55,7 +69,7 @@ export async function PUT(request: Request) {
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: targetUserId },
       data: updateData,
       select: {
         id: true,

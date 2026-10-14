@@ -124,17 +124,10 @@ export default function InvoicesScreen() {
       if (matched) {
         customerId = matched.id;
       } else {
-        const user = await API.getDashboardStats();
-        const newCustRes = await fetch(`${API.getInvoicePdfUrl('').replace('/pdf/invoice?id=&type=INVOICE', '')}/customers`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: custName || 'Walk-in Customer',
-            phone: custPhone || '9876543210',
-            userId: user?.id,
-          }),
+        const newCust = await API.createCustomer({
+          name: custName || 'Walk-in Customer',
+          phone: custPhone || '9876543210',
         });
-        const newCust = await newCustRes.json();
         customerId = newCust.id || existingCustomers[0]?.id;
       }
 
@@ -200,6 +193,48 @@ export default function InvoicesScreen() {
   const totalPaid = invoices.reduce((sum, item) => sum + (item.paid || 0), 0);
   const totalBalance = invoices.reduce((sum, item) => sum + (item.balance || 0), 0);
 
+  const handleCollectPayment = (item: InvoiceItem) => {
+    Alert.alert(
+      'Collect Payment',
+      `Record payment of ₹${item.balance.toLocaleString('en-IN')} for ${item.customer?.name || item.invoiceNumber}?`,
+      [
+        {
+          text: 'Cash',
+          onPress: async () => {
+            try {
+              await API.recordPayment(item.id, {
+                amount: item.balance,
+                paymentMode: 'CASH',
+                notes: 'Collected via Mobile Counter',
+              });
+              Alert.alert('Payment Recorded', `₹${item.balance} collected via Cash`);
+              fetchInvoices();
+            } catch {
+              Alert.alert('Error', 'Failed to record payment');
+            }
+          },
+        },
+        {
+          text: 'UPI / Online',
+          onPress: async () => {
+            try {
+              await API.recordPayment(item.id, {
+                amount: item.balance,
+                paymentMode: 'UPI',
+                notes: 'Collected via UPI Payment',
+              });
+              Alert.alert('Payment Recorded', `₹${item.balance} collected via UPI`);
+              fetchInvoices();
+            } catch {
+              Alert.alert('Error', 'Failed to record payment');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   const renderItem = ({ item }: { item: InvoiceItem }) => {
     const statusColor = getStatusColor(item.status);
     return (
@@ -257,12 +292,24 @@ export default function InvoicesScreen() {
         </View>
 
         <View style={styles.actionsRow}>
+          {item.balance > 0 && (
+            <TouchableOpacity
+              style={[styles.actionBtnPrimary, { backgroundColor: '#10B981', flex: 1.2 }]}
+              onPress={() => handleCollectPayment(item)}
+            >
+              <MaterialCommunityIcons name="cash-check" size={16} color="#FFF" />
+              <Text style={[styles.actionBtnPrimaryText, { color: '#FFF' }]}>
+                Collect ₹{item.balance}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.actionBtnSecondary}
             onPress={() => handleOpenPdf(item.id, 'ESTIMATE')}
           >
             <MaterialCommunityIcons name="file-document-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.actionBtnSecondaryText}>Estimate PDF</Text>
+            <Text style={styles.actionBtnSecondaryText}>Estimate</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

@@ -11,7 +11,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[MechBillerAI Root Crash Captured]:', error);
+    console.error('[MotoBan Root Crash Captured]:', error);
   }, [error]);
 
   return (

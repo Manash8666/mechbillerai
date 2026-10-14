@@ -6,13 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   TextInput,
+  Modal,
+  ScrollView,
+  Alert,
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileLoader from '../components/MobileLoader';
+import MobilePearlButton from '../components/MobilePearlButton';
 
 interface InventoryItem {
   id: string;
@@ -35,6 +38,16 @@ export default function InventoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'instock'>('all');
+
+  // Add Part Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [partName, setPartName] = useState('');
+  const [partCode, setPartCode] = useState('');
+  const [partCategory, setPartCategory] = useState('Lubricants');
+  const [partQty, setPartQty] = useState('10');
+  const [costPrice, setCostPrice] = useState('350');
+  const [sellingPrice, setSellingPrice] = useState('500');
 
   const fetchInventory = async () => {
     try {
@@ -147,8 +160,52 @@ export default function InventoryScreen() {
     );
   };
 
+  const handleCreatePart = async () => {
+    if (!partName.trim() || !partCode.trim()) {
+      Alert.alert('Required', 'Part Name and SKU/Code are required.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await API.createInventoryItem({
+        name: partName.trim(),
+        code: partCode.trim().toUpperCase(),
+        category: partCategory,
+        quantity: parseInt(partQty) || 1,
+        unit: 'Pcs',
+        minQuantity: 2,
+        costPrice: parseFloat(costPrice) || 0,
+        sellingPrice: parseFloat(sellingPrice) || 0,
+        gstRate: 18,
+      });
+
+      Alert.alert('Success', `Part "${partName}" added to inventory.`);
+      setIsModalOpen(false);
+      setPartName('');
+      setPartCode('');
+      fetchInventory();
+    } catch {
+      Alert.alert('Error', 'Failed to save inventory part.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
+      {/* Top Header with Add Part button */}
+      <View style={styles.topActions}>
+        <Text style={styles.topTitle}>Parts Inventory</Text>
+        <MobilePearlButton
+          variant="gold"
+          onPress={() => setIsModalOpen(true)}
+        >
+          <MaterialCommunityIcons name="plus" size={18} color={COLORS.background} style={{ marginRight: 4 }} />
+          <Text style={styles.pearlBtnText}>Add Part</Text>
+        </MobilePearlButton>
+      </View>
+
       {/* Inventory Summary */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryMetric}>
@@ -222,6 +279,105 @@ export default function InventoryScreen() {
           }
         />
       )}
+
+      {/* Add Part Modal */}
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Part / Item</Text>
+              <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Item Name *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 10W-40 Synthetic Engine Oil"
+                placeholderTextColor={COLORS.textMuted}
+                value={partName}
+                onChangeText={setPartName}
+              />
+
+              <Text style={styles.inputLabel}>SKU / Code *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. OIL-MOTUL-10W40"
+                placeholderTextColor={COLORS.textMuted}
+                value={partCode}
+                onChangeText={setPartCode}
+                autoCapitalize="characters"
+              />
+
+              <Text style={styles.inputLabel}>Category</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Lubricants / Filters / Brakes / Electrical"
+                placeholderTextColor={COLORS.textMuted}
+                value={partCategory}
+                onChangeText={setPartCategory}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Initial Stock Qty</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="10"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="numeric"
+                    value={partQty}
+                    onChangeText={setPartQty}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Cost Price (₹)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="350"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="numeric"
+                    value={costPrice}
+                    onChangeText={setCostPrice}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Selling Price (₹)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="500"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+                value={sellingPrice}
+                onChangeText={setSellingPrice}
+              />
+
+              <MobilePearlButton
+                variant="gold"
+                onPress={handleCreatePart}
+                style={{ marginTop: 20 }}
+              >
+                {saving ? (
+                  <MobileLoader text="Adding..." />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check-circle-outline" size={18} color={COLORS.background} style={{ marginRight: 6 }} />
+                    <Text style={styles.pearlBtnText}>Save to Inventory</Text>
+                  </>
+                )}
+              </MobilePearlButton>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -409,5 +565,72 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 12,
     fontSize: 14,
+  },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  topTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  pearlBtnText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.background,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalForm: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.textMuted,
+    marginBottom: 6,
+    marginTop: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: COLORS.text,
   },
 });

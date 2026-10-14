@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiBaseUrl, Storage } from './api';
 
 export interface OfflineJobCard {
   id: string; // temporary local id (e.g. offline_xxx)
@@ -19,8 +20,8 @@ export interface OfflineJobCard {
   synced: boolean;
 }
 
-const STORAGE_KEY = '@mechbillerai_offline_jobcards_queue';
-const GST_SETTINGS_KEY = '@mechbillerai_gst_enabled';
+const STORAGE_KEY = '@motoban_offline_jobcards_queue';
+const GST_SETTINGS_KEY = '@motoban_gst_enabled';
 
 export const offlineSyncManager = {
   // GST Setting
@@ -73,25 +74,30 @@ export const offlineSyncManager = {
   },
 
   // Sync queue with backend server (e.g., when network is restored)
-  async syncQueueWithServer(serverUrl: string = 'http://10.0.2.2:3000'): Promise<{ synced: number; failed: number }> {
+  async syncQueueWithServer(customServerUrl?: string): Promise<{ synced: number; failed: number }> {
     const queue = await this.getQueuedJobCards();
     const unsynced = queue.filter(item => !item.synced);
     let syncedCount = 0;
     let failedCount = 0;
 
+    const base = customServerUrl || (await getApiBaseUrl());
+    const currentUser = await Storage.getUser();
+    const userId = currentUser?.id || 'cmv4zl4620001d96sd1e0qto2';
+
     for (const item of unsynced) {
       try {
-        const response = await fetch(`${serverUrl}/api/jobcards`, {
+        const response = await fetch(`${base}/jobcards`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: 'default-user',
-            customerId: 'mobile-offline-customer',
-            vehicleId: 'mobile-offline-vehicle',
+            userId,
             description: item.serviceDescription,
             estimatedCost: item.estimatedCost,
             voiceNote: item.voiceNote,
             preInspectionShield: JSON.stringify(item.preInspectionShield),
+            customerName: item.customerName,
+            customerPhone: item.customerPhone,
+            vehicleNo: item.vehicleNumber,
           }),
         });
 

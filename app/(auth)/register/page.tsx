@@ -70,7 +70,7 @@ export default function RegisterPage() {
           Get Started
         </h1>
         <p className="text-center text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-8">
-          Create your MechBillerAI account · Powered by Hybrid StudioZ
+          Create your MotoBan account · Powered by Hybrid StudioZ
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -85,7 +85,7 @@ function DashboardContent({
               <Car className="h-8 w-8 text-luxury-gold" />
               <div>
                 <span className="text-xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark block leading-none">
-                  MechBillerAI
+                  MotoBan
                 </span>
                 <span className="text-[9px] text-luxury-gold uppercase tracking-wider font-semibold">
                   By Hybrid StudioZ

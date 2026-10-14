@@ -6,11 +6,16 @@ import path from 'node:path';
 // Handle Serverless environment (e.g. Vercel)
 if (process.env.VERCEL) {
   const tmpDir = os.tmpdir();
-  const tmpDb = path.join(tmpDir, 'mechbiller_dev.db');
+  const tmpDb = path.join(tmpDir, 'motoban_dev.db');
+  const legacyTmpDb = path.join(tmpDir, 'mechbiller_dev.db');
   const bundledDb = path.join(process.cwd(), 'prisma', 'dev.db');
   try {
-    if (!fs.existsSync(tmpDb) && fs.existsSync(bundledDb)) {
-      fs.copyFileSync(bundledDb, tmpDb);
+    if (!fs.existsSync(tmpDb)) {
+      if (fs.existsSync(legacyTmpDb)) {
+        fs.copyFileSync(legacyTmpDb, tmpDb);
+      } else if (fs.existsSync(bundledDb)) {
+        fs.copyFileSync(bundledDb, tmpDb);
+      }
     }
     if (fs.existsSync(tmpDb)) {
       process.env.DATABASE_URL = `file:${tmpDb}`;

@@ -6,14 +6,17 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   TextInput,
   Linking,
+  Modal,
+  ScrollView,
+  Alert,
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileLoader from '../components/MobileLoader';
+import MobilePearlButton from '../components/MobilePearlButton';
 
 interface AppointmentItem {
   id: string;
@@ -37,6 +40,16 @@ export default function AppointmentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'scheduled' | 'confirmed' | 'in-progress'>('all');
+
+  // Book Appointment Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [serviceType, setServiceType] = useState('Periodic Maintenance Service');
+  const [dateStr, setDateStr] = useState(new Date().toISOString().split('T')[0]);
+  const [startTime, setStartTime] = useState('10:00 AM');
+  const [bay, setBay] = useState('Bay 1 - Express Service');
 
   const fetchAppointments = async () => {
     try {
@@ -153,14 +166,69 @@ export default function AppointmentsScreen() {
     );
   };
 
+  const handleCreateAppointment = async () => {
+    if (!custName.trim() && !custPhone.trim()) {
+      Alert.alert('Required', 'Customer Name and Phone Number are required.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      // 1. Get or create customer
+      const existingCustomers = await API.getCustomers();
+      let customerId = '';
+      const matched = existingCustomers.find(
+        (c: any) => (custPhone && c.phone === custPhone) || (custName && c.name?.toLowerCase() === custName.toLowerCase())
+      );
+
+      if (matched) {
+        customerId = matched.id;
+      } else {
+        const newCust = await API.createCustomer({
+          name: custName.trim() || 'Walk-in Client',
+          phone: custPhone.trim() || '9876543210',
+        });
+        customerId = newCust.id || existingCustomers[0]?.id;
+      }
+
+      await API.createAppointment({
+        customerId,
+        serviceType,
+        date: dateStr,
+        startTime,
+        endTime: '11:00 AM',
+        bay,
+      });
+
+      Alert.alert('Success', `Appointment booked for ${custName || custPhone}`);
+      setIsModalOpen(false);
+      setCustName('');
+      setCustPhone('');
+      fetchAppointments();
+    } catch {
+      Alert.alert('Error', 'Failed to book appointment. Please check connection.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Top Banner */}
       <View style={styles.topHeader}>
-        <Text style={styles.headerTitle}>Daily Bookings & Roster</Text>
-        <Text style={styles.headerSubtitle}>
-          {appointments.length} Total active appointments scheduled
-        </Text>
+        <View style={{ flex: 1, paddingRight: 8 }}>
+          <Text style={styles.headerTitle}>Daily Bookings & Roster</Text>
+          <Text style={styles.headerSubtitle}>
+            {appointments.length} Total active appointments scheduled
+          </Text>
+        </View>
+        <MobilePearlButton
+          variant="gold"
+          onPress={() => setIsModalOpen(true)}
+        >
+          <MaterialCommunityIcons name="calendar-plus" size={16} color={COLORS.background} style={{ marginRight: 4 }} />
+          <Text style={styles.pearlBtnText}>Book Slot</Text>
+        </MobilePearlButton>
       </View>
 
       {/* Search Bar */}
@@ -216,6 +284,102 @@ export default function AppointmentsScreen() {
           }
         />
       )}
+
+      {/* Book Slot Modal */}
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Book Service Slot</Text>
+              <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Customer Name *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Ramesh Patel"
+                placeholderTextColor={COLORS.textMuted}
+                value={custName}
+                onChangeText={setCustName}
+              />
+
+              <Text style={styles.inputLabel}>Customer Phone *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 9876543210"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="phone-pad"
+                value={custPhone}
+                onChangeText={setCustPhone}
+              />
+
+              <Text style={styles.inputLabel}>Service Requirement</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Periodic Maintenance / Brake Service / Engine"
+                placeholderTextColor={COLORS.textMuted}
+                value={serviceType}
+                onChangeText={setServiceType}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="2026-10-15"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={dateStr}
+                    onChangeText={setDateStr}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Time</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="10:00 AM"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={startTime}
+                    onChangeText={setStartTime}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Assigned Work Bay</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Bay 1 - Express Service"
+                placeholderTextColor={COLORS.textMuted}
+                value={bay}
+                onChangeText={setBay}
+              />
+
+              <MobilePearlButton
+                variant="gold"
+                onPress={handleCreateAppointment}
+                style={{ marginTop: 20 }}
+              >
+                {saving ? (
+                  <MobileLoader text="Booking Slot..." />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="calendar-check" size={18} color={COLORS.background} style={{ marginRight: 6 }} />
+                    <Text style={styles.pearlBtnText}>Confirm Booking</Text>
+                  </>
+                )}
+              </MobilePearlButton>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -226,9 +390,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  pearlBtnText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.background,
   },
   headerTitle: {
     color: COLORS.text,
@@ -400,5 +572,54 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 12,
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalForm: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.textMuted,
+    marginBottom: 6,
+    marginTop: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: COLORS.text,
   },
 });

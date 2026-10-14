@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     let paid = 0;
     let balance = 0;
     let dateStr = new Date().toLocaleDateString('en-GB');
-    let garageName = 'MechBillerAI Workshop';
+    let garageName = 'MotoBan Workshop';
     let garagePhone = '+91 99999 88888';
     let garageEmail = 'support@garagesaas.com';
     let items = [{ description: 'Automotive Service', quantity: 1, unitPrice: 0, total: 0 }];

@@ -12,7 +12,7 @@ export default function ErrorBoundary({
 }) {
   useEffect(() => {
     // Log crash to telemetry or console
-    console.error('[MechBillerAI System Crash Captured]:', error);
+    console.error('[MotoBan System Crash Captured]:', error);
   }, [error]);
 
   return (

@@ -41,7 +41,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
       }
     } catch (err: any) {
       console.warn('Login network exception:', err);
-      let fallbackName = 'MechBillerAI Workshop';
+      let fallbackName = 'MotoBan Workshop';
       if (email.includes('demo')) {
         fallbackName = 'Royal Motors (Two-Wheeler)';
       } else if (email.includes('test')) {
@@ -59,7 +59,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
 
       Alert.alert(
         'Server Unreachable',
-        'Could not connect to the cloud server (https://mechbillerai.vercel.app).\n\nWould you like to enter in Offline Demo Mode with all garage features enabled?',
+        'Could not connect to the MotoBan cloud server (motoban.in / mechbillerai.vercel.app).\n\nWould you like to enter in Offline Demo Mode with all garage features enabled?',
         [
           {
             text: 'Enter Offline Demo',
@@ -100,7 +100,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
         <View style={styles.iconCircle}>
           <MaterialCommunityIcons name="shield-car" size={38} color={COLORS.primary} />
         </View>
-        <Text style={styles.brandTitle}>MechBillerAI</Text>
+        <Text style={styles.brandTitle}>MotoBan</Text>
         <Text style={styles.brandSubtitle}>
           Automotive SaaS · Powered by Hybrid StudioZ
         </Text>
@@ -222,7 +222,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
         <View style={styles.serverInfoBox}>
           <MaterialCommunityIcons name="cloud-check" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
           <Text style={styles.serverInfoText}>
-            Cloud Server: mechbillerai.vercel.app
+            Cloud Server: motoban.in · Fallback: mechbillerai.vercel.app
           </Text>
         </View>
       </View>

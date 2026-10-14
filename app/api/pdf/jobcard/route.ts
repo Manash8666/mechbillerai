@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         description: t.description,
         completed: t.completed,
       })),
-      garageName: jobCard.user?.name || 'MechBillerAI Workshop',
+      garageName: jobCard.user?.name || 'MotoBan Workshop',
       garagePhone: jobCard.user?.phone || '+91 99999 88888',
     });
 

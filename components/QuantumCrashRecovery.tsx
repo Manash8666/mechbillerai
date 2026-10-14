@@ -46,7 +46,7 @@ export default function QuantumCrashRecovery({
         <div className="star-layer" />
       </div>
 
-      {/* MechBillerAI Mission Control Crash Header */}
+      {/* MotoBan Mission Control Crash Header */}
       <div className="relative z-20 text-center max-w-xl px-6 mb-8 select-none pointer-events-auto">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-500/40 text-red-400 text-xs font-mono font-medium tracking-widest uppercase mb-4 shadow-[0_0_15px_rgba(239,68,68,0.25)]">
           <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
@@ -150,9 +150,9 @@ export default function QuantumCrashRecovery({
         </div>
       </div>
 
-      {/* MechBillerAI Brand Stamp */}
+      {/* MotoBan Brand Stamp */}
       <div className="relative z-20 mt-10 text-center font-mono text-xs text-slate-500 tracking-wider">
-        <span className="text-cyan-400 font-semibold">MechBillerAI</span> · Autonomous Garage POS
+        <span className="text-cyan-400 font-semibold">MotoBan</span> · Autonomous Garage POS
         <div className="text-[10px] text-slate-600 mt-0.5">Powered by Hybrid StudioZ</div>
       </div>
     </div>

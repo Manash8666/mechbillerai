@@ -27,7 +27,7 @@ const PRESET_COLORS = [
 export default function BrandingScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [garageName, setGarageName] = useState('MechBillerAI Workshop');
+  const [garageName, setGarageName] = useState('MotoBan Workshop');
   const [tagline, setTagline] = useState('Automotive Care & Precision Engineering');
   const [phone, setPhone] = useState('+91 99999 88888');
   const [address, setAddress] = useState('Plot 42, Auto Hub Industrial Area');

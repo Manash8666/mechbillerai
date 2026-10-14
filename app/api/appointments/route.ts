@@ -13,7 +13,14 @@ import {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    let userId = searchParams.get('userId');
+
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'demo@garagesaas.com' },
+      });
+      userId = demoUser?.id || null;
+    }
 
     if (!userId) {
       return NextResponse.json(
@@ -23,8 +30,8 @@ export async function GET(request: Request) {
     }
 
     // Parse query parameters
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = Number.parseInt(searchParams.get('page') || '1', 10);
+    const limit = Number.parseInt(searchParams.get('limit') || '10', 10);
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'date';
     const sortOrder = (searchParams.get('sortOrder') || 'asc') as 'asc' | 'desc';
@@ -176,8 +183,16 @@ export async function POST(request: Request) {
       userId,
     } = body;
 
+    let targetUserId = userId;
+    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
+      const demoUser = await prisma.user.findFirst({
+        where: { email: 'demo@garagesaas.com' },
+      });
+      targetUserId = demoUser?.id || null;
+    }
+
     // Validate required fields
-    const validationError = validateRequired(body, ['customerId', 'serviceType', 'date', 'startTime', 'userId']);
+    const validationError = validateRequired({ ...body, userId: targetUserId }, ['customerId', 'serviceType', 'date', 'startTime', 'userId']);
     if (validationError) {
       return NextResponse.json(
         buildErrorResponse(validationError, 'VALIDATION_ERROR'),
@@ -214,7 +229,7 @@ export async function POST(request: Request) {
     if (bay) {
       const conflicts = await prisma.appointment.findMany({
         where: {
-          userId,
+          userId: targetUserId,
           bay,
           date: appointmentDate,
           status: { notIn: ['cancelled', 'completed'] },
@@ -259,7 +274,7 @@ export async function POST(request: Request) {
         status: 'scheduled',
         bay,
         notes,
-        userId,
+        userId: targetUserId,
       },
       include: {
         customer: true,
@@ -268,7 +283,7 @@ export async function POST(request: Request) {
 
     // Log activity
     await logActivity(prisma, {
-      userId,
+      userId: targetUserId,
       action: 'CREATE',
       entity: 'Appointment',
       entityId: appointment.id,

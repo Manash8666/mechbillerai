@@ -62,7 +62,7 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  const brandName = (data.garageName || 'MECHBILLERAI WORKSHOP').toUpperCase();
+  const brandName = (data.garageName || 'MOTOBAN WORKSHOP').toUpperCase();
   doc.text(brandName, margin, 18);
 
   doc.setFontSize(8.5);
@@ -369,7 +369,7 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150, 150, 165);
   doc.text(
-    'MechBillerAI Cloud Engine · Genuine Workshop Documentation · Powered by Hybrid StudioZ',
+    'MotoBan Cloud Engine · Genuine Workshop Documentation · Powered by Hybrid StudioZ',
     pageWidth / 2,
     pageHeight - 6,
     { align: 'center' }
