@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { generateLuxuryPalette, type ColorPalette } from '@/lib/colorExtractor';
+import { type ColorPalette } from '@/lib/colorExtractor';
 
 export function BrandingLoader() {
-  const [, setLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const loadBranding = useCallback(async () => {
     try {
@@ -46,19 +46,19 @@ export function BrandingLoader() {
         localStorage.setItem('logoUrl', branding.logoUrl || '');
       }
 
-      setLoaded(true);
+      setIsLoaded(true);
     } catch (error) {
       console.error('Error loading branding:', error);
-      setLoaded(true);
+      setIsLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    loadBranding();
+    void loadBranding();
 
     // Listen for branding updates
     const handleBrandingUpdate = () => {
-      loadBranding();
+      void loadBranding();
     };
 
     window.addEventListener('brandingUpdated', handleBrandingUpdate);
@@ -69,8 +69,6 @@ export function BrandingLoader() {
   }, [loadBranding]);
 
   const applyTheme = (palette: ColorPalette) => {
-    const root = document.documentElement;
-    
     // Create dynamic style element
     const styleId = 'custom-branding-styles';
     let styleElement = document.getElementById(styleId) as HTMLStyleElement;
@@ -82,7 +80,7 @@ export function BrandingLoader() {
     }
 
     // Generate CSS with custom colors
-    const css = `
+    const css = String.raw`
       :root {
         --custom-primary: ${palette.primary};
         --custom-secondary: ${palette.secondary};
@@ -108,7 +106,7 @@ export function BrandingLoader() {
         border-color: ${palette.primary} !important;
       }
 
-      .hover\\:bg-luxury-gold-light:hover {
+      .hover\:bg-luxury-gold-light:hover {
         background-color: ${palette.light} !important;
       }
 
@@ -137,42 +135,42 @@ export function BrandingLoader() {
       }
 
       /* Focus rings */
-      .focus\\:ring-luxury-gold:focus {
+      .focus\:ring-luxury-gold:focus {
         --tw-ring-color: ${palette.primary} !important;
       }
 
       /* Borders with opacity */
-      .border-luxury-gold\\/20 {
+      .border-luxury-gold\/20 {
         border-color: ${palette.primary}33 !important;
       }
 
-      .border-luxury-gold\\/30 {
+      .border-luxury-gold\/30 {
         border-color: ${palette.primary}4D !important;
       }
 
-      .border-luxury-gold\\/50 {
+      .border-luxury-gold\/50 {
         border-color: ${palette.primary}80 !important;
       }
 
       /* Backgrounds with opacity */
-      .bg-luxury-gold\\/10 {
+      .bg-luxury-gold\/10 {
         background-color: ${palette.primary}1A !important;
       }
 
-      .bg-luxury-gold\\/20 {
+      .bg-luxury-gold\/20 {
         background-color: ${palette.primary}33 !important;
       }
 
       /* Hover states */
-      .hover\\:text-luxury-gold:hover {
+      .hover\:text-luxury-gold:hover {
         color: ${palette.primary} !important;
       }
 
-      .hover\\:border-luxury-gold:hover {
+      .hover\:border-luxury-gold:hover {
         border-color: ${palette.primary} !important;
       }
 
-      .hover\\:border-luxury-gold\\/50:hover {
+      .hover\:border-luxury-gold\/50:hover {
         border-color: ${palette.primary}80 !important;
       }
 
@@ -189,15 +187,15 @@ export function BrandingLoader() {
         border-color: ${palette.primary} !important;
       }
 
-      .hover\\:bg-primary\\/90:hover {
+      .hover\:bg-primary\/90:hover {
         background-color: ${palette.primary}E6 !important;
       }
 
-      .focus\\:ring-primary:focus {
+      .focus\:ring-primary:focus {
         --tw-ring-color: ${palette.primary} !important;
       }
 
-      .border-primary\\/50 {
+      .border-primary\/50 {
         border-color: ${palette.primary}80 !important;
       }
 
@@ -216,19 +214,19 @@ export function BrandingLoader() {
       }
 
       /* Muted backgrounds */
-      .bg-muted\\/50 {
+      .bg-muted\/50 {
         background-color: ${palette.canvas.light}80 !important;
       }
 
-      .dark .bg-muted\\/50 {
+      .dark .bg-muted\/50 {
         background-color: ${palette.canvas.dark}80 !important;
       }
 
-      .bg-muted\\/30 {
+      .bg-muted\/30 {
         background-color: ${palette.canvas.light}4D !important;
       }
 
-      .dark .bg-muted\\/30 {
+      .dark .bg-muted\/30 {
         background-color: ${palette.canvas.dark}4D !important;
       }
     `;

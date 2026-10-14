@@ -109,7 +109,7 @@ select option {
   }
 
   .no-print {
-    display: none !important;
+    display: none;
   }
 }
 
@@ -1131,9 +1131,6 @@ select option {
 /* ========================================================
    HEXTAUI INPUT-OTP ANIMATIONS & TOKENS
    ======================================================== */
-:root {
-  --hairline: 1px;
-}
 
 @media (min-resolution: 1.5dppx) {
   :root {
@@ -1273,7 +1270,6 @@ select option {
   }
 }
 
-@theme inline {
   @keyframes message-in {
   from {
     opacity: 0;
@@ -1453,23 +1449,23 @@ select option {
     background-position: -100% 0;
     }
   }
+
+.text-hero {
+  font-size: min(calc((100vw - 1.5rem) / 15.75), 2.6875rem);
+  line-height: 1.3;
 }
 
-@utility text-hero {
-    font-size: min(calc((100vw - 1.5rem) / 15.75), 2.6875rem);
-    line-height: 1.3;
+.border-hairline {
+  border-width: var(--hairline);
 }
 
-@utility border-hairline {
-    border-width: var(--hairline);
-}
-
-@utility text-shimmer {
-    background-image: linear-gradient(90deg, var(--muted-foreground) 25%, var(--info) 40%, color-mix(in oklab, var(--info) 45%, white) 50%, var(--info) 60%, var(--muted-foreground) 75%);
-    background-size: 250% 100%;
-    background-clip: text;
-    color: transparent;
-    animation: var(--animate-text-shimmer);
+.text-shimmer {
+  background-image: linear-gradient(90deg, var(--muted-foreground) 25%, var(--info) 40%, color-mix(in oklab, var(--info) 45%, white) 50%, var(--info) 60%, var(--muted-foreground) 75%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: var(--animate-text-shimmer);
 }
 
 @media (min-resolution: 3dppx) {
