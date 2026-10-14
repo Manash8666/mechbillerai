@@ -21,7 +21,7 @@ export default function BrandingSettingsPage() {
   const [formData, setFormData] = useState({
     garageName: '',
     logoUrl: '',
-    primaryColor: '#C9A84C',
+    primaryColor: '#E5C07B',
   });
   const [generatedPalette, setGeneratedPalette] = useState<ColorPalette | null>(null);
 
@@ -43,7 +43,7 @@ export default function BrandingSettingsPage() {
         setFormData({
           garageName: data.garageName || '',
           logoUrl: data.logoUrl || '',
-          primaryColor: data.primaryColor || '#C9A84C',
+          primaryColor: data.primaryColor || '#E5C07B',
         });
         
         if (data.logoUrl) {

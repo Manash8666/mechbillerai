@@ -50,12 +50,12 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // 1. Premium Header Banner: Rich Charcoal Slate with Warm Gold Accent
-  doc.setFillColor(26, 26, 36); // #1A1A24 Obsidian Slate
+  // 1. Premium Header Banner: Midnight Titanium (#0B0F19) with Illuminated Gold (#E5C07B) Accent
+  doc.setFillColor(11, 15, 25); // #0B0F19 Midnight Titanium
   doc.rect(0, 0, pageWidth, 42, 'F');
 
   // Gold accent pinstripe
-  doc.setFillColor(201, 168, 76); // Luxury Gold #C9A84C
+  doc.setFillColor(229, 192, 123); // #E5C07B Illuminated Gold
   doc.rect(0, 42, pageWidth, 3.5, 'F');
 
   // Garage Brand
@@ -80,12 +80,12 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
 
   // Right Header: Badge for Job Card & Status
   const rightX = pageWidth - margin;
-  doc.setFillColor(201, 168, 76);
+  doc.setFillColor(229, 192, 123);
   doc.roundedRect(rightX - 52, 10, 52, 12, 2, 2, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(26, 26, 36);
+  doc.setTextColor(11, 15, 25);
   doc.text('JOB CARD', rightX - 26, 17.5, { align: 'center' });
 
   doc.setFontSize(9);

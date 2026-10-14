@@ -15,7 +15,7 @@ export function BrandingLoader() {
       const response = await fetch(`/api/branding?userId=${userData.id}`);
       const branding = await response.json();
 
-      if (branding.primaryColor && branding.primaryColor !== '#C9A84C') {
+      if (branding.primaryColor && branding.primaryColor !== '#E5C07B') {
         // Generate full palette
         const palette = {
           primary: branding.primaryColor,

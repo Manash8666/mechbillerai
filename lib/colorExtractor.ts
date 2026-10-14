@@ -176,15 +176,14 @@ export function getAnalogousColors(hex: string): [string, string] {
   ];
 }
 
-// Generate luxury palette from primary color
+// Generate luxury palette from primary color (MotoBan Midnight Titanium & Gold System)
 export function generateLuxuryPalette(primaryColor: string): ColorPalette {
   const rgb = hexToRgb(primaryColor);
   if (!rgb) {
-    // Fallback to default gold
-    primaryColor = '#C9A84C';
+    // Fallback to Mobile Illuminated Gold
+    primaryColor = '#E5C07B';
   }
 
-  const hsl = rgbToHsl(rgb!.r, rgb!.g, rgb!.b);
   const isLight = isLightColor(primaryColor);
 
   // Generate secondary color (desaturated version)
@@ -199,18 +198,6 @@ export function generateLuxuryPalette(primaryColor: string): ColorPalette {
   // Generate dark variant
   const dark = adjustLightness(adjustSaturation(primaryColor, -10), -40);
 
-  // Generate canvas colors (warm neutrals)
-  const canvasLight = adjustSaturation(adjustLightness(primaryColor, 45), -50);
-  const canvasDark = adjustLightness(adjustSaturation(primaryColor, -60), -75);
-
-  // Generate surface colors
-  const surfaceLight = adjustLightness(canvasLight, -8);
-  const surfaceDark = adjustLightness(canvasDark, 10);
-
-  // Generate text colors
-  const textLight = '#2B2B2B';
-  const textDark = adjustLightness(canvasLight, 5);
-
   return {
     primary: primaryColor,
     secondary,
@@ -218,16 +205,16 @@ export function generateLuxuryPalette(primaryColor: string): ColorPalette {
     light,
     dark,
     canvas: {
-      light: canvasLight,
-      dark: canvasDark,
+      light: '#0B0F19',
+      dark: '#0B0F19',
     },
     surface: {
-      light: surfaceLight,
-      dark: surfaceDark,
+      light: '#151D2F',
+      dark: '#1C263D',
     },
     text: {
-      light: textLight,
-      dark: textDark,
+      light: '#FFFFFF',
+      dark: '#FFFFFF',
     },
   };
 }

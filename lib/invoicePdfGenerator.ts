@@ -50,7 +50,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
 
   const isEstimate = data.documentType === 'ESTIMATE';
   const PRIMARY_COLOR: [number, number, number] = isEstimate ? [217, 119, 6] : [220, 38, 38]; // Amber for Estimate, Crimson Red for Invoice
-  const SLATE_DARK: [number, number, number] = [24, 24, 32];
+  const SLATE_DARK: [number, number, number] = [11, 15, 25]; // #0B0F19 Midnight Titanium
 
   // Clean background
   doc.setFillColor(255, 255, 255);

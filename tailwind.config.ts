@@ -36,53 +36,53 @@ const config: Config = {
           DEFAULT: 'color-mix(in srgb, var(--canvas-bg) 80%, var(--ink-text) 20%)',
           foreground: 'color-mix(in srgb, var(--ink-text) 60%, transparent)',
         },
-        // Luxury Design System - Oatmeal & Ink
+        // Midnight Titanium & Illuminated Gold (MotoBan Universal Theme)
         luxury: {
-          // Canvas backgrounds (60% distribution)
           canvas: {
-            light: '#F3EDE2',
-            dark: '#1E1B2E',
+            light: '#0B0F19',
+            dark: '#0B0F19',
           },
-          // Surface / Containers (secondary structural components)
           surface: {
-            light: '#D8D1C7',
-            dark: '#2B2B2B',
+            light: '#151D2F',
+            dark: '#1C263D',
+            card: '#1C263D',
+            highlight: '#243252',
           },
-          // Primary Text / Ink (30% distribution)
           ink: {
-            light: '#2B2B2B',
-            dark: '#F3EDE2',
+            light: '#FFFFFF',
+            dark: '#FFFFFF',
+            secondary: '#E2E8F0',
+            muted: '#94A3B8',
           },
-          // Brand Accent / Gold (10% distribution)
           gold: {
-            DEFAULT: '#C9A84C',
-            light: '#E8D6B3',
+            DEFAULT: '#E5C07B',
+            light: '#F3E5AB',
+            dark: '#C9A84C',
           },
-          // Muted contrast layer
           muted: {
-            light: '#D8D1C7',
-            dark: '#D8D1C7',
+            light: '#243252',
+            dark: '#1C263D',
           },
-          // Premium Semantic Alert Systems
           semantic: {
             success: {
-              light: '#8FA89B',
-              dark: '#5B7065',
+              light: '#10B981',
+              dark: '#10B981',
             },
             warning: {
-              light: '#D4A373',
-              dark: '#9C6F46',
+              light: '#F59E0B',
+              dark: '#F59E0B',
             },
             error: {
-              light: '#C97A7A',
-              dark: '#8C4E4E',
+              light: '#EF4444',
+              dark: '#EF4444',
             },
           },
         },
       },
       backgroundImage: {
-        'gradient-luxury': 'linear-gradient(135deg, #F3EDE2 0%, #E8D6B3 100%)',
-        'gradient-luxury-dark': 'linear-gradient(135deg, #1E1B2E 0%, #2B2B2B 100%)',
+        'gradient-luxury': 'linear-gradient(135deg, #151D2F 0%, #1C263D 100%)',
+        'gradient-luxury-dark': 'linear-gradient(135deg, #0B0F19 0%, #151D2F 100%)',
+        'gradient-balance': 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
       },
     },
   },

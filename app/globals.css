@@ -2,35 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Luxury Design System - Oatmeal & Ink Color Architecture */
+/* MotoBan Universal Design System - Midnight Titanium & Illuminated Gold */
 :root {
-  /* Light Mode - 60-30-10 Distribution */
-  --canvas-bg: #F3EDE2;
-  --surface-bg: #D8D1C7;
-  --ink-text: #2B2B2B;
-  --gold-accent: #C9A84C;
-  --gold-light: #E8D6B3;
-  --muted-contrast: #D8D1C7;
+  --canvas-bg: #0B0F19;
+  --surface-bg: #151D2F;
+  --card-bg: #1C263D;
+  --surface-highlight: #243252;
+  --ink-text: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-muted: #94A3B8;
+  --text-subtle: #64748B;
 
-  /* Semantic Colors - Light */
-  --success: #8FA89B;
-  --warning: #D4A373;
-  --error: #C97A7A;
-    --hairline: 1px;
+  --gold-accent: #E5C07B;
+  --gold-light: #F3E5AB;
+  --gold-dark: #C9A84C;
+  --gold-glow: rgba(229, 192, 123, 0.25);
+  --muted-contrast: #243252;
+
+  /* Semantic Colors */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --hairline: 1px;
+
+  /* Borders & Glass Accents */
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(229, 192, 123, 0.35);
+  --border-highlight: rgba(255, 255, 255, 0.16);
 }
 
 .dark {
-  /* Dark Mode - Obsidian Ink */
-  --canvas-bg: #1E1B2E;
-  --surface-bg: #2B2B2B;
-  --ink-text: #F3EDE2;
-  --gold-accent: #C9A84C;
-  --muted-contrast: #D8D1C7;
+  --canvas-bg: #0B0F19;
+  --surface-bg: #151D2F;
+  --card-bg: #1C263D;
+  --surface-highlight: #243252;
+  --ink-text: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-muted: #94A3B8;
+  --text-subtle: #64748B;
 
-  /* Semantic Colors - Dark */
-  --success: #5B7065;
-  --warning: #9C6F46;
-  --error: #8C4E4E;
+  --gold-accent: #E5C07B;
+  --gold-light: #F3E5AB;
+  --gold-dark: #C9A84C;
+  --gold-glow: rgba(229, 192, 123, 0.25);
+  --muted-contrast: #243252;
+
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(229, 192, 123, 0.35);
+  --border-highlight: rgba(255, 255, 255, 0.16);
 }
 
 body {
@@ -44,13 +67,13 @@ input, select, textarea {
 }
 
 select option {
-  background-color: var(--surface-bg);
-  color: var(--ink-text);
+  background-color: #151D2F;
+  color: #FFFFFF;
 }
 
 .dark select option {
-  background-color: #2B2B2B;
-  color: #F3EDE2;
+  background-color: #151D2F;
+  color: #FFFFFF;
 }
 
 @layer utilities {
@@ -66,16 +89,17 @@ select option {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #0B0F19;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #1C263D;
   border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #243252;
 }
 
 /* Print styles */

@@ -158,28 +158,28 @@ export default function JobCardsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
       case 'in-progress':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
       case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+        return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
       case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+        return 'bg-red-500/15 text-red-400 border-red-500/30';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'bg-slate-500/15 text-slate-400 border-slate-500/30';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'text-red-600 dark:text-red-400';
+        return 'text-red-400';
       case 'normal':
-        return 'text-blue-600 dark:text-blue-400';
+        return 'text-blue-400';
       case 'low':
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-slate-400';
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-slate-400';
     }
   };
 
