@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 // Handle Serverless environment (e.g. Vercel)
 if (process.env.VERCEL) {
-  const tmpDb = '/tmp/dev.db';
+  const tmpDir = os.tmpdir();
+  const tmpDb = path.join(tmpDir, 'mechbiller_dev.db');
   const bundledDb = path.join(process.cwd(), 'prisma', 'dev.db');
   try {
     if (!fs.existsSync(tmpDb) && fs.existsSync(bundledDb)) {
@@ -14,7 +16,7 @@ if (process.env.VERCEL) {
       process.env.DATABASE_URL = `file:${tmpDb}`;
     }
   } catch (err) {
-    console.warn('Prisma /tmp SQLite setup note:', err);
+    console.warn('Prisma serverless SQLite setup note:', err);
   }
 }
 

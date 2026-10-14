@@ -20,7 +20,8 @@ export const getApiBaseUrl = async (): Promise<string> => {
   return DEFAULT_API_URL;
 };
 
-export let API_BASE_URL = DEFAULT_API_URL;
+let activeApiUrl = DEFAULT_API_URL;
+export const API_BASE_URL = DEFAULT_API_URL;
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> => {
   const controller = new AbortController();
@@ -67,7 +68,7 @@ export const Storage = {
   },
   setServerUrl: async (url: string) => {
     await AsyncStorage.setItem('custom_api_url', url);
-    API_BASE_URL = url;
+    activeApiUrl = url;
   },
   getServerUrl: async () => {
     return (await AsyncStorage.getItem('custom_api_url')) || DEFAULT_API_URL;
@@ -193,10 +194,10 @@ export const API = {
   },
 
   getJobCardPdfUrl: (jobCardId: string) => {
-    return `${API_BASE_URL}/pdf/jobcard?id=${jobCardId}`;
+    return `${activeApiUrl}/pdf/jobcard?id=${jobCardId}`;
   },
 
   getInvoicePdfUrl: (invoiceId: string, type: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
-    return `${API_BASE_URL}/pdf/invoice?id=${invoiceId}&type=${type}`;
+    return `${activeApiUrl}/pdf/invoice?id=${invoiceId}&type=${type}`;
   },
 };

@@ -41,12 +41,16 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
       }
     } catch (err: any) {
       console.warn('Login network exception:', err);
-      const isDemo = email.includes('demo') || email.includes('test');
+      let fallbackName = 'MechBillerAI Workshop';
+      if (email.includes('demo')) {
+        fallbackName = 'Royal Motors (Two-Wheeler)';
+      } else if (email.includes('test')) {
+        fallbackName = 'Apex Auto Care (Four-Wheeler)';
+      }
+
       const fallbackUser = {
         id: 'cmv4zl4620001d96sd1e0qto2',
-        name: isDemo
-          ? (email.includes('demo') ? 'Royal Motors (Two-Wheeler)' : 'Apex Auto Care (Four-Wheeler)')
-          : 'MechBillerAI Workshop',
+        name: fallbackName,
         email: email.trim(),
         role: 'owner',
         garageType: email.includes('two') ? 'two_wheeler' : 'four_wheeler',
