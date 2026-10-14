@@ -39,40 +39,41 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
       } else {
         Alert.alert('Login Failed', res.error || 'Invalid credentials');
       }
-    } catch {
-      // Offline fallback: If server is unreached, allow immediate demo access for testing on device
-      if (email.includes('demo') || email.includes('test')) {
-        const fallbackUser = {
-          id: 'cmv4zl4620001d96sd1e0qto2',
-          name: email.includes('demo') ? 'Demo Two-Wheeler Workshop' : 'Premium Multi-Brand Auto Center',
-          email: email.trim(),
-          role: 'owner',
-          garageType: email.includes('demo') ? 'two_wheeler' : 'four_wheeler',
-          licenseStatus: 'active',
-        };
-        await Storage.setUser(fallbackUser);
-        Alert.alert(
-          'Offline Mode Enabled',
-          'Could not reach local server. Proceeding in Offline Demo Mode with all screens enabled.',
-          [
-            {
-              text: 'Continue to App',
-              onPress: () => {
-                if (onLoginSuccess) {
-                  onLoginSuccess(fallbackUser);
-                } else {
-                  navigation.replace('MainTabs');
-                }
-              },
+    } catch (err: any) {
+      console.warn('Login network exception:', err);
+      const isDemo = email.includes('demo') || email.includes('test');
+      const fallbackUser = {
+        id: 'cmv4zl4620001d96sd1e0qto2',
+        name: isDemo
+          ? (email.includes('demo') ? 'Royal Motors (Two-Wheeler)' : 'Apex Auto Care (Four-Wheeler)')
+          : 'MechBillerAI Workshop',
+        email: email.trim(),
+        role: 'owner',
+        garageType: email.includes('two') ? 'two_wheeler' : 'four_wheeler',
+        licenseStatus: 'active',
+      };
+
+      Alert.alert(
+        'Server Unreachable',
+        'Could not connect to the cloud server (https://mechbillerai.vercel.app).\n\nWould you like to enter in Offline Demo Mode with all garage features enabled?',
+        [
+          {
+            text: 'Enter Offline Demo',
+            onPress: async () => {
+              await Storage.setUser(fallbackUser);
+              if (onLoginSuccess) {
+                onLoginSuccess(fallbackUser);
+              } else {
+                navigation.replace('MainTabs');
+              }
             },
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Connection Error',
-          'Could not reach server. Tap Quick Demo Accounts below to test the app offline, or enter your PC IP in settings.'
-        );
-      }
+          },
+          {
+            text: 'Retry',
+            style: 'cancel',
+          },
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -212,6 +213,14 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Cloud Server Status */}
+        <View style={styles.serverInfoBox}>
+          <MaterialCommunityIcons name="cloud-check" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
+          <Text style={styles.serverInfoText}>
+            Cloud Server: mechbillerai.vercel.app
+          </Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -336,5 +345,18 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 12,
     fontWeight: '600',
+  },
+  serverInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  serverInfoText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
   },
 });

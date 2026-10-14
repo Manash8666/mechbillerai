@@ -1,9 +1,12 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Base API config for mobile app
-// When on actual device or offline, it falls back to demo mode gracefully or uses the live production / LAN server
-export const DEFAULT_API_URL = 'http://192.168.31.7:3000/api';
+// Live production Vercel cloud API URL
+export const CLOUD_API_URL = 'https://mechbillerai.vercel.app/api';
+export const LOCAL_API_URL = 'http://localhost:3000/api';
+
+// On physical Android devices, connect directly to the live Cloud API by default
+export const DEFAULT_API_URL = CLOUD_API_URL;
 
 export const getApiBaseUrl = async (): Promise<string> => {
   try {
@@ -12,12 +15,22 @@ export const getApiBaseUrl = async (): Promise<string> => {
   } catch {}
 
   if (Platform.OS === 'web') {
-    return 'http://localhost:3000/api';
+    return LOCAL_API_URL;
   }
   return DEFAULT_API_URL;
 };
 
 export let API_BASE_URL = DEFAULT_API_URL;
+
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+};
 
 export interface UserSession {
   id: string;
@@ -30,7 +43,7 @@ export interface UserSession {
 
 export const DEFAULT_DEMO_USER: UserSession = {
   id: 'cmv4zl4620001d96sd1e0qto2',
-  name: 'Demo Garage',
+  name: 'Demo Two-Wheeler Workshop',
   email: 'demo@garagesaas.com',
   role: 'owner',
   garageType: 'two_wheeler',
@@ -63,11 +76,12 @@ export const Storage = {
 
 export const API = {
   login: async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    const base = await getApiBaseUrl();
+    const res = await fetchWithTimeout(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
-    });
+    }, 8000);
     const data = await res.json();
     if (res.ok && data.user) {
       await Storage.setUser(data.user);
@@ -76,94 +90,105 @@ export const API = {
   },
 
   getDashboardStats: async () => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
     const query = user?.id ? `?userId=${user.id}` : '';
-    const res = await fetch(`${API_BASE_URL}/dashboard/stats${query}`);
+    const res = await fetchWithTimeout(`${base}/dashboard/stats${query}`, {}, 6000);
     return res.json();
   },
 
   getJobCards: async () => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
     const query = user?.id ? `?userId=${user.id}` : '';
-    const res = await fetch(`${API_BASE_URL}/jobcards${query}`);
+    const res = await fetchWithTimeout(`${base}/jobcards${query}`, {}, 6000);
     const result = await res.json();
     return Array.isArray(result) ? result : result.data || [];
   },
 
   getCustomers: async () => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
     const query = user?.id ? `?userId=${user.id}` : '';
-    const res = await fetch(`${API_BASE_URL}/customers${query}`);
+    const res = await fetchWithTimeout(`${base}/customers${query}`, {}, 6000);
     const result = await res.json();
     return Array.isArray(result) ? result : result.data || [];
   },
 
   getInvoices: async () => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
     const query = user?.id ? `?userId=${user.id}` : '';
-    const res = await fetch(`${API_BASE_URL}/invoices${query}`);
+    const res = await fetchWithTimeout(`${base}/invoices${query}`, {}, 6000);
     const result = await res.json();
     return Array.isArray(result) ? result : result.data || [];
   },
 
   getInventory: async () => {
-    const res = await fetch(`${API_BASE_URL}/inventory`);
+    const base = await getApiBaseUrl();
+    const res = await fetchWithTimeout(`${base}/inventory`, {}, 6000);
     const result = await res.json();
     return Array.isArray(result) ? result : result.data || [];
   },
 
   getAppointments: async () => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
     const query = user?.id ? `?userId=${user.id}` : '';
-    const res = await fetch(`${API_BASE_URL}/appointments${query}`);
+    const res = await fetchWithTimeout(`${base}/appointments${query}`, {}, 6000);
     const result = await res.json();
     return Array.isArray(result) ? result : result.data || [];
   },
 
   createAppointment: async (payload: any) => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
-    const res = await fetch(`${API_BASE_URL}/appointments`, {
+    const res = await fetchWithTimeout(`${base}/appointments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: user?.id }),
-    });
+    }, 8000);
     return res.json();
   },
 
   getBranding: async () => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
     const query = user?.id ? `?userId=${user.id}` : '';
-    const res = await fetch(`${API_BASE_URL}/branding${query}`);
+    const res = await fetchWithTimeout(`${base}/branding${query}`, {}, 6000);
     return res.json();
   },
 
   updateBranding: async (payload: any) => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
-    const res = await fetch(`${API_BASE_URL}/branding`, {
+    const res = await fetchWithTimeout(`${base}/branding`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: user?.id }),
-    });
+    }, 8000);
     return res.json();
   },
 
   createJobCard: async (payload: any) => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
-    const res = await fetch(`${API_BASE_URL}/jobcards`, {
+    const res = await fetchWithTimeout(`${base}/jobcards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: user?.id }),
-    });
+    }, 8000);
     return res.json();
   },
 
   createInvoice: async (payload: any) => {
+    const base = await getApiBaseUrl();
     const user = await Storage.getUser();
-    const res = await fetch(`${API_BASE_URL}/invoices`, {
+    const res = await fetchWithTimeout(`${base}/invoices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: user?.id }),
-    });
+    }, 8000);
     return res.json();
   },
 
