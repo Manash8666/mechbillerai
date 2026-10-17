@@ -38,16 +38,69 @@ export default function IntakeScreen({ navigation }: any) {
     setPhotos(prev => ({ ...prev, [side]: !prev[side] }));
   };
 
+  const recognitionRef = React.useRef<any>(null);
+
   const handleRecordVoice = () => {
-    if (!isRecording) {
-      setIsRecording(true);
-      setTimeout(() => {
-        setVoiceNote('Customer noted slight oil leakage near drain plug and scratch on right exhaust guard.');
-        setIsRecording(false);
-      }, 1500);
-    } else {
+    if (isRecording) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
       setIsRecording(false);
+      return;
     }
+
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-IN';
+
+          recognition.onstart = () => {
+            setIsRecording(true);
+          };
+
+          recognition.onresult = (event: any) => {
+            let transcript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              transcript += event.results[i][0].transcript + ' ';
+            }
+            setVoiceNote(transcript.trim());
+          };
+
+          recognition.onerror = (e: any) => {
+            console.warn('Mobile speech recognition error:', e);
+            setIsRecording(false);
+          };
+
+          recognition.onend = () => {
+            setIsRecording(false);
+          };
+
+          recognitionRef.current = recognition;
+          recognition.start();
+          return;
+        } catch (e) {
+          console.warn('Speech recognition init error:', e);
+        }
+      }
+    }
+
+    Alert.alert(
+      'Voice Dictation',
+      'Speak or type directly into the Mechanic Voice Notes box below. Quick tag buttons are also provided.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const appendVoiceTag = (tag: string) => {
+    setVoiceNote(prev => prev ? `${prev}. ${tag}` : tag);
   };
 
   const handleSaveIntake = async () => {
@@ -187,7 +240,17 @@ export default function IntakeScreen({ navigation }: any) {
 
       {/* Hands-free Voice Note */}
       <View style={styles.card}>
-        <Text style={styles.label}>Grease-Proof Voice Note</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <Text style={styles.label}>🎙️ Grease-Proof Voice Dictation</Text>
+          {isRecording ? (
+            <View style={styles.liveRecordingBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveRecordingText}>Listening...</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.hint}>Mechanics can tap the mic to speak directly or tap quick tags below.</Text>
+        
         <TouchableOpacity
           style={[styles.voiceBtn, isRecording && styles.voiceBtnActive]}
           onPress={handleRecordVoice}
@@ -198,14 +261,50 @@ export default function IntakeScreen({ navigation }: any) {
             color={isRecording ? '#FFF' : '#EF4444'}
           />
           <Text style={[styles.voiceBtnText, isRecording && { color: '#FFF' }]}>
-            {isRecording ? 'Recording Voice Note... (Tap to save)' : 'Tap to Record Voice Note'}
+            {isRecording ? 'Listening Live... (Tap to Finish)' : 'Tap Mic to Start Voice Dictation'}
           </Text>
         </TouchableOpacity>
-        {voiceNote ? (
-          <View style={styles.voiceResultBox}>
-            <Text style={styles.voiceResultText}>🎙️ "{voiceNote}"</Text>
-          </View>
-        ) : null}
+
+        {/* Quick Voice Tags */}
+        <View style={styles.tagChipsRow}>
+          {[
+            'Bumper Dent',
+            'Oil Leak',
+            'Brake Noise',
+            'Headlight Scratch',
+            'Engine Tuning',
+          ].map(tag => (
+            <TouchableOpacity
+              key={tag}
+              style={styles.tagChip}
+              onPress={() => appendVoiceTag(tag)}
+            >
+              <Text style={styles.tagChipText}>+{tag}</Text>
+            </TouchableOpacity>
+          ))}
+          {voiceNote ? (
+            <TouchableOpacity
+              style={[styles.tagChip, { borderColor: 'rgba(239, 68, 68, 0.4)' }]}
+              onPress={() => setVoiceNote('')}
+            >
+              <Text style={[styles.tagChipText, { color: '#EF4444' }]}>Clear</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* Editable Transcript Box */}
+        <View style={styles.voiceResultBox}>
+          <Text style={styles.voiceResultLabel}>Transcription / Mechanic Notes (Editable):</Text>
+          <TextInput
+            style={styles.voiceInput}
+            multiline
+            numberOfLines={3}
+            placeholder="Dictated notes appear here automatically, or type directly..."
+            placeholderTextColor={COLORS.textMuted}
+            value={voiceNote}
+            onChangeText={setVoiceNote}
+          />
+        </View>
       </View>
 
       {/* Save Button */}
@@ -342,16 +441,67 @@ const styles = StyleSheet.create({
   },
   voiceResultBox: {
     marginTop: 10,
-    padding: 10,
+    padding: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  voiceResultText: {
+  voiceResultLabel: {
     color: COLORS.textMuted,
-    fontSize: 12,
-    fontStyle: 'italic',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  voiceInput: {
+    color: COLORS.text,
+    fontSize: 13,
+    minHeight: 60,
+    textAlignVertical: 'top',
+    padding: 0,
+  },
+  liveRecordingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  liveRecordingText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  tagChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  tagChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  tagChipText: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '500',
   },
   saveBtn: {
     backgroundColor: COLORS.primary,
