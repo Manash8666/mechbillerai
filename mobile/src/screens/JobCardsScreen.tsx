@@ -84,9 +84,9 @@ export default function JobCardsScreen({ navigation }: any) {
   };
 
   const handleOpenPdf = async (jobId: string, type: 'jobcard' | 'estimate' = 'jobcard') => {
+    const url = type === 'jobcard' ? API.getJobCardPdfUrl(jobId) : API.getInvoicePdfUrl(jobId, 'ESTIMATE');
     try {
-      const url = type === 'jobcard' ? API.getJobCardPdfUrl(jobId) : API.getInvoicePdfUrl(jobId, 'ESTIMATE');
-      const supported = await Linking.canOpenURL(url);
+      const supported = await Linking.canOpenURL(url).catch(() => true);
       if (supported) {
         await Linking.openURL(url);
       } else {
@@ -97,7 +97,14 @@ export default function JobCardsScreen({ navigation }: any) {
         });
       }
     } catch {
-      Alert.alert('PDF Viewer', `Opening PDF: ${API.getJobCardPdfUrl(jobId)}`);
+      Alert.alert(
+        'PDF Document Ready',
+        `Link: ${url}`,
+        [
+          { text: 'Share Link', onPress: () => void Share.share({ message: url, url }) },
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
     }
   };
 

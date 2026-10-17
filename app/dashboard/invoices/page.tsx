@@ -87,20 +87,34 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleDownloadBillPdf = (invoice: Invoice, docType: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
+  const handleDownloadBillPdf = async (invoice: Invoice, docType: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
+    const fileName = `${docType}_${invoice.invoiceNumber}.pdf`;
+    const toastId = toast.loading(`Generating ${fileName}...`);
+    const url = `/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=${docType}`;
     try {
-      const fileName = `${docType}_${invoice.invoiceNumber}.pdf`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        let errMessage = 'Failed to generate PDF';
+        try {
+          const errData = await res.json();
+          if (errData.error) errMessage = errData.error;
+        } catch {}
+        throw new Error(errMessage);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = `/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=${docType}`;
+      link.href = blobUrl;
       link.download = fileName;
-      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success(`${docType} PDF (${fileName}) generated!`);
-    } catch (err) {
-      console.error('Error downloading bill PDF:', err);
-      window.open(`/api/pdf/invoice?id=${invoice.invoiceNumber}`, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      toast.success(`${fileName} downloaded!`, { id: toastId });
+    } catch (err: any) {
+      console.error('PDF download error:', err);
+      toast.error(err.message || 'Error generating PDF', { id: toastId });
+      window.open(url, '_blank');
     }
   };
 
@@ -539,28 +553,24 @@ export default function InvoicesPage() {
                       <Printer className="w-3.5 h-3.5 text-[#C9F31D]" />
                       Thermal Slip
                     </button>
-                    <a
-                      href={`/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE`}
-                      download={`Invoice_${invoice.invoiceNumber}.pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadBillPdf(invoice, 'INVOICE')}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                       title="Download Tax Invoice / Bill (Red, Black & White format)"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Bill PDF
-                    </a>
-                    <a
-                      href={`/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=ESTIMATE`}
-                      download={`Estimate_${invoice.invoiceNumber}.pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 lg:flex-none px-3 py-1.5 bg-luxury-surface-light dark:bg-luxury-surface-dark text-luxury-ink-light dark:text-luxury-ink-dark border border-luxury-gold/40 font-semibold rounded-lg hover:border-luxury-gold transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadBillPdf(invoice, 'ESTIMATE')}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-luxury-surface-light dark:bg-luxury-surface-dark text-luxury-ink-light dark:text-luxury-ink-dark border border-luxury-gold/40 font-semibold rounded-lg hover:border-luxury-gold transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                       title="Download Estimate / Quote (Red, Black & White format)"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Estimate PDF
-                    </a>
+                    </button>
                   </div>
               </div>
             </div>

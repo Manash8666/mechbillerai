@@ -157,11 +157,27 @@ export default function CheckoutScreen() {
   };
 
   const handleOpenInvoicePdf = async (jobNumber: string, vehicle: string) => {
+    const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
     try {
-      const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert('Invoice Viewer', `Opening PDF Bill for ${vehicle}: ${API.getInvoicePdfUrl(jobNumber)}`);
+      const supported = await Linking.canOpenURL(url).catch(() => true);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        await Share.share({
+          title: `PDF Bill - ${vehicle}`,
+          message: `Tax Invoice Bill for ${vehicle}: ${url}`,
+          url,
+        });
+      }
+    } catch (e: any) {
+      Alert.alert(
+        'Invoice Bill Ready',
+        `Tax Invoice PDF Link: ${url}`,
+        [
+          { text: 'Share Link', onPress: () => void Share.share({ message: url, url }) },
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
     }
   };
 

@@ -68,38 +68,41 @@ export default function JobCardsPage() {
     }
   };
 
-  const handleDownloadJobCardPdf = (job: JobCard) => {
+  const downloadPdfFile = async (url: string, defaultFilename: string) => {
+    const toastId = toast.loading(`Generating ${defaultFilename}...`);
     try {
-      const fileName = `JobCard_${job.jobNumber}.pdf`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        let errMessage = 'Failed to generate PDF';
+        try {
+          const errData = await res.json();
+          if (errData.error) errMessage = errData.error;
+        } catch {}
+        throw new Error(errMessage);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = `/api/pdf/jobcard?id=${job.jobNumber}`;
-      link.download = fileName;
-      link.target = '_blank';
+      link.href = blobUrl;
+      link.download = defaultFilename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success(`Job Card PDF (${fileName}) generated!`);
-    } catch (err) {
-      console.error('Error downloading Job Card PDF:', err);
-      window.open(`/api/pdf/jobcard?id=${job.jobNumber}`, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      toast.success(`${defaultFilename} downloaded!`, { id: toastId });
+    } catch (err: any) {
+      console.error('PDF download error:', err);
+      toast.error(err.message || 'Error generating PDF', { id: toastId });
+      window.open(url, '_blank');
     }
   };
 
+  const handleDownloadJobCardPdf = (job: JobCard) => {
+    void downloadPdfFile(`/api/pdf/jobcard?id=${job.jobNumber}`, `JobCard_${job.jobNumber}.pdf`);
+  };
+
   const handleDownloadEstimatePdf = (job: JobCard) => {
-    try {
-      const fileName = `Estimate_${job.jobNumber}.pdf`;
-      const link = document.createElement('a');
-      link.href = `/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`;
-      link.download = fileName;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success(`Estimate PDF (${fileName}) generated!`);
-    } catch (err) {
-      console.error('Error downloading Estimate PDF:', err);
-      window.open(`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`, '_blank');
-    }
+    void downloadPdfFile(`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`, `Estimate_${job.jobNumber}.pdf`);
   };
   const handleUpdateJobCardStatus = async (jobId: string, nextStatus: string) => {
     try {
@@ -547,28 +550,24 @@ export default function JobCardsPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
-                    <a
-                      href={`/api/pdf/jobcard?id=${job.jobNumber}`}
-                      download={`JobCard_${job.jobNumber}.pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 lg:flex-none px-3 py-1.5 bg-yellow-400/90 text-yellow-950 font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadJobCardPdf(job)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-yellow-400/90 text-yellow-950 font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                       title="Download Vehicle Job Card (Yellow format)"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Job Card PDF
-                    </a>
-                    <a
-                      href={`/api/pdf/invoice?id=${job.jobNumber}&docType=ESTIMATE`}
-                      download={`Estimate_${job.jobNumber}.pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadEstimatePdf(job)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-red-600/90 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                       title="Download Estimate (Red & Black format)"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Estimate PDF
-                    </a>
+                    </button>
                     {job.status === 'completed' && (
                       <PearlButton
                         className="text-xs"
