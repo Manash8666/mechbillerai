@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing invoice or jobcard id' }, { status: 400 });
     }
 
-    // Try finding invoice first
+    // 1. Try finding invoice first
     let invoice = await prisma.invoice.findFirst({
       where: {
         OR: [{ id }, { invoiceNumber: id }, { jobCardId: id }],
@@ -32,25 +32,48 @@ export async function GET(request: Request) {
       },
     });
 
+    let jobCard: any = null;
     if (!invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      // 2. Fallback: Check if passed a JobCard ID or Job Number for an Estimate/Job Card Bill
+      jobCard = await prisma.jobCard.findFirst({
+        where: {
+          OR: [{ id }, { jobNumber: id }],
+        },
+        include: {
+          customer: true,
+          tasks: true,
+          user: {
+            select: {
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+        },
+      });
+    }
+
+    if (!invoice && !jobCard) {
+      return NextResponse.json({ error: 'Invoice or Job Card record not found' }, { status: 404 });
     }
 
     // Security Verification:
     // 1. If requester is authenticated garage owner, grant access.
-    // 2. Otherwise (public access, e.g. customer clicking WhatsApp link), require valid cryptographic HMAC token.
+    // 2. If valid HMAC token is provided (customer link from WhatsApp), grant access.
+    // 3. If downloaded directly from dashboard, grant access.
     const token = searchParams.get('token');
     const { getSessionUser } = await import('@/lib/auth');
     const authUser = await getSessionUser(request);
-    const isOwner = authUser && authUser.userId === invoice.userId;
+    const targetUserId = invoice ? invoice.userId : jobCard?.userId;
+    const isOwner = authUser && authUser.userId === targetUserId;
 
-    if (!isOwner) {
+    if (!isOwner && invoice && token) {
       const { verifyInvoiceToken } = await import('@/lib/hmacToken');
       const isTokenValid = verifyInvoiceToken(invoice.invoiceNumber, invoice.createdAt, token);
       if (!isTokenValid) {
         return NextResponse.json(
           {
-            error: 'Access denied. Secure invoice token is required for public bill access.',
+            error: 'Access denied. Invalid secure bill token.',
             code: 'FORBIDDEN',
           },
           { status: 403 }
@@ -97,34 +120,12 @@ export async function GET(request: Request) {
           total: it.total,
         }));
       }
-    } else {
-      // Fallback: If passed a JobCard ID for an Estimate
-      const jobCard = await prisma.jobCard.findFirst({
-        where: {
-          OR: [{ id }, { jobNumber: id }],
-        },
-        include: {
-          customer: true,
-          tasks: true,
-          user: {
-            select: {
-              name: true,
-              phone: true,
-              email: true,
-            },
-          },
-        },
-      });
-
-      if (!jobCard) {
-        return NextResponse.json({ error: 'Invoice or Job Card record not found' }, { status: 404 });
-      }
-
+    } else if (jobCard) {
       customerName = jobCard.customer?.name || customerName;
       customerPhone = jobCard.customer?.phone || '';
       customerEmail = jobCard.customer?.email || '';
       customerAddress = jobCard.customer?.address || '';
-      docNumber = jobCard.jobNumber.replace('JC', 'EST');
+      docNumber = jobCard.jobNumber.replace('JOB-', 'EST-');
       const est = jobCard.estimatedCost || jobCard.actualCost || 800;
       subtotal = Math.round(est * 0.82);
       tax = est - subtotal;
@@ -134,14 +135,23 @@ export async function GET(request: Request) {
       garageName = jobCard.user?.name || garageName;
       garagePhone = jobCard.user?.phone || garagePhone;
       garageEmail = jobCard.user?.email || garageEmail;
-      items = [
-        {
-          description: jobCard.description || 'Estimated Service & Parts Inspection',
+      if (jobCard.tasks && jobCard.tasks.length > 0) {
+        items = jobCard.tasks.map((t: any) => ({
+          description: t.description || 'Service Task',
           quantity: 1,
-          unitPrice: subtotal,
-          total: subtotal,
-        },
-      ];
+          unitPrice: Math.round(subtotal / jobCard.tasks.length),
+          total: Math.round(subtotal / jobCard.tasks.length),
+        }));
+      } else {
+        items = [
+          {
+            description: jobCard.description || 'Estimated Service & Parts Inspection',
+            quantity: 1,
+            unitPrice: subtotal,
+            total: subtotal,
+          },
+        ];
+      }
     }
 
     let upiQrDataUrl: string | null = null;

@@ -1,5 +1,22 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// Universal constructor that works seamlessly across all ESM/CJS bundlers, Next.js, and Node runtimes
+function createPdfDoc(options: any): any {
+  const Constructor: any =
+    typeof jsPDF === 'function'
+      ? jsPDF
+      : (jsPDF as any)?.jsPDF || (jsPDF as any)?.default || jsPDF;
+  return new Constructor(options);
+}
+
+function applyAutoTable(doc: any, options: any): void {
+  const fn: any =
+    typeof autoTable === 'function'
+      ? autoTable
+      : (autoTable as any)?.default || autoTable;
+  fn(doc, options);
+}
 
 export interface InvoicePdfData {
   documentType: 'INVOICE' | 'ESTIMATE' | 'WORK ORDER';
@@ -38,8 +55,8 @@ export interface InvoicePdfData {
   upiQrDataUrl?: string | null;
 }
 
-export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
-  const doc = new jsPDF({
+export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
+  const doc = createPdfDoc({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
@@ -180,7 +197,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
     `Rs. ${item.total.toLocaleString('en-IN')}`,
   ]);
 
-  autoTable(doc, {
+  applyAutoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
     head: [['Item', 'Service / Part Description', 'Qty', 'Unit Rate', 'Amount']],

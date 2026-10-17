@@ -1,5 +1,22 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// Universal constructor that works seamlessly across all ESM/CJS bundlers, Next.js, and Node runtimes
+function createPdfDoc(options: any): any {
+  const Constructor: any =
+    typeof jsPDF === 'function'
+      ? jsPDF
+      : (jsPDF as any)?.jsPDF || (jsPDF as any)?.default || jsPDF;
+  return new Constructor(options);
+}
+
+function applyAutoTable(doc: any, options: any): void {
+  const fn: any =
+    typeof autoTable === 'function'
+      ? autoTable
+      : (autoTable as any)?.default || autoTable;
+  fn(doc, options);
+}
 
 export interface JobCardPdfData {
   jobNumber: string;
@@ -35,8 +52,8 @@ export interface JobCardPdfData {
   garageAddress?: string;
 }
 
-export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
-  const doc = new jsPDF({
+export function generateJobCardPdf(data: JobCardPdfData): any {
+  const doc = createPdfDoc({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
@@ -306,7 +323,7 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
     );
   }
 
-  autoTable(doc, {
+  applyAutoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
     head: [['Item Code', 'Description of Work / Parts', 'Qty', 'Est. Charge', 'Task Status']],
