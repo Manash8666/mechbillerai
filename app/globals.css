@@ -2,8 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MotoBan Universal Design System - Midnight Titanium & Illuminated Gold */
+/* MotoBan Universal Design System - Midnight Titanium & Illuminated Gold (Specification v3.0.0) */
 :root {
+  /* Core Deep Canvas & Surface Tones */
+  --void-black: #0B0F19;
+  --navy-steel: #151D2F;
+  --deep-glass: #1C263D;
+  --deep-glass-border: rgba(28, 38, 61, 0.8);
+
+  /* Primary Brand Accents (Reactive High-Wavelength Energy) */
+  --geek-lime: #C9F31D;
+  --geek-lime-hover: #b8e214;
+  --geek-lime-glow: rgba(201, 243, 29, 0.35);
+
+  --garage-orange: #FF5E14;
+  --garage-orange-hover: #e6510d;
+  --garage-orange-glow: rgba(255, 94, 20, 0.35);
+
+  /* Semantic & Functional Signals */
+  --cobalt-ai: #2563EB;
+  --emerald-sync: #10B981;
+  --amber-alert: #F59E0B;
+  --crimson-brake: #EF4444;
+  --royal-gold: #E5C07B;
+
+  /* Neutral & Text Hierarchy */
+  --pure-white: #FFFFFF;
+  --cool-slate: #94A3B8;
+  --steel-dim: #64748B;
+  --dark-slate: #334155;
+
+  /* Universal Semantic Tokens */
   --canvas-bg: #0B0F19;
   --surface-bg: #151D2F;
   --card-bg: #1C263D;
@@ -32,6 +61,35 @@
 }
 
 .dark {
+  /* Core Deep Canvas & Surface Tones */
+  --void-black: #0B0F19;
+  --navy-steel: #151D2F;
+  --deep-glass: #1C263D;
+  --deep-glass-border: rgba(28, 38, 61, 0.8);
+
+  /* Primary Brand Accents */
+  --geek-lime: #C9F31D;
+  --geek-lime-hover: #b8e214;
+  --geek-lime-glow: rgba(201, 243, 29, 0.35);
+
+  --garage-orange: #FF5E14;
+  --garage-orange-hover: #e6510d;
+  --garage-orange-glow: rgba(255, 94, 20, 0.35);
+
+  /* Semantic & Functional Signals */
+  --cobalt-ai: #2563EB;
+  --emerald-sync: #10B981;
+  --amber-alert: #F59E0B;
+  --crimson-brake: #EF4444;
+  --royal-gold: #E5C07B;
+
+  /* Neutral & Text Hierarchy */
+  --pure-white: #FFFFFF;
+  --cool-slate: #94A3B8;
+  --steel-dim: #64748B;
+  --dark-slate: #334155;
+
+  /* Universal Semantic Tokens */
   --canvas-bg: #0B0F19;
   --surface-bg: #151D2F;
   --card-bg: #1C263D;
@@ -79,6 +137,76 @@ select option {
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Frosted Glass Elevation Token */
+  .glass-pos-card {
+    background: rgba(21, 29, 47, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  /* Hyper-Biller Radial Glow */
+  .hyper-biller-glow {
+    background: radial-gradient(circle at 50% 30%, rgba(201, 243, 29, 0.15) 0%, rgba(11, 15, 25, 0) 70%);
+  }
+
+  /* Exhaust Heat Gradient */
+  .exhaust-heat-gradient {
+    background: linear-gradient(135deg, #C9F31D 0%, #FF5E14 100%);
+  }
+
+  /* Cobalt AI Engine Gradient */
+  .cobalt-ai-gradient {
+    background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
+  }
+
+  /* Primary High-Contrast Geek Lime Button - WCAG AAA Compliant */
+  .btn-geek-lime {
+    background-color: #C9F31D;
+    color: #0B0F19 !important; /* Strict constraint: Always dark text on Geek Lime */
+    font-weight: 700;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 20px -3px rgba(201, 243, 29, 0.4);
+  }
+
+  .btn-geek-lime:hover {
+    background-color: #d4f83b;
+    box-shadow: 0 0 30px 0px rgba(201, 243, 29, 0.6);
+    transform: translateY(-1px);
+  }
+
+  .btn-geek-lime:active {
+    transform: translateY(0);
+  }
+
+  /* Speed / Mechanical Heat Flame Orange Button */
+  .btn-garage-orange {
+    background-color: #FF5E14;
+    color: #FFFFFF !important;
+    font-weight: 700;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 20px -3px rgba(255, 94, 20, 0.4);
+  }
+
+  .btn-garage-orange:hover {
+    background-color: #ff7433;
+    box-shadow: 0 0 30px 0px rgba(255, 94, 20, 0.6);
+    transform: translateY(-1px);
+  }
+
+  .btn-garage-orange:active {
+    transform: translateY(0);
+  }
+
+  /* Royal Gold Lifetime Tier Badge / Crest */
+  .badge-royal-gold {
+    background-color: rgba(229, 192, 123, 0.15);
+    color: #E5C07B;
+    border: 1px solid rgba(229, 192, 123, 0.35);
+    box-shadow: 0 0 15px -3px rgba(229, 192, 123, 0.25);
   }
 }
 

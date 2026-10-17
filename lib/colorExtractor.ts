@@ -6,6 +6,9 @@ export interface ColorPalette {
   accent: string;
   light: string;
   dark: string;
+  geekLime?: string;
+  garageOrange?: string;
+  deepGlass?: string;
   canvas: {
     light: string;
     dark: string;
@@ -204,6 +207,9 @@ export function generateLuxuryPalette(primaryColor: string): ColorPalette {
     accent,
     light,
     dark,
+    geekLime: '#C9F31D',
+    garageOrange: '#FF5E14',
+    deepGlass: '#1C263D',
     canvas: {
       light: '#0B0F19',
       dark: '#0B0F19',

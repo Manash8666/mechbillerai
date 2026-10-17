@@ -43,72 +43,88 @@ export default function DashboardPage() {
       </div>
 
       {/* iOS Banking Vault Hero Card & Quick Stats */}
-      <div className="rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-luxury-surface-dark via-[#111827] to-[#0A0F1D] text-white border-2 border-luxury-gold/30 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-luxury-gold/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+      <div className="rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-navy-steel via-[#111827] to-void-black text-white border-2 border-deep-glass shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-geek-lime/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-luxury-gold/20 border border-luxury-gold flex items-center justify-center text-luxury-gold font-bold">
+            <div className="w-10 h-10 rounded-full bg-geek-lime/20 border border-geek-lime flex items-center justify-center text-geek-lime font-bold">
               ₹
             </div>
             <div>
-              <div className="text-xs font-mono font-bold tracking-widest text-luxury-gold uppercase">
+              <div className="text-xs font-mono font-bold tracking-widest text-geek-lime uppercase">
                 Garage Operating Vault
               </div>
-              <div className="text-xs text-slate-400">Monthly Net Cashflow & Settled Invoices</div>
+              <div className="text-xs text-cool-slate">Monthly Net Cashflow & Settled Invoices</div>
             </div>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold w-fit">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>LIVE LEDGER</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-sync/15 border border-emerald-sync/30 text-emerald-sync text-xs font-bold w-fit">
+            <span className="w-2 h-2 rounded-full bg-emerald-sync animate-pulse" />
+            <span>LIVE LEDGER (EMERALD SYNC)</span>
           </div>
         </div>
 
         <div className="mb-6 relative z-10">
-          <div className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-2 font-mono">
+          <div className="text-4xl sm:text-5xl font-extrabold tracking-tight text-geek-lime mb-2 font-mono">
             {formatCurrency(stats?.revenueThisMonth || 0)}
           </div>
           <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-300">
-            <span className="flex items-center text-emerald-400 font-semibold">
+            <span className="flex items-center text-emerald-sync font-semibold">
               <TrendingUp className="w-4 h-4 mr-1" />
               +{stats?.revenueGrowth || 0}% vs last month
             </span>
-            <span className="text-slate-500">•</span>
-            <span>{stats?.invoicesThisMonth || 0} Invoices Cleared</span>
+            <span className="text-steel-dim">•</span>
+            <span className="text-cool-slate">{stats?.invoicesThisMonth || 0} Invoices Cleared</span>
           </div>
         </div>
 
         {/* Banking Metrics Footer Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-black/40 border border-white/5 relative z-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-void-black/60 border border-deep-glass relative z-10">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Jobs</div>
-            <div className="text-xl font-bold text-luxury-gold mt-1">{stats?.activeJobCards || 0}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-steel-dim">Active Jobs</div>
+            <div className="text-xl font-bold text-royal-gold mt-1 font-mono">{stats?.activeJobCards || 0}</div>
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Customers</div>
-            <div className="text-xl font-bold text-white mt-1">{stats?.totalCustomers || 0}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-steel-dim">Total Customers</div>
+            <div className="text-xl font-bold text-pure-white mt-1 font-mono">{stats?.totalCustomers || 0}</div>
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Invoices</div>
-            <div className="text-xl font-bold text-amber-400 mt-1">{stats?.pendingInvoices || 0}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-alert">Pending Invoices</div>
+            <div className="text-xl font-bold text-amber-alert mt-1 font-mono">{stats?.pendingInvoices || 0}</div>
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Outstanding (₹)</div>
-            <div className="text-xl font-bold text-rose-400 mt-1">{formatCurrency(stats?.outstandingAmount || 0)}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-crimson-brake">Outstanding (₹)</div>
+            <div className="text-xl font-bold text-crimson-brake mt-1 font-mono">{formatCurrency(stats?.outstandingAmount || 0)}</div>
           </div>
         </div>
       </div>
 
       {/* Quick Action Pills */}
-      <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-4">
-          Quick Actions
+      <div className="bg-navy-steel rounded-xl shadow-lg p-6 border border-deep-glass">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-cool-slate mb-4">
+          Reactive Garage Shortcuts (v3.0 Telemetry)
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <QuickAction title="🛡️ Express Intake" href="/dashboard/jobcards" />
-          <QuickAction title="⚡ Evening Triage" href="/dashboard/jobcards" />
-          <QuickAction title="📄 Create Invoice" href="/dashboard/invoices" />
-          <QuickAction title="👥 Add Customer" href="/dashboard/customers" />
+          <QuickAction
+            title="🛡️ Express Intake"
+            href="/dashboard/jobcards"
+            variant="lime"
+          />
+          <QuickAction
+            title="⚡ Evening Triage"
+            href="/dashboard/jobcards"
+            variant="orange"
+          />
+          <QuickAction
+            title="📄 Create Invoice"
+            href="/dashboard/invoices"
+            variant="emerald"
+          />
+          <QuickAction
+            title="👥 Add Customer"
+            href="/dashboard/customers"
+            variant="cobalt"
+          />
         </div>
       </div>
     </div>
@@ -118,13 +134,21 @@ export default function DashboardPage() {
 interface QuickActionProps {
   readonly title: string;
   readonly href: string;
+  readonly variant?: 'lime' | 'orange' | 'emerald' | 'cobalt';
 }
 
-function QuickAction({ title, href }: QuickActionProps) {
+function QuickAction({ title, href, variant = 'lime' }: QuickActionProps) {
+  const variantStyles = {
+    lime: 'bg-geek-lime/10 text-geek-lime border-geek-lime/30 hover:bg-geek-lime hover:text-void-black shadow-sm hover:shadow-lime-glow',
+    orange: 'bg-garage-orange/10 text-garage-orange border-garage-orange/30 hover:bg-garage-orange hover:text-white shadow-sm hover:shadow-orange-glow',
+    emerald: 'bg-emerald-sync/10 text-emerald-sync border-emerald-sync/30 hover:bg-emerald-sync hover:text-void-black shadow-sm',
+    cobalt: 'bg-cobalt-ai/10 text-cobalt-ai border-cobalt-ai/30 hover:bg-cobalt-ai hover:text-white shadow-sm hover:shadow-cobalt-glow',
+  };
+
   return (
     <a
       href={href}
-      className="flex items-center justify-center px-4 py-3 bg-luxury-gold/10 text-luxury-gold rounded-lg hover:bg-luxury-gold hover:text-luxury-ink-light hover:shadow-lg font-medium transition-all duration-300 border border-luxury-gold/30"
+      className={`flex items-center justify-center px-4 py-3 rounded-lg font-bold transition-all duration-300 border ${variantStyles[variant]}`}
     >
       {title}
     </a>

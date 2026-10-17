@@ -74,26 +74,26 @@ function DashboardContent({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-luxury-surface-light dark:bg-luxury-surface-dark shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 border-r border-luxury-gold/20 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-navy-steel shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 border-r border-deep-glass ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-luxury-gold/20">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-deep-glass">
             <div className="flex items-center space-x-2">
-              <Car className="h-8 w-8 text-luxury-gold" />
+              <Car className="h-8 w-8 text-geek-lime" />
               <div>
-                <span className="text-xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark block leading-none">
+                <span className="text-xl font-bold text-pure-white block leading-none">
                   MotoBan
                 </span>
-                <span className="text-[9px] text-luxury-gold uppercase tracking-wider font-semibold">
+                <span className="text-[9px] text-royal-gold uppercase tracking-wider font-semibold">
                   By Hybrid StudioZ
                 </span>
               </div>
             </div>
             <button
-              className="lg:hidden text-luxury-ink-light dark:text-luxury-ink-dark"
+              className="lg:hidden text-cool-slate hover:text-pure-white"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-6 w-6" />
@@ -101,17 +101,17 @@ function DashboardContent({
           </div>
 
           {/* User info */}
-          <div className="px-6 py-4 border-b border-luxury-gold/20 bg-luxury-canvas-light/50 dark:bg-luxury-canvas-dark/50">
-            <p className="text-sm font-medium text-luxury-ink-light dark:text-luxury-ink-dark">{user.name}</p>
-            <p className="text-xs text-luxury-ink-light/60 dark:text-luxury-ink-dark/60">{user.email}</p>
+          <div className="px-6 py-4 border-b border-deep-glass bg-void-black/40">
+            <p className="text-sm font-medium text-pure-white">{user.name}</p>
+            <p className="text-xs text-steel-dim">{user.email}</p>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <span
-                className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
+                className={`inline-block px-2 py-0.5 text-xs font-semibold rounded border ${
                   user.licenseStatus === 'active'
-                    ? 'bg-luxury-semantic-success-light dark:bg-luxury-semantic-success-dark text-luxury-ink-light'
+                    ? 'bg-emerald-sync/20 text-emerald-sync border-emerald-sync/40'
                     : user.licenseStatus === 'trial'
-                    ? 'bg-luxury-semantic-warning-light dark:bg-luxury-semantic-warning-dark text-luxury-ink-light'
-                    : 'bg-luxury-semantic-error-light dark:bg-luxury-semantic-error-dark text-luxury-ink-light'
+                    ? 'bg-amber-alert/20 text-amber-alert border-amber-alert/40'
+                    : 'bg-crimson-brake/20 text-crimson-brake border-crimson-brake/40'
                 }`}
               >
                 {user.licenseStatus === 'active'
@@ -121,7 +121,7 @@ function DashboardContent({
                   : 'Expired'}
               </span>
               {user.garageType && (
-                <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-luxury-gold/20 text-luxury-gold">
+                <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-royal-gold/15 text-royal-gold border border-royal-gold/30">
                   {user.garageType === 'two_wheeler' ? '🏍️ Two-Wheeler' : '🚗 Four-Wheeler'}
                 </span>
               )}
@@ -139,8 +139,8 @@ function DashboardContent({
                   href={item.href}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                     isActive
-                      ? 'bg-luxury-gold text-luxury-ink-light shadow-lg'
-                      : 'text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 hover:bg-luxury-canvas-light/50 dark:hover:bg-luxury-canvas-dark/50 hover:text-luxury-gold'
+                      ? 'bg-geek-lime text-void-black shadow-lime-glow font-bold'
+                      : 'text-cool-slate hover:bg-deep-glass hover:text-geek-lime'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -152,10 +152,10 @@ function DashboardContent({
           </nav>
 
           {/* Logout */}
-          <div className="px-4 py-4 border-t border-luxury-gold/20">
+          <div className="px-4 py-4 border-t border-deep-glass">
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-3 px-4 py-3 w-full rounded-lg text-luxury-semantic-error-light dark:text-luxury-semantic-error-dark hover:bg-luxury-semantic-error-light/20 dark:hover:bg-luxury-semantic-error-dark/20 transition-all duration-200"
+              className="flex items-center space-x-3 px-4 py-3 w-full rounded-lg text-crimson-brake hover:bg-crimson-brake/20 transition-all duration-200"
             >
               <LogOut className="h-5 w-5" />
               <span className="font-medium">Logout</span>
@@ -167,10 +167,10 @@ function DashboardContent({
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Header with theme toggle */}
-        <header className="bg-luxury-surface-light dark:bg-luxury-surface-dark shadow-sm px-4 py-4 border-b border-luxury-gold/20 flex items-center justify-between">
+        <header className="bg-navy-steel shadow-sm px-4 py-4 border-b border-deep-glass flex items-center justify-between">
           <button 
             onClick={() => setSidebarOpen(true)} 
-            className="lg:hidden text-luxury-ink-light dark:text-luxury-ink-dark"
+            className="lg:hidden text-cool-slate hover:text-pure-white"
           >
             <Menu className="h-6 w-6" />
           </button>
@@ -180,13 +180,13 @@ function DashboardContent({
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-lg bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-gold/20 hover:border-luxury-gold/50 transition-colors"
+            className="p-2 rounded-lg bg-void-black border border-deep-glass hover:border-geek-lime/40 transition-colors"
             title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           >
             {theme === 'light' ? (
-              <Moon className="h-5 w-5 text-luxury-ink-light" />
+              <Moon className="h-5 w-5 text-cool-slate" />
             ) : (
-              <Sun className="h-5 w-5 text-luxury-ink-dark" />
+              <Sun className="h-5 w-5 text-geek-lime" />
             )}
           </button>
         </header>
