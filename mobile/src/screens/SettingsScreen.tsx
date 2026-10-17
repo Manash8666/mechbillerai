@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Modal, TextInput, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { formatThermalReceipt, printOrShareReceipt, ThermalPaperWidth } from '../services/thermalPrinter';
+import { API } from '../services/api';
 
 export default function SettingsScreen({ navigation }: any) {
   const [gstEnabled, setGstEnabled] = React.useState(false);
@@ -15,7 +16,25 @@ export default function SettingsScreen({ navigation }: any) {
   const [shopTagline, setShopTagline] = React.useState('Express Automotive Care & Tuning');
   const [upiVpa, setUpiVpa] = React.useState('motoban@icici');
 
+  // SaaS Trial & Licensing State
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = React.useState(false);
+  const [licensingData, setLicensingData] = React.useState<any>(null);
+  const [licenseKeyInput, setLicenseKeyInput] = React.useState('');
+  const [activatingKey, setActivatingKey] = React.useState(false);
+
+  const loadLicensing = async () => {
+    try {
+      const data = await API.getLicensingStatus();
+      if (data && !data.error) {
+        setLicensingData(data);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch licensing status on mobile:', e);
+    }
+  };
+
   React.useEffect(() => {
+    void loadLicensing();
     void (async () => {
       try {
         const { offlineSyncManager } = await import('../services/offlineSync');
@@ -126,6 +145,40 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const handleActivateLicenseKey = async () => {
+    if (!licenseKeyInput.trim()) {
+      Alert.alert('Required', 'Please enter your License Key or VIP Founder Pass.');
+      return;
+    }
+    try {
+      setActivatingKey(true);
+      const res = await API.activateLicense(licenseKeyInput.trim().toUpperCase());
+      if (res && res.error) {
+        Alert.alert('Activation Failed', res.error);
+      } else {
+        Alert.alert(
+          'License Activated! 🎉',
+          res.message || 'Your MotoBan Pro license is now active with unlimited access.'
+        );
+        setLicenseKeyInput('');
+        await loadLicensing();
+        setIsLicenseModalOpen(false);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to connect to licensing server.');
+    } finally {
+      setActivatingKey(false);
+    }
+  };
+
+  const getLicenseSubtitle = () => {
+    if (licensingData?.isVip) return 'VIP Founding Partner (100% Free Lifetime)';
+    if (licensingData?.isPro) return 'MotoBan Pro License Active';
+    if (licensingData?.isExpired) return '15-Day Trial Expired · Upgrade to continue';
+    const days = licensingData?.daysRemaining ?? 15;
+    return `15-Day Free Trial (${days} days left · 2/day limit)`;
+  };
+
   const menuItems = [
     {
       icon: 'palette-outline',
@@ -147,9 +200,9 @@ export default function SettingsScreen({ navigation }: any) {
     },
     {
       icon: 'shield-key-outline',
-      title: 'License Status',
-      subtitle: 'Lifetime License Active (MotoBan Pro)',
-      onPress: () => Alert.alert('License Active', 'Lifetime Pro license verified on device.'),
+      title: 'License & SaaS Subscription',
+      subtitle: getLicenseSubtitle(),
+      onPress: () => setIsLicenseModalOpen(true),
     },
     {
       icon: 'printer-outline',
@@ -360,6 +413,183 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.savePrinterBtnText}>Save Settings</Text>
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SaaS Subscription & Licensing Modal */}
+      <Modal visible={isLicenseModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="shield-check" size={24} color={COLORS.primary} />
+                <Text style={styles.modalTitle}>Licensing & Plans</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsLicenseModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 24 }}>
+              {/* Status Header Badge */}
+              <View style={[
+                styles.licenseBadgeBox,
+                licensingData?.isVip ? styles.badgeVip : licensingData?.isPro ? styles.badgePro : licensingData?.isExpired ? styles.badgeExpired : styles.badgeTrial
+              ]}>
+                <MaterialCommunityIcons
+                  name={licensingData?.isVip ? 'crown' : licensingData?.isPro ? 'check-decagram' : licensingData?.isExpired ? 'alert-circle' : 'clock-outline'}
+                  size={20}
+                  color={licensingData?.isVip ? '#D97706' : licensingData?.isPro ? '#10B981' : licensingData?.isExpired ? '#EF4444' : COLORS.primary}
+                />
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={styles.licenseBadgeTitle}>
+                    {licensingData?.isVip
+                      ? 'VIP Founding Partner Garage'
+                      : licensingData?.isPro
+                      ? 'MotoBan Pro Licensed'
+                      : licensingData?.isExpired
+                      ? '15-Day Trial Expired'
+                      : `15-Day Free Trial (${licensingData?.daysRemaining ?? 15} Days Left)`}
+                  </Text>
+                  <Text style={styles.licenseBadgeSub}>
+                    {licensingData?.isVip
+                      ? '100% Free Lifetime Full Access to all ecosystem modules.'
+                      : licensingData?.isPro
+                      ? 'Commercial license active. Unlimited bills, job cards, and sync.'
+                      : 'Max 2 Bills, 2 Estimates, and 2 Job Cards per day.'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Daily Quota Counter (Trial only) */}
+              {!licensingData?.isVip && !licensingData?.isPro && (
+                <View style={styles.quotaBox}>
+                  <Text style={styles.quotaBoxTitle}>TODAY&apos;S TRIAL QUOTA (LIMIT 2 / DAY)</Text>
+                  <View style={styles.quotaRow}>
+                    <Text style={styles.quotaLabel}>🧾 Bills / Invoices</Text>
+                    <Text style={styles.quotaValue}>{licensingData?.dailyQuota?.bills?.used ?? 0} / 2 Used</Text>
+                  </View>
+                  <View style={styles.quotaRow}>
+                    <Text style={styles.quotaLabel}>📋 Estimates / Quotes</Text>
+                    <Text style={styles.quotaValue}>{licensingData?.dailyQuota?.estimates?.used ?? 0} / 2 Used</Text>
+                  </View>
+                  <View style={styles.quotaRow}>
+                    <Text style={styles.quotaLabel}>🛠️ Job Cards</Text>
+                    <Text style={styles.quotaValue}>{licensingData?.dailyQuota?.jobCards?.used ?? 0} / 2 Used</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Pricing Tiers Carousel / Cards */}
+              <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>SUBSCRIPTION TIERS</Text>
+
+              {/* Monthly */}
+              <View style={styles.tierCard}>
+                <View style={styles.tierHeaderRow}>
+                  <Text style={styles.tierName}>Monthly Plan</Text>
+                  <Text style={styles.tierPrice}>₹1,299<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                </View>
+                <Text style={styles.tierFeatures}>• Unlimited Invoices, Estimates & Job Cards</Text>
+                <Text style={styles.tierFeatures}>• Dynamic Counter UPI QR & WhatsApp Dispatch</Text>
+                <Text style={styles.tierFeatures}>• Up to 5 Staff User Accounts Included</Text>
+              </View>
+
+              {/* Quarterly */}
+              <View style={styles.tierCard}>
+                <View style={styles.tierHeaderRow}>
+                  <View>
+                    <Text style={styles.tierName}>Quarterly Plan</Text>
+                    <Text style={styles.savingsTag}>Save 15%</Text>
+                  </View>
+                  <Text style={styles.tierPrice}>₹1,099<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                </View>
+                <Text style={{ fontSize: 11, color: COLORS.primary, marginBottom: 4 }}>Billed ₹3,297 every 3 months</Text>
+                <Text style={styles.tierFeatures}>• Everything in Monthly</Text>
+                <Text style={styles.tierFeatures}>• 4-Sided Pre-Inspection Dent Photo Shield</Text>
+                <Text style={styles.tierFeatures}>• Customer Credit & Ledger Tracking</Text>
+              </View>
+
+              {/* Yearly - Best Value */}
+              <View style={[styles.tierCard, styles.tierCardFeatured]}>
+                <View style={styles.featuredBadge}>
+                  <Text style={styles.featuredBadgeText}>⭐ MOST POPULAR · SAVE 31%</Text>
+                </View>
+                <View style={styles.tierHeaderRow}>
+                  <View>
+                    <Text style={[styles.tierName, { color: COLORS.primary }]}>Annual Pro Plan</Text>
+                    <Text style={styles.savingsTag}>Save ₹4,800/yr</Text>
+                  </View>
+                  <Text style={[styles.tierPrice, { color: COLORS.primary }]}>₹899<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                </View>
+                <Text style={{ fontSize: 11, color: '#10B981', marginBottom: 4, fontWeight: 'bold' }}>Billed ₹10,788 yearly (Just ₹29/day)</Text>
+                <Text style={styles.tierFeatures}>• Everything in Quarterly</Text>
+                <Text style={styles.tierFeatures}>• Indian VAHAN / RTO Plate Decoder</Text>
+                <Text style={styles.tierFeatures}>• Low-Stock Inventory Alerts & Subdomain</Text>
+                <Text style={styles.tierFeatures}>• VIP 24/7 Dedicated Support</Text>
+              </View>
+
+              {/* Lifetime */}
+              <View style={styles.tierCard}>
+                <View style={styles.tierHeaderRow}>
+                  <View>
+                    <Text style={styles.tierName}>Perpetual License</Text>
+                    <Text style={[styles.savingsTag, { backgroundColor: '#8B5CF6' }]}>Zero Renewal Fees</Text>
+                  </View>
+                  <Text style={styles.tierPrice}>₹15,999<Text style={{ fontSize: 11, color: COLORS.textMuted }}> one-time</Text></Text>
+                </View>
+                <Text style={styles.tierFeatures}>• 2 Years Guaranteed Feature Drops</Text>
+                <Text style={styles.tierFeatures}>• Air-Gapped Offline Local SQLite Vault</Text>
+                <Text style={styles.tierFeatures}>• Lifetime Commercial Ownership</Text>
+              </View>
+
+              {/* Addons */}
+              <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>ECOSYSTEM ADDONS</Text>
+              <View style={styles.addonCard}>
+                <Text style={styles.addonTitle}>🏢 Multi-Location / Franchise</Text>
+                <Text style={styles.addonPrice}>₹6,999 / additional shop</Text>
+                <Text style={styles.addonDesc}>Centralized multi-bay reporting & unified vehicle history</Text>
+              </View>
+              <View style={styles.addonCard}>
+                <Text style={styles.addonTitle}>👥 Extra Staff User Seat</Text>
+                <Text style={styles.addonPrice}>₹1,599 / user above 5</Text>
+                <Text style={styles.addonDesc}>Individual technician login with role-based permissions</Text>
+              </View>
+
+              {/* License Activation Form */}
+              <Text style={[styles.modalSectionLabel, { marginTop: 20 }]}>ACTIVATE LICENSE / VIP FOUNDER KEY</Text>
+              <TextInput
+                style={styles.licenseInput}
+                placeholder="XXXX-XXXX-XXXX-XXXX"
+                placeholderTextColor={COLORS.textMuted}
+                value={licenseKeyInput}
+                onChangeText={(t) => setLicenseKeyInput(t.toUpperCase())}
+                autoCapitalize="characters"
+              />
+              <Text style={styles.vipHelperText}>
+                💡 Founding Garages (motofit2@garagesaas.com & VIP Partner) receive 100% Free Lifetime Full Access. VIP Founder Master Keys are accepted.
+              </Text>
+
+              <TouchableOpacity
+                style={styles.activateBtn}
+                onPress={handleActivateLicenseKey}
+                disabled={activatingKey}
+              >
+                <MaterialCommunityIcons name="shield-key" size={18} color={COLORS.background} />
+                <Text style={styles.activateBtnText}>
+                  {activatingKey ? 'Verifying...' : 'Activate License'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Contact Founders to Upgrade */}
+              <TouchableOpacity
+                style={styles.whatsappUpgradeBtn}
+                onPress={() => Linking.openURL('https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20upgrade%20my%20garage%20subscription.')}
+              >
+                <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
+                <Text style={styles.whatsappUpgradeBtnText}>Contact Founder Desk to Upgrade</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -605,5 +835,203 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  licenseBadgeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  badgeVip: {
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    borderColor: '#D97706',
+  },
+  badgePro: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10B981',
+  },
+  badgeExpired: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: '#EF4444',
+  },
+  badgeTrial: {
+    backgroundColor: 'rgba(201, 243, 29, 0.1)',
+    borderColor: COLORS.primary,
+  },
+  licenseBadgeTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  licenseBadgeSub: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  quotaBox: {
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 12,
+  },
+  quotaBoxTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  quotaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  quotaLabel: {
+    fontSize: 12,
+    color: COLORS.text,
+  },
+  quotaValue: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  tierCard: {
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 10,
+  },
+  tierCardFeatured: {
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(201, 243, 29, 0.03)',
+  },
+  featuredBadge: {
+    backgroundColor: COLORS.primary,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  featuredBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: COLORS.background,
+  },
+  tierHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  tierName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  tierPrice: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.text,
+  },
+  savingsTag: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFF',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  tierFeatures: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  addonCard: {
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 8,
+  },
+  addonTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  addonPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginTop: 2,
+  },
+  addonDesc: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  licenseInput: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  vipHelperText: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginTop: 6,
+    lineHeight: 14,
+  },
+  activateBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  activateBtnText: {
+    color: COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  whatsappUpgradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#25D366',
+    gap: 8,
+    marginTop: 10,
+    backgroundColor: 'rgba(37, 211, 102, 0.05)',
+  },
+  whatsappUpgradeBtnText: {
+    color: '#25D366',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 });

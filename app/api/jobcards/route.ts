@@ -188,6 +188,21 @@ export async function POST(request: Request) {
       preInspectionShield,
     } = body;
 
+    // Check SaaS Trial Quotas (Max 2 Job Cards per day during 15-day trial)
+    const { checkTrialQuota } = await import('@/lib/licensing');
+    const quotaCheck = await checkTrialQuota(userId, 'JOBCARD');
+
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        buildErrorResponse(
+          quotaCheck.reason || 'SaaS Trial Quota Reached. Please upgrade to MotoBan Pro.',
+          quotaCheck.code || 'QUOTA_EXCEEDED',
+          { quota: quotaCheck }
+        ),
+        { status: 403 }
+      );
+    }
+
     // Validate required fields
     const validationError = validateRequired(body, ['customerId', 'vehicleId', 'description']);
     if (validationError) {

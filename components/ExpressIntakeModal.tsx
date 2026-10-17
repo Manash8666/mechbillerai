@@ -125,7 +125,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
         verifiedBy: 'Technician Check-In',
       });
 
-      await fetch('/api/jobcards', {
+      const res = await fetch('/api/jobcards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -143,6 +143,12 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
           ],
         }),
       });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.message || 'Trial quota limit reached: Max 2 Job Cards per day. Please upgrade to Pro.');
+        return;
+      }
 
       onSuccess();
       onClose();

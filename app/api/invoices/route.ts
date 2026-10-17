@@ -186,7 +186,25 @@ export async function POST(request: Request) {
       dueDate,
       paymentMode,
       notes,
+      docType,
+      isEstimate,
     } = body;
+
+    // Check SaaS Trial Quotas (Max 2 Bills, 2 Estimates per day during 15-day trial)
+    const { checkTrialQuota } = await import('@/lib/licensing');
+    const isDocEstimate = Boolean(isEstimate || docType === 'ESTIMATE' || body.type === 'ESTIMATE');
+    const quotaCheck = await checkTrialQuota(userId, isDocEstimate ? 'ESTIMATE' : 'BILL');
+
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        buildErrorResponse(
+          quotaCheck.reason || 'SaaS Trial Quota Reached. Please upgrade to MotoBan Pro.',
+          quotaCheck.code || 'QUOTA_EXCEEDED',
+          { quota: quotaCheck }
+        ),
+        { status: 403 }
+      );
+    }
 
     // Validate required fields
     const validationError = validateRequired(body, ['customerId', 'items', 'total']);
@@ -241,8 +259,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Generate invoice number
-    const invoiceNumber = generateInvoiceNumber();
+    // Generate invoice or estimate number
+    const { generateEstimateNumber } = await import('@/lib/utils');
+    const invoiceNumber = isDocEstimate ? generateEstimateNumber() : generateInvoiceNumber();
 
     // Create invoice with items
     const invoice = await prisma.invoice.create({

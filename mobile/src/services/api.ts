@@ -318,6 +318,26 @@ export const API = {
     return res.json();
   },
 
+  // Licensing & SaaS Trial Quotas
+  getLicensingStatus: async () => {
+    const res = await apiFetch('/licensing', {}, 7000);
+    return res.json();
+  },
+
+  activateLicense: async (licenseKey: string, deviceId?: string) => {
+    const user = await Storage.getUser();
+    const res = await apiFetch('/auth/activate-license', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user?.id,
+        licenseKey,
+        deviceId,
+      }),
+    }, 8000);
+    return res.json();
+  },
+
   // PDF URLs
   getJobCardPdfUrl: (jobCardId: string) => {
     return `${currentResolvedUrl}/pdf/jobcard?id=${jobCardId}`;

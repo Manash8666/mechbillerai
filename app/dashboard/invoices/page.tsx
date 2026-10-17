@@ -256,6 +256,9 @@ export default function InvoicesPage() {
         tax: calculatedTax,
         discount: 0,
         total: calculatedTotal,
+        docType: invoiceType,
+        isEstimate: invoiceType === 'ESTIMATE',
+        notes: invoiceType === 'ESTIMATE' ? '[ESTIMATE] Workshop Quotation' : undefined,
         items: lineItems.map((item) => ({
           description: item.description || 'Workshop Service',
           quantity: Number(item.quantity) || 1,
@@ -273,11 +276,12 @@ export default function InvoicesPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || 'Failed to create invoice');
+        toast.error(err.message || 'Failed to create invoice');
+        return;
       }
 
       const created = await res.json();
-      toast.success(`Invoice ${created.invoiceNumber || 'created'} saved successfully!`);
+      toast.success(`${invoiceType === 'ESTIMATE' ? 'Estimate' : 'Invoice'} ${created.invoiceNumber || 'created'} saved successfully!`);
       setIsModalOpen(false);
       setLineItems([{ description: 'General Service & Inspection', quantity: 1, unitPrice: 1500 }]);
       await fetchInvoices();

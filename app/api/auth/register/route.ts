@@ -68,7 +68,11 @@ export async function POST(request: Request) {
     // Generate license key
     const licenseKey = generateLicenseKey();
 
-    // Create user with trial license (7 days)
+    // Check if this account is one of the 2 VIP Free Founding Garages
+    const { isVipFreeGarage } = await import('@/lib/licensing');
+    const isVip = isVipFreeGarage(email);
+
+    // Create user with 15-day trial license or lifetime_free for VIP garages
     const user = await prisma.user.create({
       data: {
         email,
@@ -77,8 +81,8 @@ export async function POST(request: Request) {
         phone,
         garageType: garageType || 'four_wheeler',
         licenseKey,
-        licenseStatus: 'trial',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        licenseStatus: isVip ? 'lifetime_free' : 'trial',
+        expiresAt: isVip ? null : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days SaaS trial blueprint
       },
       select: {
         id: true,

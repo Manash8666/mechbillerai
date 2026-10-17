@@ -6,6 +6,8 @@ import { Palette, Bell, Shield, Database, Users as UsersIcon } from 'lucide-reac
 import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
 
+import LicensingSection from '@/components/LicensingSection';
+
 export default function SettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -107,9 +109,12 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mt-1">
-          Manage your garage settings, MSME tax registration, and preferences
+          Manage your garage settings, licensing & subscription tiers, MSME tax registration, and preferences
         </p>
       </div>
+
+      {/* SaaS Trial Status, Pricing Tiers & Licensing */}
+      <LicensingSection />
 
       {/* MSME GST Strategic Switch Card */}
       <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border-2 border-luxury-gold/40">
