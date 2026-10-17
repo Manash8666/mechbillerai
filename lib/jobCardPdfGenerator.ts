@@ -251,10 +251,39 @@ export function generateJobCardPdf(data: JobCardPdfData): jsPDF {
   // Verification stamp badge
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(16, 185, 129);
-  doc.text('[PASS] Verified: No unrecorded dent on intake floor', rightCardX + 4, currentY + midH - 1.5);
+  if (data.preInspectionShield) {
+    doc.setTextColor(16, 185, 129);
+    doc.text('[SHIELD ACTIVE] 4-Sided Photos Timestamped & Logged', rightCardX + 4, currentY + midH - 1.5);
+  } else {
+    doc.setTextColor(16, 185, 129);
+    doc.text('[PASS] Verified: No unrecorded dent on intake floor', rightCardX + 4, currentY + midH - 1.5);
+  }
 
-  currentY += midH + 6;
+  currentY += midH + 4;
+
+  // Mechanic Voice Note Banner (if present)
+  if (data.voiceNote) {
+    const voiceBoxH = 12;
+    doc.setFillColor(254, 249, 235);
+    doc.setDrawColor(229, 192, 123);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, voiceBoxH, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(180, 130, 40);
+    doc.text('MECHANIC VOICE NOTE (INTAKE LOG):', margin + 4, currentY + 4.5);
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(45, 45, 55);
+    const voiceLines = doc.splitTextToSize(`"${data.voiceNote}"`, pageWidth - margin * 2 - 8);
+    doc.text(voiceLines.slice(0, 2), margin + 4, currentY + 8.5);
+
+    currentY += voiceBoxH + 4;
+  } else {
+    currentY += 2;
+  }
 
   // 4. Parts & Labor Table
   const tableRows: (string | number)[][] = [];

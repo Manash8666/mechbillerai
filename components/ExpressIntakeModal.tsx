@@ -255,13 +255,21 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
 
       // 1. Ensure or find customer
       let customerId = '';
+      const rawDigits = (customerPhone || '').replace(/\D/g, '');
+      const validPhone =
+        rawDigits.length === 10
+          ? rawDigits
+          : rawDigits.length === 12 && rawDigits.startsWith('91')
+          ? rawDigits.slice(2)
+          : '9876543210';
+
       const custRes = await fetch(
-        `/api/customers?userId=${userId}&search=${encodeURIComponent(customerPhone || vehicleNumber)}`
+        `/api/customers?userId=${userId}&search=${encodeURIComponent(validPhone || vehicleNumber)}`
       );
       const custData = await custRes.json();
       const existingCust = Array.isArray(custData) ? custData[0] : custData.data?.[0];
 
-      if (existingCust) {
+      if (existingCust?.id) {
         customerId = existingCust.id;
       } else {
         const createCustRes = await fetch('/api/customers', {
@@ -269,12 +277,19 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId,
-            name: customerName || `Owner of ${vehicleNumber}`,
-            phone: customerPhone || '9876543210',
+            name: customerName?.trim() || `Customer (${vehicleNumber.toUpperCase()})`,
+            phone: validPhone,
           }),
         });
         const newCust = await createCustRes.json();
-        customerId = newCust.id;
+        if (!createCustRes.ok) {
+          throw new Error(newCust.message || newCust.error || 'Failed to register customer profile.');
+        }
+        customerId = newCust.id || newCust.data?.id;
+      }
+
+      if (!customerId) {
+        throw new Error('Unable to resolve customer ID for this job card.');
       }
 
       // 2. Ensure vehicle exists for this customer
@@ -285,20 +300,27 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
         (v: any) => v.registrationNo.toUpperCase() === vehicleNumber.toUpperCase()
       );
 
-      if (matchedVeh) {
+      if (matchedVeh?.id) {
         vehicleId = matchedVeh.id;
       } else {
         const createVehRes = await fetch(`/api/customers/${customerId}/vehicles`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            registrationNo: vehicleNumber.toUpperCase(),
+            registrationNo: vehicleNumber.toUpperCase().trim(),
             make: 'Two-Wheeler / Four-Wheeler',
             model: 'General Vehicle',
           }),
         });
         const newVeh = await createVehRes.json();
+        if (!createVehRes.ok) {
+          throw new Error(newVeh.error || newVeh.message || 'Failed to register vehicle profile.');
+        }
         vehicleId = newVeh.id;
+      }
+
+      if (!vehicleId) {
+        throw new Error('Unable to resolve vehicle ID for this job card.');
       }
 
       // 3. Create Job Card with Real Pre-Inspection Shield & Voice Note

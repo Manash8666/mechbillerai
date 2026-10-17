@@ -16,6 +16,9 @@ export const getApiBaseUrl = async (): Promise<string> => {
   } catch {}
 
   if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return `${window.location.origin}/api`;
+    }
     return LOCAL_API_URL;
   }
   return currentResolvedUrl;
@@ -40,7 +43,16 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
 async function apiFetch(path: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
   const custom = await AsyncStorage.getItem('custom_api_url');
   const token = await AsyncStorage.getItem('token');
-  const base = custom || (Platform.OS === 'web' ? LOCAL_API_URL : currentResolvedUrl);
+  
+  let base = custom || currentResolvedUrl;
+  if (!custom && Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      base = `${window.location.origin}/api`;
+    } else {
+      base = LOCAL_API_URL;
+    }
+  }
+
   const targetUrl = `${base}${path}`;
 
   const headers: Record<string, string> = {
@@ -59,7 +71,7 @@ async function apiFetch(path: string, options: RequestInit = {}, timeoutMs = 800
     const res = await fetchWithTimeout(targetUrl, mergedOptions, timeoutMs);
     return res;
   } catch (err: any) {
-    if (!custom && Platform.OS !== 'web' && currentResolvedUrl !== VERCEL_ACTIVE_URL) {
+    if (!custom && targetUrl !== `${VERCEL_ACTIVE_URL}${path}`) {
       console.warn(`[MotoBan] Falling back to verified Vercel cloud API: ${VERCEL_ACTIVE_URL}`);
       currentResolvedUrl = VERCEL_ACTIVE_URL;
       const fallbackUrl = `${VERCEL_ACTIVE_URL}${path}`;

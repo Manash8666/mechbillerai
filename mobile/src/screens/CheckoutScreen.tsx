@@ -41,6 +41,8 @@ export default function CheckoutScreen() {
           model: `${job.vehicle?.make || ''} ${job.vehicle?.model || ''}`.trim() || 'Vehicle',
           work: job.description || 'Service & Maintenance',
           amount: cost,
+          customerName: job.customer?.name || 'Valued Customer',
+          customerPhone: job.customer?.phone || '',
           itemsCount: job.tasks?.length || 3,
         };
 
@@ -70,10 +72,11 @@ export default function CheckoutScreen() {
     void fetchTriageJobs();
   };
 
-  const handleCollect = (id: string, vehicle: string, amount: number, jobNumber?: string) => {
+  const handleCollect = (job: any) => {
+    const { id, vehicle, amount, jobNumber, customerPhone, customerName } = job;
     Alert.alert(
       `Collect ₹${amount.toLocaleString('en-IN')}`,
-      `Choose action for ${vehicle}:`,
+      `Choose action for ${vehicle} (${customerName}):`,
       [
         {
           text: '📱 Pay via UPI (GPay/PhonePe)',
@@ -99,8 +102,8 @@ export default function CheckoutScreen() {
             const { launchWhatsAppBill } = await import('../services/payments');
             const pdfUrl = API.getInvoicePdfUrl(jobNumber || id, 'INVOICE');
             await launchWhatsAppBill({
-              phone: '9876543210',
-              customerName: 'Valued Customer',
+              phone: customerPhone || '9876543210',
+              customerName: customerName || 'Valued Customer',
               vehicleNumber: vehicle,
               invoiceNumber: jobNumber || id,
               totalAmount: amount,
@@ -123,7 +126,7 @@ export default function CheckoutScreen() {
               phone: '+91 98765 43210',
               invoiceNumber: jobNumber || id,
               date: new Date().toLocaleDateString('en-IN'),
-              customerName: 'Valued Customer',
+              customerName: customerName || 'Valued Customer',
               vehicleNumber: vehicle,
               rtoOffice: rto.rtoOffice,
               items: [{ description: 'Vehicle Maintenance & Repairs', qty: 1, amount }],
@@ -162,18 +165,19 @@ export default function CheckoutScreen() {
     }
   };
 
-  const handleShareInvoicePdf = async (vehicle: string, jobNumber: string) => {
+  const handleShareInvoicePdf = async (job: any) => {
+    const { vehicle, jobNumber, customerPhone, customerName, amount } = job;
     try {
       const { launchWhatsAppBill } = await import('../services/payments');
       const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
       await launchWhatsAppBill({
-        phone: '9876543210',
-        customerName: 'Valued Customer',
+        phone: customerPhone || '9876543210',
+        customerName: customerName || 'Valued Customer',
         vehicleNumber: vehicle,
         invoiceNumber: jobNumber,
-        totalAmount: 1500,
+        totalAmount: amount || 1500,
         paidAmount: 0,
-        balanceAmount: 1500,
+        balanceAmount: amount || 1500,
         garageName: 'MotoBan Workshop',
         invoiceUrl: url,
       });
@@ -260,7 +264,7 @@ export default function CheckoutScreen() {
                     </View>
                     <TouchableOpacity
                       style={styles.collectBtn}
-                      onPress={() => handleCollect(job.id, job.vehicle, job.amount, job.jobNumber)}
+                      onPress={() => handleCollect(job)}
                     >
                       <MaterialCommunityIcons name="check" size={18} color="#FFF" />
                       <Text style={styles.collectBtnText}>Collect</Text>
@@ -306,7 +310,7 @@ export default function CheckoutScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.shareBtnMini}
-                      onPress={() => handleShareInvoicePdf(job.vehicle, job.jobNumber || job.id)}
+                      onPress={() => handleShareInvoicePdf(job)}
                     >
                       <MaterialCommunityIcons name="share-variant" size={15} color={COLORS.primary} />
                       <Text style={styles.shareBtnMiniText}>Share</Text>

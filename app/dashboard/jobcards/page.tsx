@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download } from 'lucide-react';
+import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download, X, Camera, Mic } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 import Loader from '@/components/Loader';
@@ -43,6 +43,7 @@ export default function JobCardsPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeTab, setActiveTab] = useState<'all' | 'evening-triage'>('all');
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
+  const [selectedShieldJob, setSelectedShieldJob] = useState<JobCard | null>(null);
 
   useEffect(() => {
     void fetchJobCards();
@@ -479,9 +480,17 @@ export default function JobCardsPage() {
                             {job.priority} Priority
                           </span>
                           {job.preInspectionShield && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                              <ShieldAlert className="w-3 h-3" /> Shield Active
-                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedShieldJob(job);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/40 transition-all cursor-pointer"
+                              title="Click to view timestamped 4-angle intake proof photos"
+                            >
+                              <ShieldAlert className="w-3 h-3" /> Shield Active (View Proof)
+                            </button>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
@@ -587,6 +596,137 @@ export default function JobCardsPage() {
           void fetchJobCards();
         }}
       />
+
+      {/* Pre-Inspection Shield Proof Viewer Modal */}
+      {selectedShieldJob && (() => {
+        let shieldData: any = {};
+        try {
+          shieldData = typeof selectedShieldJob.preInspectionShield === 'string'
+            ? JSON.parse(selectedShieldJob.preInspectionShield)
+            : (selectedShieldJob.preInspectionShield || {});
+        } catch {
+          shieldData = {};
+        }
+
+        const photos = shieldData.photos || {};
+        const angles = ['Front', 'Back', 'Left Side', 'Right Side'];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark w-full max-w-2xl rounded-2xl border-2 border-emerald-500/50 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-500/20 bg-emerald-950/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-500/20 text-emerald-500 rounded-lg">
+                    <ShieldAlert className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                      Pre-Inspection Liability Proof Shield
+                      <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
+                        VERIFIED INTAKE
+                      </span>
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Job #{selectedShieldJob.jobNumber} · {selectedShieldJob.vehicle.registrationNo} ({selectedShieldJob.vehicle.make} {selectedShieldJob.vehicle.model})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedShieldJob(null)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-5">
+                {/* Timestamp & Customer Note */}
+                <div className="flex items-center justify-between text-xs bg-muted/40 p-3 rounded-lg border border-border">
+                  <div>
+                    <span className="text-muted-foreground">Logged Timestamp: </span>
+                    <strong className="text-foreground">
+                      {shieldData.timestamp ? new Date(shieldData.timestamp).toLocaleString('en-IN') : 'At Intake'}
+                    </strong>
+                  </div>
+                  <div className="text-emerald-500 font-semibold">
+                    ✓ Proof Safeguard Protected
+                  </div>
+                </div>
+
+                {/* 4 Photos Grid */}
+                <div>
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                    4-Angle Vehicle Damage Proof Photos
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {angles.map((angle) => {
+                      const photoUrl = photos[angle] || (shieldData[angle.toLowerCase()] ? photos[angle] : null);
+                      return (
+                        <div key={angle} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-medium">
+                            <span className="text-foreground">{angle}</span>
+                            {photoUrl ? (
+                              <span className="text-[10px] text-emerald-500 font-bold">Captured ✓</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Clean / No Dent</span>
+                            )}
+                          </div>
+                          <div className="aspect-4/3 rounded-xl border border-border bg-black/40 overflow-hidden flex items-center justify-center relative">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={`${angle} vehicle condition`}
+                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => window.open(photoUrl, '_blank')}
+                                title="Click to view full resolution in new tab"
+                              />
+                            ) : (
+                              <div className="text-center p-3">
+                                <Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1 opacity-50" />
+                                <span className="text-[11px] text-muted-foreground">No damage snapped</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Mechanic Voice Note */}
+                {selectedShieldJob.voiceNote && (
+                  <div className="p-3.5 rounded-xl bg-luxury-gold/10 border border-luxury-gold/30">
+                    <div className="flex items-center gap-2 text-xs font-bold text-luxury-gold mb-1">
+                      <Mic className="w-4 h-4 text-rose-500" />
+                      Recorded Mechanic Voice Note:
+                    </div>
+                    <p className="text-xs text-foreground italic">
+                      &ldquo;{selectedShieldJob.voiceNote}&rdquo;
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3 border-t border-border bg-muted/20 flex justify-between items-center">
+                <span className="text-[11px] text-muted-foreground">
+                  Timestamped proof protects mechanics against false scratch claims.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedShieldJob(null)}
+                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                  Close Proof
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
