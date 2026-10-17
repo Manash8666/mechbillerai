@@ -70,7 +70,7 @@ export default function CheckoutScreen() {
     void fetchTriageJobs();
   };
 
-  const handleCollect = async (id: string, vehicle: string, amount: number, jobNumber?: string) => {
+  const handleCollect = (id: string, vehicle: string, amount: number, jobNumber?: string) => {
     Alert.alert(
       `Collect ₹${amount.toLocaleString('en-IN')}`,
       `Choose action for ${vehicle}:`,
