@@ -245,7 +245,7 @@ export default function InvoicesScreen() {
   const handleShareWhatsApp = async (item: InvoiceItem) => {
     try {
       const { launchWhatsAppBill } = await import('../services/payments');
-      const pdfUrl = API.getInvoicePdfUrl(item.id, 'INVOICE');
+      const pdfUrl = API.getInvoicePdfUrl(item.id, 'INVOICE', (item as any).secureToken);
       await launchWhatsAppBill({
         phone: item.customer?.phone || '',
         customerName: item.customer?.name || 'Valued Customer',

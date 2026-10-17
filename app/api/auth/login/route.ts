@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 async function getDemoFallbackUser(email: string, password: string) {
+  // STRICT SECURITY: Never allow demo fallback in production mode
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
   const isDemo = email === 'demo@garagesaas.com' && (password === 'test123' || password === 'password123');
   const isTest = email === 'test@garagesaas.com' && (password === 'test123' || password === 'password123');
 
@@ -51,6 +57,29 @@ function checkLicenseStatus(user: any): string | null {
 
 export async function POST(request: Request) {
   try {
+    // 1. Sliding Window Rate Limiting (5 failed attempts per 15 mins per IP)
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(clientIp, {
+      keyPrefix: 'login_ip',
+      maxRequests: 5,
+      windowSeconds: 15 * 60,
+    });
+
+    if (!rateCheck.success) {
+      return NextResponse.json(
+        {
+          error: `Too many login attempts. For security, your IP is temporarily throttled. Please retry in ${rateCheck.resetInSeconds}s.`,
+          code: 'RATE_LIMITED',
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': rateCheck.resetInSeconds.toString(),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const { email, password } = body;
 
@@ -64,17 +93,17 @@ export async function POST(request: Request) {
     let user: any = null;
     try {
       user = await prisma.user.findUnique({
-        where: { email },
+        where: { email: email.toLowerCase().trim() },
       });
     } catch (dbErr) {
-      console.warn('DB error during login, attempting fallback:', dbErr);
+      console.warn('DB error during login, attempting fallback in dev mode:', dbErr);
       user = await getDemoFallbackUser(email, password);
       if (!user) throw dbErr;
     }
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
@@ -82,7 +111,7 @@ export async function POST(request: Request) {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }

@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
-// GET single appointment
+// GET single appointment with strict tenant scoping
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = await params;
-    const appointment = await prisma.appointment.findUnique({
-      where: { id },
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        id,
+        userId: auth.user.userId,
+      },
       include: {
         customer: true,
       },
@@ -32,13 +39,32 @@ export async function GET(
   }
 }
 
-// UPDATE appointment
+// UPDATE appointment with strict tenant scoping
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = await params;
+
+    // Verify ownership
+    const existing = await prisma.appointment.findFirst({
+      where: {
+        id,
+        userId: auth.user.userId,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Appointment not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
     const {
       serviceType,
@@ -52,7 +78,6 @@ export async function PUT(
     } = body;
 
     const updateData: any = {};
-    
     if (serviceType !== undefined) updateData.serviceType = serviceType;
     if (description !== undefined) updateData.description = description;
     if (date !== undefined) updateData.date = new Date(date);
@@ -80,13 +105,32 @@ export async function PUT(
   }
 }
 
-// DELETE appointment
+// DELETE appointment with strict tenant scoping
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = await params;
+
+    // Verify ownership
+    const existing = await prisma.appointment.findFirst({
+      where: {
+        id,
+        userId: auth.user.userId,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Appointment not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     await prisma.appointment.delete({
       where: { id },
     });

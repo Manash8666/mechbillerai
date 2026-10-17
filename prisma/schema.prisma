@@ -35,6 +35,8 @@ model User {
   appointments  Appointment[]
   activities    ActivityLog[]
   branding      BrandingSettings?
+  inventoryItems InventoryItem[]
+  suppliers      Supplier[]
 }
 
 // Customer Management
@@ -213,10 +215,12 @@ model InventoryItem {
   gstRate       Float    @default(18)
   location      String?
   supplierId    String?
+  userId        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   // Relations
+  user          User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   supplier      Supplier?          @relation(fields: [supplierId], references: [id])
   transactions  InventoryTransaction[]
 }
@@ -244,11 +248,13 @@ model Supplier {
   address   String?
   gstNumber String?
   notes     String?
+  userId    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  items InventoryItem[]
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     InventoryItem[]
 }
 
 // Appointment Booking

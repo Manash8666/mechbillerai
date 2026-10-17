@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 import {
   buildAdvancedQuery,
   buildPaginatedResponse,
@@ -11,6 +12,9 @@ import {
 // GET - List inventory with advanced filtering, pagination, search, sorting
 export async function GET(request: Request) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { searchParams } = new URL(request.url);
 
     // Parse query parameters
@@ -20,7 +24,7 @@ export async function GET(request: Request) {
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
     
-    // Advanced filters
+    // Advanced filters - strictly isolated by tenant
     const category = searchParams.get('category');
     const stockStatus = searchParams.get('stockStatus'); // low, out, in-stock
     const quantityFrom = searchParams.get('quantityFrom');
@@ -29,7 +33,9 @@ export async function GET(request: Request) {
     const priceTo = searchParams.get('priceTo');
 
     // Build filters
-    const filters: any = {};
+    const filters: any = {
+      userId: auth.user.userId,
+    };
     
     if (category) {
       filters.category = category;
@@ -145,6 +151,9 @@ export async function GET(request: Request) {
 // POST - Create new inventory item with validation
 export async function POST(request: Request) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const body = await request.json();
     const {
       name,
@@ -157,8 +166,6 @@ export async function POST(request: Request) {
       sellingPrice,
       gstRate,
       location,
-      supplier,
-      userId,
     } = body;
 
     // Validate required fields
@@ -192,9 +199,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check for duplicate code
+    // Check for duplicate code within tenant's scope
     const existing = await prisma.inventoryItem.findFirst({
-      where: { code },
+      where: { code, userId: auth.user.userId },
     });
 
     if (existing) {
@@ -204,7 +211,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create item
+    // Create item strictly scoped to tenant
     const item = await prisma.inventoryItem.create({
       data: {
         name,
@@ -217,24 +224,22 @@ export async function POST(request: Request) {
         sellingPrice: sellingPrice || 0,
         gstRate: gstRate || 0,
         location,
-        supplier,
+        userId: auth.user.userId,
       },
     });
 
     // Log activity
-    if (userId) {
-      await logActivity(prisma, {
-        userId,
-        action: 'CREATE',
-        entity: 'InventoryItem',
-        entityId: item.id,
-        details: {
-          name: item.name,
-          code: item.code,
-          quantity: item.quantity,
-        },
-      });
-    }
+    await logActivity(prisma, {
+      userId: auth.user.userId,
+      action: 'CREATE',
+      entity: 'InventoryItem',
+      entityId: item.id,
+      details: {
+        name: item.name,
+        code: item.code,
+        quantity: item.quantity,
+      },
+    });
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
@@ -246,11 +251,13 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE - Bulk delete inventory items
+// DELETE - Bulk delete inventory items scoped to tenant
 export async function DELETE(request: Request) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const ids = searchParams.get('ids')?.split(',') || [];
 
     if (ids.length === 0) {
@@ -260,23 +267,22 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Delete items
+    // Delete items strictly owned by tenant
     const result = await prisma.inventoryItem.deleteMany({
       where: {
         id: { in: ids },
+        userId: auth.user.userId,
       },
     });
 
     // Log activity
-    if (userId) {
-      await logActivity(prisma, {
-        userId,
-        action: 'BULK_DELETE',
-        entity: 'InventoryItem',
-        entityId: 'bulk',
-        details: { count: result.count, ids },
-      });
-    }
+    await logActivity(prisma, {
+      userId: auth.user.userId,
+      action: 'BULK_DELETE',
+      entity: 'InventoryItem',
+      entityId: 'bulk',
+      details: { count: result.count, ids },
+    });
 
     return NextResponse.json({
       success: true,

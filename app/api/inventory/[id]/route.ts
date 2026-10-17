@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
-// GET single inventory item
+// GET single inventory item with tenant isolation
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = await params;
-    const item = await prisma.inventoryItem.findUnique({
-      where: { id },
+    const item = await prisma.inventoryItem.findFirst({
+      where: {
+        id,
+        userId: auth.user.userId,
+      },
       include: {
         supplier: true,
         transactions: {
@@ -36,13 +43,32 @@ export async function GET(
   }
 }
 
-// UPDATE inventory item
+// UPDATE inventory item with tenant isolation
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = await params;
+
+    // Verify tenant ownership
+    const existing = await prisma.inventoryItem.findFirst({
+      where: {
+        id,
+        userId: auth.user.userId,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Item not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
     const {
       name,
@@ -90,13 +116,32 @@ export async function PUT(
   }
 }
 
-// DELETE inventory item
+// DELETE inventory item with tenant isolation
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = await params;
+
+    // Verify tenant ownership
+    const existing = await prisma.inventoryItem.findFirst({
+      where: {
+        id,
+        userId: auth.user.userId,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Item not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     await prisma.inventoryItem.delete({
       where: { id },
     });

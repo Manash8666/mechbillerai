@@ -140,9 +140,15 @@ export async function GET(request: Request) {
       _count: true,
     });
 
+    const { generateInvoiceToken } = await import('@/lib/hmacToken');
+    const invoicesWithTokens = invoices.map((inv) => ({
+      ...inv,
+      secureToken: generateInvoiceToken(inv.invoiceNumber, inv.createdAt),
+    }));
+
     // Build paginated response with summary
     const response = {
-      ...buildPaginatedResponse(invoices, total, page, limit),
+      ...buildPaginatedResponse(invoicesWithTokens, total, page, limit),
       summary: {
         totalAmount: summary._sum.total || 0,
         paidAmount: summary._sum.paid || 0,

@@ -32,6 +32,32 @@ export async function GET(request: Request) {
       },
     });
 
+    if (!invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    // Security Verification:
+    // 1. If requester is authenticated garage owner, grant access.
+    // 2. Otherwise (public access, e.g. customer clicking WhatsApp link), require valid cryptographic HMAC token.
+    const token = searchParams.get('token');
+    const { getSessionUser } = await import('@/lib/auth');
+    const authUser = await getSessionUser(request);
+    const isOwner = authUser && authUser.userId === invoice.userId;
+
+    if (!isOwner) {
+      const { verifyInvoiceToken } = await import('@/lib/hmacToken');
+      const isTokenValid = verifyInvoiceToken(invoice.invoiceNumber, invoice.createdAt, token);
+      if (!isTokenValid) {
+        return NextResponse.json(
+          {
+            error: 'Access denied. Secure invoice token is required for public bill access.',
+            code: 'FORBIDDEN',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     let customerName = 'Valued Customer';
     let customerPhone = '';
     let customerEmail = '';

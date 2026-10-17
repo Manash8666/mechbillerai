@@ -135,7 +135,8 @@ export default function InvoicesPage() {
     const { buildWhatsAppBillUrl } = require('@/lib/whatsapp');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const invoiceUrl = `${origin}/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE`;
+    const secureToken = (invoice as any).secureToken ? `&token=${(invoice as any).secureToken}` : '';
+    const invoiceUrl = `${origin}/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE${secureToken}`;
     
     const url = buildWhatsAppBillUrl({
       phone: invoice.customer.phone,

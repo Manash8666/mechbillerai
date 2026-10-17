@@ -2,9 +2,28 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { generateLicenseKey } from '@/lib/utils';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
+    // Rate limit registration to 5 attempts per IP per hour
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(clientIp, {
+      keyPrefix: 'register_ip',
+      maxRequests: 5,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!rateCheck.success) {
+      return NextResponse.json(
+        {
+          error: `Too many registration attempts from your IP. Please try again in ${rateCheck.resetInSeconds}s.`,
+          code: 'RATE_LIMITED',
+        },
+        { status: 429, headers: { 'Retry-After': rateCheck.resetInSeconds.toString() } }
+      );
+    }
+
     const body = await request.json();
     const { email, password, name, phone, garageType } = body;
 
@@ -12,6 +31,13 @@ export async function POST(request: Request) {
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters long' },
         { status: 400 }
       );
     }

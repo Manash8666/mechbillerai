@@ -1,14 +1,34 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id: customerId } = await params;
+
+    // Verify tenant ownership of target customer
+    const customer = await prisma.customer.findFirst({
+      where: {
+        id: customerId,
+        userId: auth.user.userId,
+      },
+    });
+
+    if (!customer) {
+      return NextResponse.json(
+        { error: 'Customer not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
-    const { registrationNo, make, model } = body;
+    const { registrationNo, make, model, year, color } = body;
 
     if (!registrationNo) {
       return NextResponse.json(
@@ -17,27 +37,33 @@ export async function POST(
       );
     }
 
+    const cleanPlate = registrationNo.toUpperCase().trim();
+
     // Check if vehicle already exists
     let vehicle = await prisma.vehicle.findUnique({
-      where: { registrationNo: registrationNo.toUpperCase() },
+      where: { registrationNo: cleanPlate },
     });
 
     if (vehicle) {
-      // If vehicle exists, associate with customer if not already or update
+      // If vehicle exists, update its details and association
       vehicle = await prisma.vehicle.update({
         where: { id: vehicle.id },
         data: {
           customerId: customerId,
           make: make || vehicle.make,
           model: model || vehicle.model,
+          year: year !== undefined ? parseInt(year) : vehicle.year,
+          color: color || vehicle.color,
         },
       });
     } else {
       vehicle = await prisma.vehicle.create({
         data: {
-          registrationNo: registrationNo.toUpperCase(),
+          registrationNo: cleanPlate,
           make: make || 'Standard',
           model: model || 'General',
+          year: year !== undefined ? parseInt(year) : undefined,
+          color: color || undefined,
           customerId: customerId,
         },
       });
@@ -58,7 +84,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id: customerId } = await params;
+
+    // Verify tenant ownership of target customer
+    const customer = await prisma.customer.findFirst({
+      where: {
+        id: customerId,
+        userId: auth.user.userId,
+      },
+    });
+
+    if (!customer) {
+      return NextResponse.json(
+        { error: 'Customer not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     const vehicles = await prisma.vehicle.findMany({
       where: { customerId },
     });
