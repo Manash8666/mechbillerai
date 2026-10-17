@@ -11,6 +11,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import { offlineSyncManager } from '../services/offlineSync';
+import { decodeIndianLicensePlate } from '../services/rtoLookup';
 
 export default function IntakeScreen({ navigation }: any) {
   const [vehicleNumber, setVehicleNumber] = useState('');
@@ -18,6 +19,8 @@ export default function IntakeScreen({ navigation }: any) {
   const [customerPhone, setCustomerPhone] = useState('');
   const [serviceDescription, setServiceDescription] = useState('Full Maintenance Inspection');
   const [estimatedCost, setEstimatedCost] = useState('650');
+
+  const rtoInfo = decodeIndianLicensePlate(vehicleNumber);
 
   // 4 photos states
   const [photos, setPhotos] = useState<{ [key: string]: boolean }>({
@@ -118,6 +121,21 @@ export default function IntakeScreen({ navigation }: any) {
           value={vehicleNumber}
           onChangeText={setVehicleNumber}
         />
+
+        {rtoInfo.stateCode ? (
+          <View style={styles.rtoBadge}>
+            <MaterialCommunityIcons
+              name={rtoInfo.isBharatSeries ? 'shield-star' : 'map-marker-radius'}
+              size={15}
+              color={COLORS.primary}
+            />
+            <Text style={styles.rtoBadgeText}>
+              {rtoInfo.isBharatSeries
+                ? '🇮🇳 Bharat Series (Pan-India MoRTH Permit)'
+                : `🇮🇳 ${rtoInfo.stateName} • ${rtoInfo.rtoOffice}`}
+            </Text>
+          </View>
+        ) : null}
 
         <Text style={[styles.label, { marginTop: 12 }]}>Customer Name & Phone</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -349,5 +367,23 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  rtoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(201, 243, 29, 0.08)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 243, 29, 0.25)',
+  },
+  rtoBadgeText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
   },
 });

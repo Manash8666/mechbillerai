@@ -1,11 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Modal, TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { formatThermalReceipt, printOrShareReceipt, ThermalPaperWidth } from '../services/thermalPrinter';
 
 export default function SettingsScreen({ navigation }: any) {
   const [gstEnabled, setGstEnabled] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
+
+  // Thermal Printer Setup State
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = React.useState(false);
+  const [paperWidth, setPaperWidth] = React.useState<ThermalPaperWidth>('58mm');
+  const [shopTagline, setShopTagline] = React.useState('Express Automotive Care & Tuning');
+  const [upiVpa, setUpiVpa] = React.useState('motoban@icici');
 
   React.useEffect(() => {
     void (async () => {
@@ -13,11 +21,87 @@ export default function SettingsScreen({ navigation }: any) {
         const { offlineSyncManager } = await import('../services/offlineSync');
         const enabled = await offlineSyncManager.getGstEnabled();
         setGstEnabled(enabled);
+
+        const savedWidth = await AsyncStorage.getItem('@motoban_printer_width');
+        if (savedWidth === '58mm' || savedWidth === '80mm') setPaperWidth(savedWidth);
+
+        const savedTagline = await AsyncStorage.getItem('@motoban_printer_tagline');
+        if (savedTagline) setShopTagline(savedTagline);
+
+        const savedVpa = await AsyncStorage.getItem('@motoban_printer_vpa');
+        if (savedVpa) setUpiVpa(savedVpa);
       } catch (err) {
-        console.error('Failed to load GST status:', err);
+        console.error('Failed to load settings:', err);
       }
     })();
   }, []);
+
+  const handleSavePrinterSettings = async () => {
+    try {
+      await AsyncStorage.setItem('@motoban_printer_width', paperWidth);
+      await AsyncStorage.setItem('@motoban_printer_tagline', shopTagline);
+      await AsyncStorage.setItem('@motoban_printer_vpa', upiVpa);
+      Alert.alert('Settings Saved', `Thermal Printer configured for ${paperWidth} slips.`);
+      setIsPrinterModalOpen(false);
+    } catch {
+      Alert.alert('Error', 'Failed to save printer configuration.');
+    }
+  };
+
+  const handleTestPrintSlip = async () => {
+    await printOrShareReceipt(
+      {
+        workshopName: 'MotoBan Workshop',
+        tagline: shopTagline,
+        phone: '+91 98765 43210',
+        address: 'Drive-In Road, Ahmedabad',
+        invoiceNumber: 'TEST-001',
+        date: new Date().toLocaleDateString('en-IN'),
+        customerName: 'Test Customer',
+        customerPhone: '9876543210',
+        vehicleNumber: 'GJ-01-AB-1234',
+        rtoOffice: 'Ahmedabad West (GJ-01)',
+        items: [
+          { description: 'Engine Oil Flush & Refill', qty: 1, rate: 450, amount: 450 },
+          { description: 'Brake Caliper Servicing', qty: 1, rate: 350, amount: 350 },
+        ],
+        subtotal: 800,
+        cgst: gstEnabled ? 72 : 0,
+        sgst: gstEnabled ? 72 : 0,
+        total: gstEnabled ? 944 : 800,
+        paid: gstEnabled ? 944 : 800,
+        balance: 0,
+        paymentMode: 'UPI',
+        upiVpa,
+      },
+      paperWidth
+    );
+  };
+
+  const sampleSlipText = formatThermalReceipt(
+    {
+      workshopName: 'MotoBan Workshop',
+      tagline: shopTagline,
+      phone: '+91 98765 43210',
+      invoiceNumber: 'TEST-001',
+      date: new Date().toLocaleDateString('en-IN'),
+      customerName: 'Test Customer',
+      vehicleNumber: 'GJ-01-AB-1234',
+      rtoOffice: 'Ahmedabad West (GJ-01)',
+      items: [
+        { description: 'Engine Oil Flush', amount: 450 },
+        { description: 'Brake Caliper Servicing', amount: 350 },
+      ],
+      subtotal: 800,
+      cgst: gstEnabled ? 72 : 0,
+      sgst: gstEnabled ? 72 : 0,
+      total: gstEnabled ? 944 : 800,
+      paid: gstEnabled ? 944 : 800,
+      balance: 0,
+      upiVpa,
+    },
+    paperWidth
+  );
 
   const handleToggleGST = async () => {
     const nextVal = !gstEnabled;
@@ -70,8 +154,8 @@ export default function SettingsScreen({ navigation }: any) {
     {
       icon: 'printer-outline',
       title: 'Thermal Printer Setup',
-      subtitle: 'Bluetooth 58mm / 80mm & USB',
-      onPress: () => Alert.alert('Printer Setup', 'Standard 58mm/80mm ESC/POS and Network printers supported.'),
+      subtitle: `Configured: ${paperWidth} Bluetooth & USB POS`,
+      onPress: () => setIsPrinterModalOpen(true),
     },
   ];
 
@@ -184,6 +268,102 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Thermal Printer Setup Modal */}
+      <Modal
+        visible={isPrinterModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsPrinterModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <MaterialCommunityIcons name="printer-pos" size={24} color={COLORS.primary} />
+                <Text style={styles.modalTitle}>Thermal Printer Setup</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsPrinterModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingVertical: 14 }}>
+              {/* Paper Width Selector */}
+              <Text style={styles.modalSectionLabel}>PAPER ROLL WIDTH</Text>
+              <View style={styles.paperToggleRow}>
+                <TouchableOpacity
+                  style={[styles.paperOption, paperWidth === '58mm' && styles.paperOptionActive]}
+                  onPress={() => setPaperWidth('58mm')}
+                >
+                  <MaterialCommunityIcons
+                    name="receipt"
+                    size={20}
+                    color={paperWidth === '58mm' ? COLORS.primary : COLORS.textMuted}
+                  />
+                  <Text style={[styles.paperOptionText, paperWidth === '58mm' && styles.paperOptionTextActive]}>
+                    58mm (2 Inch Pocket / BT)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.paperOption, paperWidth === '80mm' && styles.paperOptionActive]}
+                  onPress={() => setPaperWidth('80mm')}
+                >
+                  <MaterialCommunityIcons
+                    name="printer-pos"
+                    size={20}
+                    color={paperWidth === '80mm' ? COLORS.primary : COLORS.textMuted}
+                  />
+                  <Text style={[styles.paperOptionText, paperWidth === '80mm' && styles.paperOptionTextActive]}>
+                    80mm (3 Inch Countertop)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Tagline */}
+              <Text style={styles.modalSectionLabel}>WORKSHOP TAGLINE / SLOGAN</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={shopTagline}
+                onChangeText={setShopTagline}
+                placeholder="Express Automotive Care & Tuning"
+                placeholderTextColor={COLORS.textMuted}
+              />
+
+              {/* UPI VPA for Slip QR & Payment */}
+              <Text style={styles.modalSectionLabel}>RECEIPT UPI ID (VPA)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={upiVpa}
+                onChangeText={setUpiVpa}
+                placeholder="workshop@okhdfcbank"
+                placeholderTextColor={COLORS.textMuted}
+                autoCapitalize="none"
+              />
+
+              {/* Live Thermal Monospace Slip Preview */}
+              <Text style={styles.modalSectionLabel}>LIVE SLIP PREVIEW ({paperWidth})</Text>
+              <View style={styles.slipPaper}>
+                <Text style={styles.slipMonospaceText}>{sampleSlipText}</Text>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                <TouchableOpacity style={styles.testPrintBtn} onPress={handleTestPrintSlip}>
+                  <MaterialCommunityIcons name="printer" size={18} color={COLORS.primary} />
+                  <Text style={styles.testPrintBtnText}>Test Print Slip</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.savePrinterBtn} onPress={handleSavePrinterSettings}>
+                  <MaterialCommunityIcons name="check" size={18} color={COLORS.background} />
+                  <Text style={styles.savePrinterBtnText}>Save Settings</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -306,5 +486,124 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  modalSectionLabel: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+    color: COLORS.primary,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  paperToggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  paperOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    gap: 8,
+  },
+  paperOptionActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(201, 243, 29, 0.1)',
+  },
+  paperOptionText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  paperOptionTextActive: {
+    color: COLORS.primary,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: COLORS.text,
+    fontSize: 13,
+  },
+  slipPaper: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+    maxHeight: 220,
+  },
+  slipMonospaceText: {
+    fontFamily: 'Courier',
+    fontSize: 10,
+    color: '#0F172A',
+    lineHeight: 13,
+  },
+  testPrintBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    gap: 8,
+  },
+  testPrintBtnText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  savePrinterBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    padding: 14,
+    borderRadius: 10,
+    gap: 8,
+  },
+  savePrinterBtnText: {
+    color: COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 13,
   },
 });

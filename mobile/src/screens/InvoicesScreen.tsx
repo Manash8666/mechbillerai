@@ -215,8 +215,15 @@ export default function InvoicesScreen() {
           },
         },
         {
-          text: 'UPI / Online',
+          text: '📱 Pay via UPI (GPay/PhonePe)',
           onPress: async () => {
+            const { launchMobileUpiPayment } = await import('../services/payments');
+            await launchMobileUpiPayment({
+              vpa: 'motoban@icici',
+              payeeName: 'MotoBan Workshop',
+              amount: item.balance,
+              invoiceNumber: item.invoiceNumber,
+            });
             try {
               await API.recordPayment(item.id, {
                 amount: item.balance,
@@ -233,6 +240,59 @@ export default function InvoicesScreen() {
         { text: 'Cancel', style: 'cancel' },
       ]
     );
+  };
+
+  const handleShareWhatsApp = async (item: InvoiceItem) => {
+    try {
+      const { launchWhatsAppBill } = await import('../services/payments');
+      const pdfUrl = API.getInvoicePdfUrl(item.id, 'INVOICE');
+      await launchWhatsAppBill({
+        phone: item.customer?.phone || '',
+        customerName: item.customer?.name || 'Valued Customer',
+        vehicleNumber: (item.jobCard as any)?.vehicle?.registrationNo || undefined,
+        invoiceNumber: item.invoiceNumber,
+        totalAmount: item.total || 0,
+        paidAmount: item.paid || 0,
+        balanceAmount: item.balance || 0,
+        garageName: 'MotoBan Workshop',
+        invoiceUrl: pdfUrl,
+      });
+    } catch (err: any) {
+      Alert.alert('WhatsApp Error', err.message || 'Could not launch WhatsApp.');
+    }
+  };
+
+  const handleThermalPrint = async (item: InvoiceItem) => {
+    try {
+      const { printOrShareReceipt } = await import('../services/thermalPrinter');
+      await printOrShareReceipt({
+        workshopName: 'MotoBan Workshop',
+        tagline: 'Precision Care & Diagnostics',
+        phone: '+91 98765 43210',
+        invoiceNumber: item.invoiceNumber,
+        date: new Date(item.createdAt).toLocaleDateString('en-IN'),
+        customerName: item.customer?.name || 'Walk-in Customer',
+        customerPhone: item.customer?.phone,
+        vehicleNumber: (item.jobCard as any)?.vehicle?.registrationNo,
+        items: [
+          {
+            description: 'Automotive Labor & Inspection',
+            qty: 1,
+            amount: item.subtotal || item.total || 0,
+          },
+        ],
+        subtotal: item.subtotal || item.total || 0,
+        cgst: item.tax ? item.tax / 2 : undefined,
+        sgst: item.tax ? item.tax / 2 : undefined,
+        total: item.total || 0,
+        paid: item.paid || 0,
+        balance: item.balance || 0,
+        paymentMode: item.paymentMode,
+        upiVpa: 'motoban@icici',
+      });
+    } catch (err: any) {
+      Alert.alert('Printer Error', err.message || 'Could not print thermal receipt.');
+    }
   };
 
   const renderItem = ({ item }: { item: InvoiceItem }) => {
@@ -294,30 +354,38 @@ export default function InvoicesScreen() {
         <View style={styles.actionsRow}>
           {item.balance > 0 && (
             <TouchableOpacity
-              style={[styles.actionBtnPrimary, { backgroundColor: '#10B981', flex: 1.2 }]}
+              style={[styles.actionBtnPrimary, { backgroundColor: '#10B981', flex: 1.1 }]}
               onPress={() => handleCollectPayment(item)}
             >
-              <MaterialCommunityIcons name="cash-check" size={16} color="#FFF" />
+              <MaterialCommunityIcons name="cash-check" size={15} color="#FFF" />
               <Text style={[styles.actionBtnPrimaryText, { color: '#FFF' }]}>
-                Collect ₹{item.balance}
+                ₹{item.balance}
               </Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={styles.actionBtnSecondary}
-            onPress={() => handleOpenPdf(item.id, 'ESTIMATE')}
+            style={[styles.actionBtnSecondary, { borderColor: '#25D366' }]}
+            onPress={() => handleShareWhatsApp(item)}
           >
-            <MaterialCommunityIcons name="file-document-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.actionBtnSecondaryText}>Estimate</Text>
+            <MaterialCommunityIcons name="whatsapp" size={15} color="#25D366" />
+            <Text style={[styles.actionBtnSecondaryText, { color: '#25D366' }]}>WhatsApp</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtnSecondary}
+            onPress={() => handleThermalPrint(item)}
+          >
+            <MaterialCommunityIcons name="printer-pos" size={15} color={COLORS.primary} />
+            <Text style={styles.actionBtnSecondaryText}>Slip</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionBtnPrimary}
             onPress={() => handleOpenPdf(item.id, 'INVOICE')}
           >
-            <MaterialCommunityIcons name="receipt" size={16} color={COLORS.background} />
-            <Text style={styles.actionBtnPrimaryText}>Bill PDF</Text>
+            <MaterialCommunityIcons name="receipt" size={15} color={COLORS.background} />
+            <Text style={styles.actionBtnPrimaryText}>PDF</Text>
           </TouchableOpacity>
         </View>
       </View>

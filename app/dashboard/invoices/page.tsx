@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2 } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -148,6 +148,45 @@ export default function InvoicesPage() {
       invoiceUrl,
     });
     window.open(url, '_blank');
+  };
+
+  const handlePrintThermalSlip = async (invoice: Invoice) => {
+    try {
+      const { printThermalSlipBrowser } = await import('@/lib/thermalPrinter');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      printThermalSlipBrowser({
+        workshopName: user.name || 'MotoBan Workshop',
+        tagline: 'Automotive Precision & Smart Care',
+        phone: user.phone || '+91 98765 43210',
+        invoiceNumber: invoice.invoiceNumber,
+        date: new Date(invoice.createdAt).toLocaleDateString('en-IN'),
+        customerName: invoice.customer?.name || 'Walk-in Customer',
+        customerPhone: invoice.customer?.phone,
+        items: invoice.items?.map((it) => ({
+          description: it.description,
+          qty: it.quantity,
+          rate: it.unitPrice,
+          amount: it.total,
+        })) || [
+          {
+            description: 'Automotive Labor & Spares',
+            amount: invoice.total,
+          },
+        ],
+        subtotal: invoice.subtotal || invoice.total,
+        cgst: invoice.tax ? invoice.tax / 2 : 0,
+        sgst: invoice.tax ? invoice.tax / 2 : 0,
+        total: invoice.total,
+        paid: invoice.paid,
+        balance: invoice.balance,
+        paymentMode: invoice.paymentMode,
+        upiVpa: 'motoban@icici',
+      }, '58mm');
+      toast.success('Thermal receipt sent to printer!');
+    } catch (err) {
+      console.error('Thermal print error:', err);
+      toast.error('Failed to trigger thermal printer');
+    }
   };
 
   const fetchInvoices = async () => {
@@ -485,6 +524,15 @@ export default function InvoicesPage() {
                     >
                       <Share2 className="w-3.5 h-3.5" />
                       WhatsApp Bill
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintThermalSlip(invoice)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-slate-800 text-slate-100 font-semibold rounded-lg hover:bg-slate-700 border border-slate-700 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Print 58mm / 80mm ESC/POS Monospace Thermal Receipt Slip"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-[#C9F31D]" />
+                      Thermal Slip
                     </button>
                     <a
                       href={`/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE`}

@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import MobileLoader from '../components/MobileLoader';
+import { decodeIndianLicensePlate } from '../services/rtoLookup';
 
 export default function CheckoutScreen() {
   const [activeTab, setActiveTab] = useState<'quick' | 'detailed'>('quick');
@@ -69,22 +70,85 @@ export default function CheckoutScreen() {
     void fetchTriageJobs();
   };
 
-  const handleCollect = async (id: string, vehicle: string, amount: number) => {
-    try {
-      await API.updateJobCardStatus(id, 'completed');
-    } catch (e) {
-      console.warn('Silent local completion fallback:', e);
-    }
+  const handleCollect = async (id: string, vehicle: string, amount: number, jobNumber?: string) => {
     Alert.alert(
-      'Payment Received! ✅',
-      `Collected ₹${amount.toLocaleString('en-IN')} for ${vehicle}. Job marked completed and synchronized.`,
+      `Collect ₹${amount.toLocaleString('en-IN')}`,
+      `Choose action for ${vehicle}:`,
       [
         {
-          text: 'Done',
-          onPress: () => {
-            setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
+          text: '📱 Pay via UPI (GPay/PhonePe)',
+          onPress: async () => {
+            const { launchMobileUpiPayment } = await import('../services/payments');
+            await launchMobileUpiPayment({
+              vpa: 'motoban@icici',
+              payeeName: 'MotoBan Workshop',
+              amount,
+              invoiceNumber: jobNumber || id,
+            });
+            try {
+              await API.updateJobCardStatus(id, 'completed');
+              setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
+            } catch (e) {
+              console.warn('Local completion update:', e);
+            }
           },
         },
+        {
+          text: '💬 Share Bill on WhatsApp',
+          onPress: async () => {
+            const { launchWhatsAppBill } = await import('../services/payments');
+            const pdfUrl = API.getInvoicePdfUrl(jobNumber || id, 'INVOICE');
+            await launchWhatsAppBill({
+              phone: '9876543210',
+              customerName: 'Valued Customer',
+              vehicleNumber: vehicle,
+              invoiceNumber: jobNumber || id,
+              totalAmount: amount,
+              paidAmount: 0,
+              balanceAmount: amount,
+              garageName: 'MotoBan Workshop',
+              invoiceUrl: pdfUrl,
+            });
+          },
+        },
+        {
+          text: '🖨️ Print Thermal Slip',
+          onPress: async () => {
+            const { printOrShareReceipt } = await import('../services/thermalPrinter');
+            const { decodeIndianLicensePlate } = await import('../services/rtoLookup');
+            const rto = decodeIndianLicensePlate(vehicle);
+            await printOrShareReceipt({
+              workshopName: 'MotoBan Workshop',
+              tagline: 'Express Garage & Diagnostics',
+              phone: '+91 98765 43210',
+              invoiceNumber: jobNumber || id,
+              date: new Date().toLocaleDateString('en-IN'),
+              customerName: 'Valued Customer',
+              vehicleNumber: vehicle,
+              rtoOffice: rto.rtoOffice,
+              items: [{ description: 'Vehicle Maintenance & Repairs', qty: 1, amount }],
+              subtotal: amount,
+              total: amount,
+              paid: amount,
+              balance: 0,
+              paymentMode: 'UPI / Cash',
+              upiVpa: 'motoban@icici',
+            });
+          },
+        },
+        {
+          text: '💵 Cash Received',
+          onPress: async () => {
+            try {
+              await API.updateJobCardStatus(id, 'completed');
+            } catch (e) {
+              console.warn('Silent local completion fallback:', e);
+            }
+            setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
+            Alert.alert('Payment Recorded', `Collected ₹${amount.toLocaleString('en-IN')} cash for ${vehicle}.`);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
@@ -100,14 +164,26 @@ export default function CheckoutScreen() {
 
   const handleShareInvoicePdf = async (vehicle: string, jobNumber: string) => {
     try {
+      const { launchWhatsAppBill } = await import('../services/payments');
+      const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
+      await launchWhatsAppBill({
+        phone: '9876543210',
+        customerName: 'Valued Customer',
+        vehicleNumber: vehicle,
+        invoiceNumber: jobNumber,
+        totalAmount: 1500,
+        paidAmount: 0,
+        balanceAmount: 1500,
+        garageName: 'MotoBan Workshop',
+        invoiceUrl: url,
+      });
+    } catch {
       const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
       await Share.share({
         title: `Bill - ${vehicle}`,
         message: `Tax Invoice Bill for ${vehicle}: ${url}`,
         url,
       });
-    } catch (e: any) {
-      Alert.alert('Share Failed', e.message);
     }
   };
 
@@ -169,23 +245,29 @@ export default function CheckoutScreen() {
                 <Text style={styles.emptyText}>All quick-pay vehicles picked up! 🎉</Text>
               </View>
             ) : (
-              quickPayJobs.map((job) => (
-                <View key={job.id} style={styles.jobCard}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.jobPlate}>{job.vehicle}</Text>
-                    <Text style={styles.jobModel}>{job.model}</Text>
-                    <Text style={styles.jobWork}>{job.work}</Text>
-                    <Text style={styles.jobAmount}>₹{job.amount.toLocaleString('en-IN')}</Text>
+              quickPayJobs.map((job) => {
+                const rto = decodeIndianLicensePlate(job.vehicle);
+                return (
+                  <View key={job.id} style={styles.jobCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jobPlate}>{job.vehicle}</Text>
+                      {rto.stateCode ? (
+                        <Text style={styles.rtoPlateBadge}>📍 {rto.rtoOffice}</Text>
+                      ) : null}
+                      <Text style={styles.jobModel}>{job.model}</Text>
+                      <Text style={styles.jobWork}>{job.work}</Text>
+                      <Text style={styles.jobAmount}>₹{job.amount.toLocaleString('en-IN')}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.collectBtn}
+                      onPress={() => handleCollect(job.id, job.vehicle, job.amount, job.jobNumber)}
+                    >
+                      <MaterialCommunityIcons name="check" size={18} color="#FFF" />
+                      <Text style={styles.collectBtnText}>Collect</Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.collectBtn}
-                    onPress={() => handleCollect(job.id, job.vehicle, job.amount)}
-                  >
-                    <MaterialCommunityIcons name="check" size={18} color="#FFF" />
-                    <Text style={styles.collectBtnText}>Collect</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
+                );
+              })
             )}
           </View>
         ) : (
@@ -198,17 +280,22 @@ export default function CheckoutScreen() {
                 <Text style={styles.emptyText}>No major overhauls pending review. 🎉</Text>
               </View>
             ) : (
-              detailedJobs.map((job) => (
-                <View key={job.id} style={[styles.jobCard, styles.detailedCard]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.jobPlate}>{job.vehicle}</Text>
-                    <Text style={styles.jobModel}>{job.model}</Text>
-                    <Text style={styles.jobWork}>{job.work}</Text>
-                    <Text style={[styles.jobAmount, { color: COLORS.primary }]}>
-                      ₹{job.amount.toLocaleString('en-IN')}
-                    </Text>
-                    <Text style={styles.itemCountText}>{job.itemsCount} line items to verify</Text>
-                  </View>
+              detailedJobs.map((job) => {
+                const rto = decodeIndianLicensePlate(job.vehicle);
+                return (
+                  <View key={job.id} style={[styles.jobCard, styles.detailedCard]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jobPlate}>{job.vehicle}</Text>
+                      {rto.stateCode ? (
+                        <Text style={styles.rtoPlateBadge}>📍 {rto.rtoOffice}</Text>
+                      ) : null}
+                      <Text style={styles.jobModel}>{job.model}</Text>
+                      <Text style={styles.jobWork}>{job.work}</Text>
+                      <Text style={[styles.jobAmount, { color: COLORS.primary }]}>
+                        ₹{job.amount.toLocaleString('en-IN')}
+                      </Text>
+                      <Text style={styles.itemCountText}>{job.itemsCount} line items to verify</Text>
+                    </View>
                   <View style={{ alignItems: 'flex-end', gap: 6 }}>
                     <TouchableOpacity
                       style={styles.reviewBtn}
@@ -226,7 +313,8 @@ export default function CheckoutScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              ))
+                );
+              })
             )}
           </View>
         )}
@@ -391,5 +479,12 @@ const styles = StyleSheet.create({
   emptyText: {
     color: COLORS.textMuted,
     fontSize: 13,
+  },
+  rtoPlateBadge: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 2,
   },
 });
