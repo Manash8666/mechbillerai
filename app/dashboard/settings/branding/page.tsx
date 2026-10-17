@@ -22,6 +22,7 @@ export default function BrandingSettingsPage() {
     garageName: '',
     logoUrl: '',
     primaryColor: '#E5C07B',
+    subdomain: '',
   });
   const [generatedPalette, setGeneratedPalette] = useState<ColorPalette | null>(null);
 
@@ -39,11 +40,12 @@ export default function BrandingSettingsPage() {
       const response = await fetch(`/api/branding?userId=${userId}`);
       const data = await response.json();
       
-      if (data.garageName || data.logoUrl || data.primaryColor) {
+      if (data) {
         setFormData({
           garageName: data.garageName || '',
           logoUrl: data.logoUrl || '',
           primaryColor: data.primaryColor || '#E5C07B',
+          subdomain: data.subdomain || '',
         });
         
         if (data.logoUrl) {
@@ -267,6 +269,7 @@ export default function BrandingSettingsPage() {
       const brandingData = {
         userId: user.id,
         garageName: formData.garageName,
+        subdomain: formData.subdomain,
         logoUrl,
         primaryColor: formData.primaryColor,
         secondaryColor: generatedPalette?.secondary,
@@ -318,6 +321,7 @@ export default function BrandingSettingsPage() {
       garageName: '',
       logoUrl: '',
       primaryColor: '#C9A84C',
+      subdomain: formData.subdomain,
     });
     setLogoFile(null);
     setLogoPreview('');
@@ -378,6 +382,48 @@ export default function BrandingSettingsPage() {
                 className="w-full px-4 py-2 bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-muted-light/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-transparent text-luxury-ink-light dark:text-luxury-ink-dark"
                 placeholder="Enter your garage name"
               />
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-luxury-gold/10">
+              <label
+                htmlFor="subdomain-input"
+                className="block text-sm font-medium text-luxury-ink-light dark:text-luxury-ink-dark mb-1"
+              >
+                Custom Multi-Tenant Subdomain
+              </label>
+              <p className="text-xs text-luxury-muted-light dark:text-luxury-muted-dark mb-2">
+                Your workshop’s dedicated portal for customer service booking and live vehicle inspection tracking.
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 flex items-center">
+                  <input
+                    id="subdomain-input"
+                    type="text"
+                    value={formData.subdomain}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                      })
+                    }
+                    className="w-full px-4 py-2 bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-muted-light/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-transparent text-luxury-ink-light dark:text-luxury-ink-dark font-mono text-sm"
+                    placeholder="e.g. motofit or speedy"
+                  />
+                  <span className="absolute right-3 text-xs font-mono text-luxury-gold font-semibold">
+                    .motoban.in
+                  </span>
+                </div>
+                {formData.subdomain && (
+                  <a
+                    href={`https://${formData.subdomain}.motoban.in`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 bg-luxury-gold/10 hover:bg-luxury-gold/20 text-luxury-gold border border-luxury-gold/30 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1"
+                  >
+                    Visit Portal ↗
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 

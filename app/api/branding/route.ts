@@ -13,6 +13,11 @@ export async function GET(request: Request) {
       where: { userId },
     });
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { subdomain: true, name: true, phone: true },
+    });
+
     // Return default if not found
     if (!branding) {
       return NextResponse.json({
@@ -20,12 +25,16 @@ export async function GET(request: Request) {
         primaryColor: '#C9F31D',
         secondaryColor: '#FF5E14',
         accentColor: '#00F0FF',
-        garageName: null,
+        garageName: user?.name || null,
         logoUrl: null,
+        subdomain: user?.subdomain || null,
       });
     }
 
-    return NextResponse.json(branding);
+    return NextResponse.json({
+      ...branding,
+      subdomain: user?.subdomain || null,
+    });
   } catch (error) {
     console.error('Error fetching branding:', error);
     return NextResponse.json(
@@ -91,9 +100,36 @@ export async function POST(request: Request) {
       },
     });
 
+    let updatedSubdomain: string | null = null;
+    if (body.subdomain !== undefined) {
+      const cleanSubdomain = (body.subdomain || '').toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+      if (cleanSubdomain) {
+        const existing = await prisma.user.findFirst({
+          where: {
+            subdomain: cleanSubdomain,
+            NOT: { id: userId },
+          },
+        });
+        if (existing) {
+          return NextResponse.json(
+            { error: `The subdomain "${cleanSubdomain}.motoban.in" is already claimed by another workshop` },
+            { status: 400 }
+          );
+        }
+        await prisma.user.update({
+          where: { id: userId },
+          data: { subdomain: cleanSubdomain },
+        });
+        updatedSubdomain = cleanSubdomain;
+      }
+    }
+
     return NextResponse.json({
       message: 'Branding settings saved successfully',
-      branding,
+      branding: {
+        ...branding,
+        subdomain: updatedSubdomain,
+      },
     });
   } catch (error) {
     console.error('Error saving branding:', error);

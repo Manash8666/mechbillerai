@@ -2,8 +2,41 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
 
+const RESERVED_SUBDOMAINS = new Set([
+  'www',
+  'app',
+  'api',
+  'admin',
+  'auth',
+  'dashboard',
+  'mail',
+  'static',
+  'assets',
+  'localhost',
+]);
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get('host') || '';
+  const host = hostname.split(':')[0].toLowerCase();
+
+  // Extract client subdomain (e.g. "motofit.motoban.in" -> "motofit", "motofit.localhost" -> "motofit")
+  let subdomain: string | null = null;
+  if (host.endsWith('.motoban.in')) {
+    subdomain = host.slice(0, -'.motoban.in'.length);
+  } else if (host.includes('.localhost')) {
+    subdomain = host.split('.')[0];
+  }
+
+  const isTenantSubdomain = Boolean(subdomain && !RESERVED_SUBDOMAINS.has(subdomain));
+
+  // If a client visits the root of their custom subdomain (e.g. https://motofit.motoban.in/)
+  if (isTenantSubdomain && (pathname === '/' || pathname === '')) {
+    const portalUrl = new URL(`/portal/${subdomain}`, request.url);
+    const response = NextResponse.rewrite(portalUrl);
+    response.headers.set('x-tenant-subdomain', subdomain as string);
+    return response;
+  }
 
   // Protect /dashboard and all its subroutes
   if (pathname.startsWith('/dashboard')) {
@@ -34,9 +67,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (isTenantSubdomain && subdomain) {
+    response.headers.set('x-tenant-subdomain', subdomain);
+  }
+  return response;
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register'],
+  matcher: ['/((?!api/|_next/static|_next/image|favicon.ico|manifest.json).*)'],
 };
+
