@@ -1,25 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 // GET branding settings
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    let userId = searchParams.get('userId');
-
-    if (!userId || userId === 'undefined' || userId === 'null') {
-      const demoUser = await prisma.user.findFirst({
-        where: { email: 'demo@garagesaas.com' },
-      });
-      userId = demoUser?.id || null;
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
 
     const branding = await prisma.brandingSettings.findUnique({
       where: { userId },
@@ -29,7 +17,9 @@ export async function GET(request: Request) {
     if (!branding) {
       return NextResponse.json({
         userId,
-        primaryColor: '#C9A84C',
+        primaryColor: '#C9F31D',
+        secondaryColor: '#FF5E14',
+        accentColor: '#00F0FF',
         garageName: null,
         logoUrl: null,
       });
@@ -48,9 +38,12 @@ export async function GET(request: Request) {
 // POST/UPDATE branding settings
 export async function POST(request: Request) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const body = await request.json();
     const {
-      userId,
       garageName,
       logoUrl,
       primaryColor,
@@ -65,23 +58,8 @@ export async function POST(request: Request) {
       customCss,
     } = body;
 
-    let targetUserId = userId;
-    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
-      const demoUser = await prisma.user.findFirst({
-        where: { email: 'demo@garagesaas.com' },
-      });
-      targetUserId = demoUser?.id || null;
-    }
-
-    if (!targetUserId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
-
     const branding = await prisma.brandingSettings.upsert({
-      where: { userId: targetUserId },
+      where: { userId },
       update: {
         garageName,
         logoUrl,
@@ -97,12 +75,12 @@ export async function POST(request: Request) {
         customCss,
       },
       create: {
-        userId: targetUserId,
+        userId,
         garageName,
         logoUrl,
-        primaryColor: primaryColor || '#C9A84C',
-        secondaryColor,
-        accentColor,
+        primaryColor: primaryColor || '#C9F31D',
+        secondaryColor: secondaryColor || '#FF5E14',
+        accentColor: accentColor || '#00F0FF',
         canvasLightColor,
         canvasDarkColor,
         surfaceLightColor,
@@ -113,7 +91,10 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(branding);
+    return NextResponse.json({
+      message: 'Branding settings saved successfully',
+      branding,
+    });
   } catch (error) {
     console.error('Error saving branding:', error);
     return NextResponse.json(

@@ -1,0 +1,18 @@
+{
+  "name": "MotoBan - Automotive Workshop & Smart Billing Suite",
+  "short_name": "MotoBan",
+  "description": "High-velocity garage management, digital job cards, and instant counter UPI invoicing.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B0F19",
+  "theme_color": "#C9F31D",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

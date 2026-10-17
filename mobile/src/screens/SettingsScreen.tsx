@@ -159,6 +159,30 @@ export default function SettingsScreen({ navigation }: any) {
             <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted} />
           </TouchableOpacity>
         ))}
+
+        <TouchableOpacity
+          style={[styles.menuItem, { borderBottomWidth: 0, marginTop: 12, backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+          onPress={() => {
+            Alert.alert('Sign Out', 'Are you sure you want to sign out from this device?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Sign Out',
+                style: 'destructive',
+                onPress: async () => {
+                  const { Storage } = await import('../services/api');
+                  await Storage.removeUser();
+                  Alert.alert('Signed Out', 'Credentials cleared safely.');
+                },
+              },
+            ]);
+          }}
+        >
+          <MaterialCommunityIcons name="logout" size={22} color="#EF4444" style={{ marginRight: 14 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.itemTitle, { color: '#EF4444' }]}>Sign Out</Text>
+            <Text style={styles.itemSubtitle}>Clear active session and device credentials</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );

@@ -35,6 +35,7 @@ export interface InvoicePdfData {
   balance?: number;
   paymentMode?: string | null;
   terms?: string;
+  upiQrDataUrl?: string | null;
 }
 
 export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
@@ -237,9 +238,25 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): jsPDF {
   ];
   let termY = finalY + 14;
   termsLines.forEach((t) => {
-    doc.text(t, margin + 4, termY);
+    doc.text(t, margin + 4, termY, { maxWidth: data.upiQrDataUrl ? termsBoxW - 36 : termsBoxW - 8 });
     termY += 5;
   });
+
+  // Dynamic Counter UPI QR Code
+  if (data.upiQrDataUrl) {
+    const qrSize = 25;
+    const qrX = margin + termsBoxW - qrSize - 4;
+    const qrY = finalY + 7;
+    try {
+      doc.addImage(data.upiQrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(11, 15, 25);
+      doc.text('SCAN & PAY (UPI)', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
+    } catch (e) {
+      console.warn('Failed to embed UPI QR code in PDF:', e);
+    }
+  }
 
   // Summary Ledger Table (Right)
   doc.setFillColor(249, 250, 251);

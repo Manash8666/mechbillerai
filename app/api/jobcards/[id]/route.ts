@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 // GET single job card
 export async function GET(
@@ -7,9 +8,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
-    const jobCard = await prisma.jobCard.findUnique({
-      where: { id },
+    const jobCard = await prisma.jobCard.findFirst({
+      where: { id, userId },
       include: {
         customer: true,
         vehicle: true,
@@ -43,7 +48,24 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
+
+    // Verify ownership
+    const existing = await prisma.jobCard.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Job card not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
     const {
       status,
@@ -107,7 +129,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
+
+    // Verify ownership
+    const existing = await prisma.jobCard.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Job card not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
     await prisma.jobCard.delete({
       where: { id },
     });

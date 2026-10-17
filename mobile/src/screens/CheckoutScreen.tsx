@@ -50,21 +50,8 @@ export default function CheckoutScreen() {
         }
       });
 
-      // If database has empty jobs, provide initial fallback queue so it never renders broken
-      if (minors.length === 0 && majors.length === 0) {
-        setQuickPayJobs([
-          { id: '1', jobNumber: 'JC-101', vehicle: 'GJ-01-AB-1234', model: 'Splendor Plus', work: 'Spark Plug & Cable', amount: 250 },
-          { id: '2', jobNumber: 'JC-102', vehicle: 'GJ-27-XY-9087', model: 'Activa 6G', work: 'Engine Oil Change', amount: 450 },
-          { id: '3', jobNumber: 'JC-103', vehicle: 'GJ-05-MM-3344', model: 'Pulsar 150', work: 'Clutch Wire Adjustment', amount: 150 },
-        ]);
-        setDetailedJobs([
-          { id: '4', jobNumber: 'JC-104', vehicle: 'GJ-01-RE-9999', model: 'Royal Enfield Classic 350', work: 'Engine Rebuild & Valve Replacement', amount: 18400, itemsCount: 8 },
-          { id: '5', jobNumber: 'JC-105', vehicle: 'GJ-06-CD-5678', model: 'Hyundai i20', work: 'Suspension Overhaul & Brake Discs', amount: 12200, itemsCount: 6 },
-        ]);
-      } else {
-        setQuickPayJobs(minors);
-        setDetailedJobs(majors);
-      }
+      setQuickPayJobs(minors);
+      setDetailedJobs(majors);
     } catch (err) {
       console.error('Failed to fetch triage jobs in CheckoutScreen:', err);
     } finally {

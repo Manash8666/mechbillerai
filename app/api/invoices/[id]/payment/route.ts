@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 // Add payment to invoice
 export async function POST(
@@ -7,6 +8,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
     const body = await request.json();
     const { amount, paymentMode, notes } = body;
@@ -18,14 +23,14 @@ export async function POST(
       );
     }
 
-    // Get current invoice
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+    // Get current invoice verifying ownership
+    const invoice = await prisma.invoice.findFirst({
+      where: { id, userId },
     });
 
     if (!invoice) {
       return NextResponse.json(
-        { error: 'Invoice not found' },
+        { error: 'Invoice not found or unauthorized' },
         { status: 404 }
       );
     }

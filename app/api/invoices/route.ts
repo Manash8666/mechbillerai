@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateInvoiceNumber } from '@/lib/utils';
+import { requireAuth } from '@/lib/auth';
 import {
   buildAdvancedQuery,
   buildPaginatedResponse,
@@ -14,21 +15,9 @@ import {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    let userId = searchParams.get('userId');
-
-    if (!userId || userId === 'undefined' || userId === 'null') {
-      const demoUser = await prisma.user.findFirst({
-        where: { email: 'demo@garagesaas.com' },
-      });
-      userId = demoUser?.id || null;
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        buildErrorResponse('User ID is required', 'MISSING_USER_ID'),
-        { status: 400 }
-      );
-    }
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
 
     // Parse query parameters
     const page = parseInt(searchParams.get('page') || '1');
@@ -175,6 +164,10 @@ export async function GET(request: Request) {
 // POST - Create new invoice with validation
 export async function POST(request: Request) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const body = await request.json();
     const {
       customerId,
@@ -187,11 +180,10 @@ export async function POST(request: Request) {
       dueDate,
       paymentMode,
       notes,
-      userId,
     } = body;
 
     // Validate required fields
-    const validationError = validateRequired(body, ['customerId', 'userId', 'items', 'total']);
+    const validationError = validateRequired(body, ['customerId', 'items', 'total']);
     if (validationError) {
       return NextResponse.json(
         buildErrorResponse(validationError, 'VALIDATION_ERROR'),
@@ -217,14 +209,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // Verify customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+    // Verify customer exists and belongs to this user
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, userId },
     });
 
     if (!customer) {
       return NextResponse.json(
-        buildErrorResponse('Customer not found', 'CUSTOMER_NOT_FOUND'),
+        buildErrorResponse('Customer not found or unauthorized', 'CUSTOMER_NOT_FOUND'),
         { status: 404 }
       );
     }
@@ -307,16 +299,12 @@ export async function POST(request: Request) {
 // DELETE - Bulk delete invoices
 export async function DELETE(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const ids = searchParams.get('ids')?.split(',') || [];
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
 
-    if (!userId) {
-      return NextResponse.json(
-        buildErrorResponse('User ID is required', 'MISSING_USER_ID'),
-        { status: 400 }
-      );
-    }
+    const { searchParams } = new URL(request.url);
+    const ids = searchParams.get('ids')?.split(',') || [];
 
     if (ids.length === 0) {
       return NextResponse.json(

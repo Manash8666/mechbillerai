@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 import {
   buildErrorResponse,
   logActivity,
@@ -11,9 +12,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+    const invoice = await prisma.invoice.findFirst({
+      where: { id, userId },
       include: {
         customer: {
           select: {
@@ -53,7 +58,7 @@ export async function GET(
 
     if (!invoice) {
       return NextResponse.json(
-        buildErrorResponse('Invoice not found', 'NOT_FOUND'),
+        buildErrorResponse('Invoice not found or unauthorized', 'NOT_FOUND'),
         { status: 404 }
       );
     }
@@ -91,13 +96,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
     const body = await request.json();
-    const { status, notes, dueDate, items, userId } = body;
+    const { status, notes, dueDate } = body;
 
-    // Check if invoice exists
-    const existing = await prisma.invoice.findUnique({
-      where: { id },
+    // Check if invoice exists and belongs to this user
+    const existing = await prisma.invoice.findFirst({
+      where: { id, userId },
       include: {
         payments: true,
       },
@@ -105,7 +114,7 @@ export async function PUT(
 
     if (!existing) {
       return NextResponse.json(
-        buildErrorResponse('Invoice not found', 'NOT_FOUND'),
+        buildErrorResponse('Invoice not found or unauthorized', 'NOT_FOUND'),
         { status: 404 }
       );
     }
@@ -159,18 +168,16 @@ export async function PUT(
     });
 
     // Log activity
-    if (userId) {
-      await logActivity(prisma, {
-        userId,
-        action: 'UPDATE',
-        entity: 'Invoice',
-        entityId: invoice.id,
-        details: {
-          invoiceNumber: invoice.invoiceNumber,
-          changes: body,
-        },
-      });
-    }
+    await logActivity(prisma, {
+      userId,
+      action: 'UPDATE',
+      entity: 'Invoice',
+      entityId: invoice.id,
+      details: {
+        invoiceNumber: invoice.invoiceNumber,
+        changes: body,
+      },
+    });
 
     return NextResponse.json(invoice);
   } catch (error) {
@@ -188,14 +195,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const force = searchParams.get('force') === 'true';
 
-    // Check if invoice exists and has payments
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+    // Check if invoice exists and belongs to this user
+    const invoice = await prisma.invoice.findFirst({
+      where: { id, userId },
       include: {
         payments: true,
         _count: {
@@ -209,7 +219,7 @@ export async function DELETE(
 
     if (!invoice) {
       return NextResponse.json(
-        buildErrorResponse('Invoice not found', 'NOT_FOUND'),
+        buildErrorResponse('Invoice not found or unauthorized', 'NOT_FOUND'),
         { status: 404 }
       );
     }
@@ -235,19 +245,17 @@ export async function DELETE(
     });
 
     // Log activity
-    if (userId) {
-      await logActivity(prisma, {
-        userId,
-        action: 'DELETE',
-        entity: 'Invoice',
-        entityId: id,
-        details: {
-          invoiceNumber: invoice.invoiceNumber,
-          total: invoice.total,
-          forced: force,
-        },
-      });
-    }
+    await logActivity(prisma, {
+      userId,
+      action: 'DELETE',
+      entity: 'Invoice',
+      entityId: id,
+      details: {
+        invoiceNumber: invoice.invoiceNumber,
+        total: invoice.total,
+        forced: force,
+      },
+    });
 
     return NextResponse.json({
       success: true,

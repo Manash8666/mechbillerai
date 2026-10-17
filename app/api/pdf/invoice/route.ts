@@ -118,6 +118,23 @@ export async function GET(request: Request) {
       ];
     }
 
+    let upiQrDataUrl: string | null = null;
+    if (balance > 0) {
+      try {
+        const { generateUpiQrDataUrl } = await import('@/lib/upi');
+        const vpa = 'motoban@icici';
+        upiQrDataUrl = await generateUpiQrDataUrl({
+          vpa,
+          payeeName: garageName,
+          amount: balance,
+          invoiceNumber: docNumber,
+          notes: `Invoice #${docNumber}`,
+        });
+      } catch (qrErr) {
+        console.warn('Could not generate UPI QR code for PDF:', qrErr);
+      }
+    }
+
     const doc = generateInvoiceOrEstimatePdf({
       documentType: docType,
       documentNumber: docNumber,
@@ -139,6 +156,7 @@ export async function GET(request: Request) {
       total,
       paid,
       balance,
+      upiQrDataUrl,
     });
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));

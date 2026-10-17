@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -59,6 +59,11 @@ export default function InvoicesPage() {
     { description: string; quantity: number; unitPrice: number }[]
   >([{ description: 'General Service & Inspection', quantity: 1, unitPrice: 1500 }]);
 
+  // Counter UPI QR Modal State
+  const [selectedUpiInvoice, setSelectedUpiInvoice] = useState<Invoice | null>(null);
+  const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null);
+  const [loadingQr, setLoadingQr] = useState(false);
+
   useEffect(() => {
     void fetchInvoices();
     void fetchCustomerOptions();
@@ -97,6 +102,52 @@ export default function InvoicesPage() {
       console.error('Error downloading bill PDF:', err);
       window.open(`/api/pdf/invoice?id=${invoice.invoiceNumber}`, '_blank');
     }
+  };
+
+  const handleOpenCounterUpi = async (invoice: Invoice) => {
+    setSelectedUpiInvoice(invoice);
+    setLoadingQr(true);
+    try {
+      const { generateUpiQrDataUrl } = await import('@/lib/upi');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const amount = invoice.balance > 0 ? invoice.balance : invoice.total;
+      const dataUrl = await generateUpiQrDataUrl({
+        vpa: 'motoban@icici',
+        payeeName: user.name || 'MotoBan Workshop',
+        amount: amount,
+        invoiceNumber: invoice.invoiceNumber,
+        notes: `Bill #${invoice.invoiceNumber}`,
+      });
+      setUpiQrDataUrl(dataUrl);
+    } catch (err) {
+      console.error('Failed to generate UPI QR:', err);
+      toast.error('Could not generate UPI QR code');
+    } finally {
+      setLoadingQr(false);
+    }
+  };
+
+  const handleShareWhatsApp = (invoice: Invoice) => {
+    if (!invoice.customer?.phone) {
+      toast.error('Customer phone number not available');
+      return;
+    }
+    const { buildWhatsAppBillUrl } = require('@/lib/whatsapp');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const invoiceUrl = `${origin}/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE`;
+    
+    const url = buildWhatsAppBillUrl({
+      phone: invoice.customer.phone,
+      customerName: invoice.customer.name || 'Customer',
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount: invoice.total,
+      paidAmount: invoice.paid,
+      balanceAmount: invoice.balance,
+      garageName: user.name || 'MotoBan Workshop',
+      invoiceUrl,
+    });
+    window.open(url, '_blank');
   };
 
   const fetchInvoices = async () => {
@@ -417,6 +468,24 @@ export default function InvoicesPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCounterUpi(invoice)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-[#C9F31D] text-[#0B0F19] font-bold rounded-lg hover:bg-[#d8ff33] transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Show Dynamic Counter UPI QR Code for quick payment"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      Counter UPI QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(invoice)}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 transition-colors text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Send Bill Summary & PDF link via WhatsApp"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      WhatsApp Bill
+                    </button>
                     <a
                       href={`/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=INVOICE`}
                       download={`Invoice_${invoice.invoiceNumber}.pdf`}
@@ -615,6 +684,72 @@ export default function InvoicesPage() {
                 </PearlButton>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Counter UPI QR Code Modal */}
+      {selectedUpiInvoice && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-luxury-surface-light dark:bg-[#151D2F] border border-[#C9F31D]/40 rounded-2xl max-w-sm w-full p-6 text-center relative shadow-2xl">
+            <button
+              onClick={() => {
+                setSelectedUpiInvoice(null);
+                setUpiQrDataUrl(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="inline-flex p-3 rounded-full bg-[#C9F31D]/10 text-[#C9F31D] mb-3">
+              <QrCode className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-xl font-bold text-foreground">
+              Counter UPI Payment
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Invoice #{selectedUpiInvoice.invoiceNumber} · {selectedUpiInvoice.customer?.name}
+            </p>
+
+            {/* QR Code Container */}
+            <div className="my-5 p-4 bg-white rounded-xl inline-block shadow-inner border border-gray-200">
+              {loadingQr || !upiQrDataUrl ? (
+                <div className="w-48 h-48 flex items-center justify-center text-xs text-gray-500">
+                  Generating Counter QR...
+                </div>
+              ) : (
+                <img
+                  src={upiQrDataUrl}
+                  alt={`UPI QR for ${selectedUpiInvoice.invoiceNumber}`}
+                  className="w-48 h-48 mx-auto"
+                />
+              )}
+            </div>
+
+            <div className="bg-black/20 dark:bg-black/40 rounded-xl p-3 border border-border/40 mb-4">
+              <p className="text-xs text-muted-foreground">Amount to Pay</p>
+              <p className="text-2xl font-black text-[#C9F31D] font-mono mt-0.5">
+                ₹{(selectedUpiInvoice.balance > 0 ? selectedUpiInvoice.balance : selectedUpiInvoice.total).toLocaleString('en-IN')}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Scan with any UPI App: GPay, PhonePe, Paytm, BHIM
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedUpiInvoice(null);
+                  setUpiQrDataUrl(null);
+                }}
+                className="w-full py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-sm transition-colors"
+              >
+                Close Counter Display
+              </button>
+            </div>
           </div>
         </div>
       )}

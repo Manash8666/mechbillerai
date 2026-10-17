@@ -1,22 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 // GET garage profile settings including GST status
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    let userId = searchParams.get('userId');
-
-    if (!userId || userId === 'undefined' || userId === 'null') {
-      const demoUser = await prisma.user.findFirst({
-        where: { email: 'demo@garagesaas.com' },
-      });
-      userId = demoUser?.id || null;
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -46,19 +37,12 @@ export async function GET(request: Request) {
 // PUT/PATCH update garage settings (GST on/off toggle)
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
-    const { userId, gstEnabled, name } = body;
-    let targetUserId = userId;
-    if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null') {
-      const demoUser = await prisma.user.findFirst({
-        where: { email: 'demo@garagesaas.com' },
-      });
-      targetUserId = demoUser?.id || null;
-    }
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
 
-    if (!targetUserId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
+    const body = await request.json();
+    const { gstEnabled, name } = body;
 
     const updateData: { gstEnabled?: boolean; name?: string } = {};
     if (gstEnabled !== undefined) {
@@ -69,7 +53,7 @@ export async function PUT(request: Request) {
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: targetUserId },
+      where: { id: userId },
       data: updateData,
       select: {
         id: true,

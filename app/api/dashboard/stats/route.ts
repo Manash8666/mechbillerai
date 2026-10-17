@@ -1,24 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    let userId = searchParams.get('userId');
-
-    if (!userId || userId === 'undefined' || userId === 'null') {
-      const demoUser = await prisma.user.findFirst({
-        where: { email: 'demo@garagesaas.com' },
-      });
-      userId = demoUser?.id || null;
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
 
     // Get date ranges
     const today = new Date();
@@ -100,11 +88,17 @@ export async function GET(request: Request) {
     });
 
     // Low stock items
-    const lowStockItems = await prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*) as count 
-      FROM InventoryItem 
-      WHERE quantity <= minQuantity
-    `;
+    let lowStockCount = 0;
+    try {
+      const lowStockItems = await prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*) as count 
+        FROM InventoryItem 
+        WHERE quantity <= minQuantity
+      `;
+      lowStockCount = Number(lowStockItems[0]?.count || 0);
+    } catch {
+      lowStockCount = 0;
+    }
 
     // Today's appointments
     const todayEnd = new Date(today);
@@ -135,7 +129,7 @@ export async function GET(request: Request) {
       activeJobCards,
       pendingInvoices,
       outstandingAmount: outstandingAmount._sum.balance || 0,
-      lowStockItems: Number(lowStockItems[0]?.count || 0),
+      lowStockItems: lowStockCount,
       todayAppointments,
     });
   } catch (error) {

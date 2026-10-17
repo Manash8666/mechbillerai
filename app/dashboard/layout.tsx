@@ -41,8 +41,15 @@ function DashboardContent({
     }
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
     localStorage.removeItem('user');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('motoban_token');
     router.push('/login');
   };
 

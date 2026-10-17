@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 import {
   buildErrorResponse,
-  validateRequired,
   logActivity,
 } from '@/lib/apiHelpers';
 
@@ -12,12 +12,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const includeHistory = searchParams.get('includeHistory') === 'true';
 
-    const customer = await prisma.customer.findUnique({
-      where: { id },
+    const customer = await prisma.customer.findFirst({
+      where: { id, userId },
       include: {
         vehicles: {
           orderBy: { createdAt: 'desc' },
@@ -75,7 +79,7 @@ export async function GET(
 
     if (!customer) {
       return NextResponse.json(
-        buildErrorResponse('Customer not found', 'NOT_FOUND'),
+        buildErrorResponse('Customer not found or unauthorized', 'NOT_FOUND'),
         { status: 404 }
       );
     }
@@ -113,9 +117,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, email, address, gstNumber, notes, userId } = body;
+    const { name, phone, email, address, gstNumber, notes } = body;
 
     // Validate email format if provided
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -136,24 +144,24 @@ export async function PUT(
       }
     }
 
-    // Check if customer exists
-    const existing = await prisma.customer.findUnique({
-      where: { id },
+    // Check if customer exists and belongs to this user
+    const existing = await prisma.customer.findFirst({
+      where: { id, userId },
     });
 
     if (!existing) {
       return NextResponse.json(
-        buildErrorResponse('Customer not found', 'NOT_FOUND'),
+        buildErrorResponse('Customer not found or unauthorized', 'NOT_FOUND'),
         { status: 404 }
       );
     }
 
-    // Check for duplicate phone or email (excluding current customer)
+    // Check for duplicate phone or email within this user's garage (excluding current customer)
     if (phone || email) {
       const duplicate = await prisma.customer.findFirst({
         where: {
           id: { not: id },
-          userId: existing.userId,
+          userId,
           OR: [
             ...(phone ? [{ phone }] : []),
             ...(email ? [{ email }] : []),
@@ -195,15 +203,13 @@ export async function PUT(
     });
 
     // Log activity
-    if (userId) {
-      await logActivity(prisma, {
-        userId,
-        action: 'UPDATE',
-        entity: 'Customer',
-        entityId: customer.id,
-        details: { name: customer.name, changes: body },
-      });
-    }
+    await logActivity(prisma, {
+      userId,
+      action: 'UPDATE',
+      entity: 'Customer',
+      entityId: customer.id,
+      details: { name: customer.name, changes: body },
+    });
 
     return NextResponse.json(customer);
   } catch (error) {
@@ -221,14 +227,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.errorResponse) return auth.errorResponse;
+    const userId = auth.user.userId;
+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const force = searchParams.get('force') === 'true';
 
-    // Check if customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id },
+    // Check if customer exists and belongs to this user
+    const customer = await prisma.customer.findFirst({
+      where: { id, userId },
       include: {
         _count: {
           select: {
@@ -242,7 +251,7 @@ export async function DELETE(
 
     if (!customer) {
       return NextResponse.json(
-        buildErrorResponse('Customer not found', 'NOT_FOUND'),
+        buildErrorResponse('Customer not found or unauthorized', 'NOT_FOUND'),
         { status: 404 }
       );
     }
@@ -274,15 +283,13 @@ export async function DELETE(
     });
 
     // Log activity
-    if (userId) {
-      await logActivity(prisma, {
-        userId,
-        action: 'DELETE',
-        entity: 'Customer',
-        entityId: id,
-        details: { name: customer.name, forced: force },
-      });
-    }
+    await logActivity(prisma, {
+      userId,
+      action: 'DELETE',
+      entity: 'Customer',
+      entityId: id,
+      details: { name: customer.name, forced: force },
+    });
 
     return NextResponse.json({
       success: true,

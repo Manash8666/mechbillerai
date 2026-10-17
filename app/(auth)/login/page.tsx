@@ -31,9 +31,12 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store user data in localStorage (in production, use proper session management)
+      // Store user data in localStorage
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('userId', data.user.id);
+      if (data.token) {
+        localStorage.setItem('motoban_token', data.token);
+      }
       
       toast.success('Login successful!');
       router.push('/dashboard');

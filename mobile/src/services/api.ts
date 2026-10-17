@@ -39,18 +39,31 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
  */
 async function apiFetch(path: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
   const custom = await AsyncStorage.getItem('custom_api_url');
+  const token = await AsyncStorage.getItem('token');
   const base = custom || (Platform.OS === 'web' ? LOCAL_API_URL : currentResolvedUrl);
   const targetUrl = `${base}${path}`;
 
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> || {}),
+  };
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const mergedOptions: RequestInit = {
+    ...options,
+    headers,
+  };
+
   try {
-    const res = await fetchWithTimeout(targetUrl, options, timeoutMs);
+    const res = await fetchWithTimeout(targetUrl, mergedOptions, timeoutMs);
     return res;
   } catch (err: any) {
     if (!custom && Platform.OS !== 'web' && currentResolvedUrl !== VERCEL_ACTIVE_URL) {
       console.warn(`[MotoBan] Falling back to verified Vercel cloud API: ${VERCEL_ACTIVE_URL}`);
       currentResolvedUrl = VERCEL_ACTIVE_URL;
       const fallbackUrl = `${VERCEL_ACTIVE_URL}${path}`;
-      return await fetchWithTimeout(fallbackUrl, options, timeoutMs);
+      return await fetchWithTimeout(fallbackUrl, mergedOptions, timeoutMs);
     }
     throw err;
   }
@@ -65,29 +78,31 @@ export interface UserSession {
   licenseStatus: string;
 }
 
-export const DEFAULT_DEMO_USER: UserSession = {
-  id: 'cmv4zl4620001d96sd1e0qto2',
-  name: 'MotoBan Workshop',
-  email: 'demo@garagesaas.com',
-  role: 'owner',
-  garageType: 'two_wheeler',
-  licenseStatus: 'active',
-};
-
 export const Storage = {
   getUser: async (): Promise<UserSession | null> => {
     try {
       const data = await AsyncStorage.getItem('user');
-      return data ? JSON.parse(data) : DEFAULT_DEMO_USER;
+      return data ? JSON.parse(data) : null;
     } catch {
-      return DEFAULT_DEMO_USER;
+      return null;
     }
   },
-  setUser: async (user: UserSession) => {
+  setUser: async (user: UserSession, token?: string) => {
     await AsyncStorage.setItem('user', JSON.stringify(user));
+    if (token) {
+      await AsyncStorage.setItem('token', token);
+    }
+  },
+  getToken: async (): Promise<string | null> => {
+    try {
+      return await AsyncStorage.getItem('token');
+    } catch {
+      return null;
+    }
   },
   removeUser: async () => {
     await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem('token');
   },
   setServerUrl: async (url: string) => {
     await AsyncStorage.setItem('custom_api_url', url);
@@ -107,7 +122,7 @@ export const API = {
     }, 8000);
     const data = await res.json();
     if (res.ok && data.user) {
-      await Storage.setUser(data.user);
+      await Storage.setUser(data.user, data.token);
     }
     return data;
   },
@@ -142,7 +157,7 @@ export const API = {
     const res = await apiFetch('/jobcards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, userId: user?.id || DEFAULT_DEMO_USER.id }),
+      body: JSON.stringify({ ...payload, userId: user?.id }),
     }, 8000);
     return res.json();
   },
@@ -178,7 +193,7 @@ export const API = {
     const res = await apiFetch('/customers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, userId: payload.userId || user?.id || DEFAULT_DEMO_USER.id }),
+      body: JSON.stringify({ ...payload, userId: payload.userId || user?.id }),
     }, 8000);
     return res.json();
   },
@@ -215,7 +230,7 @@ export const API = {
     const res = await apiFetch('/invoices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, userId: user?.id || DEFAULT_DEMO_USER.id }),
+      body: JSON.stringify({ ...payload, userId: user?.id }),
     }, 8000);
     return res.json();
   },
@@ -263,7 +278,7 @@ export const API = {
     const res = await apiFetch('/appointments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, userId: user?.id || DEFAULT_DEMO_USER.id }),
+      body: JSON.stringify({ ...payload, userId: user?.id }),
     }, 8000);
     return res.json();
   },
@@ -281,7 +296,7 @@ export const API = {
     const res = await apiFetch('/branding', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, userId: user?.id || DEFAULT_DEMO_USER.id }),
+      body: JSON.stringify({ ...payload, userId: user?.id }),
     }, 8000);
     return res.json();
   },
@@ -298,7 +313,7 @@ export const API = {
     const res = await apiFetch('/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, userId: user?.id || DEFAULT_DEMO_USER.id }),
+      body: JSON.stringify({ ...payload, userId: user?.id }),
     }, 8000);
     return res.json();
   },

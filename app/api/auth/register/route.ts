@@ -66,10 +66,31 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({
+    const { signSessionToken, SESSION_COOKIE_NAME } = await import('@/lib/auth');
+    const token = await signSessionToken({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: 'owner',
+      garageType: user.garageType,
+      licenseStatus: user.licenseStatus,
+    });
+
+    const response = NextResponse.json({
       message: 'User registered successfully',
+      token,
       user,
     });
+
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    });
+
+    return response;
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(

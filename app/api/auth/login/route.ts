@@ -96,10 +96,31 @@ export async function POST(request: Request) {
     }
 
     const { password: _, ...userData } = user;
-    return NextResponse.json({
+    const { signSessionToken, SESSION_COOKIE_NAME } = await import('@/lib/auth');
+    const token = await signSessionToken({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      garageType: user.garageType,
+      licenseStatus: user.licenseStatus,
+    });
+
+    const response = NextResponse.json({
       message: 'Login successful',
+      token,
       user: userData,
     });
+
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(
