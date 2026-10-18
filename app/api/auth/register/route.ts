@@ -72,6 +72,23 @@ export async function POST(request: Request) {
     const { isVipFreeGarage } = await import('@/lib/licensing');
     const isVip = isVipFreeGarage(email);
 
+    // Generate clean unique subdomain on motoban.in for the garage (e.g. "Ramesh Auto" -> "rameshauto")
+    let baseSlug = (name || 'garage')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 18);
+    if (!baseSlug || baseSlug.length < 3) baseSlug = 'garage';
+
+    const RESERVED = new Set(['www', 'app', 'api', 'admin', 'auth', 'dashboard', 'mail', 'static', 'assets', 'portal']);
+    if (RESERVED.has(baseSlug)) baseSlug = `${baseSlug}bay`;
+
+    let finalSubdomain = baseSlug;
+    let counter = 1;
+    while (await prisma.user.findFirst({ where: { subdomain: finalSubdomain } })) {
+      finalSubdomain = `${baseSlug}${counter}`;
+      counter++;
+    }
+
     // Create user with 15-day trial license or lifetime_free for VIP garages
     const user = await prisma.user.create({
       data: {
@@ -79,10 +96,17 @@ export async function POST(request: Request) {
         password: hashedPassword,
         name,
         phone,
+        subdomain: finalSubdomain,
         garageType: garageType || 'four_wheeler',
         licenseKey,
         licenseStatus: isVip ? 'lifetime_free' : 'trial',
         expiresAt: isVip ? null : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days SaaS trial blueprint
+        branding: {
+          create: {
+            garageName: name,
+            primaryColor: '#F59E0B',
+          },
+        },
       },
       select: {
         id: true,
@@ -92,6 +116,7 @@ export async function POST(request: Request) {
         garageType: true,
         licenseKey: true,
         licenseStatus: true,
+        subdomain: true,
         expiresAt: true,
       },
     });
