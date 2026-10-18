@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -601,10 +602,19 @@ export default function InvoicesPage() {
           <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
           <p className="text-muted-foreground mt-1">Manage billing, estimates, and payments</p>
         </div>
-        <PearlButton onClick={() => setIsModalOpen(true)} className="text-xs">
-          <Plus className="w-4 h-4 mr-1 text-luxury-gold" />
-          New Invoice / Estimate
-        </PearlButton>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/import"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-luxury-gold/10 hover:bg-luxury-gold/20 text-luxury-gold border border-luxury-gold/30 rounded-xl text-xs font-semibold transition-all shadow-sm"
+          >
+            <FileUp className="w-4 h-4" />
+            Import Vyapar / Gemini Bill
+          </Link>
+          <PearlButton onClick={() => setIsModalOpen(true)} className="text-xs">
+            <Plus className="w-4 h-4 mr-1 text-luxury-gold" />
+            New Invoice / Estimate
+          </PearlButton>
+        </div>
       </div>
 
       {/* Filters */}
