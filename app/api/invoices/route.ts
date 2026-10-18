@@ -102,6 +102,7 @@ export async function GET(request: Request) {
             select: {
               id: true,
               description: true,
+              details: true,
               quantity: true,
               unitPrice: true,
               tax: true,
@@ -283,6 +284,7 @@ export async function POST(request: Request) {
         items: {
           create: items.map((item: any) => ({
             description: item.description,
+            details: item.details || null,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             tax: item.tax || 0,

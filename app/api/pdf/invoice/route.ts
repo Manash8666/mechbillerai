@@ -7,8 +7,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const typeParam = (searchParams.get('docType') || searchParams.get('type'))?.toUpperCase();
-    const docType: 'INVOICE' | 'ESTIMATE' | 'WORK ORDER' =
-      typeParam === 'ESTIMATE' || typeParam === 'WORK ORDER' ? typeParam : 'INVOICE';
+    
+    let docType: 'INVOICE' | 'ESTIMATE' | 'WORK ORDER' | 'SOW BILL' | 'SOW ESTIMATE' = 'INVOICE';
+    if (typeParam === 'ESTIMATE') {
+      docType = 'ESTIMATE';
+    } else if (typeParam === 'SOW' || typeParam === 'SOW_BILL' || typeParam === 'SOW BILL') {
+      docType = 'SOW BILL';
+    } else if (typeParam === 'SOW_ESTIMATE' || typeParam === 'SOW ESTIMATE') {
+      docType = 'SOW ESTIMATE';
+    } else if (typeParam === 'WORK ORDER') {
+      docType = 'WORK ORDER';
+    }
 
     if (!id) {
       return NextResponse.json({ error: 'Missing invoice or jobcard id' }, { status: 400 });
@@ -22,11 +31,17 @@ export async function GET(request: Request) {
       include: {
         customer: true,
         items: true,
+        jobCard: {
+          include: {
+            vehicle: true,
+          },
+        },
         user: {
           select: {
             name: true,
             phone: true,
             email: true,
+            branding: true,
           },
         },
       },
@@ -41,12 +56,14 @@ export async function GET(request: Request) {
         },
         include: {
           customer: true,
+          vehicle: true,
           tasks: true,
           user: {
             select: {
               name: true,
               phone: true,
               email: true,
+              branding: true,
             },
           },
         },
@@ -58,9 +75,6 @@ export async function GET(request: Request) {
     }
 
     // Security Verification:
-    // 1. If requester is authenticated garage owner, grant access.
-    // 2. If valid HMAC token is provided (customer link from WhatsApp), grant access.
-    // 3. If downloaded directly from dashboard, grant access.
     const token = searchParams.get('token');
     const { getSessionUser } = await import('@/lib/auth');
     const authUser = await getSessionUser(request);
@@ -92,10 +106,13 @@ export async function GET(request: Request) {
     let paid = 0;
     let balance = 0;
     let dateStr = new Date().toLocaleDateString('en-GB');
-    let garageName = 'MotoBan Workshop';
-    let garagePhone = '+91 99999 88888';
-    let garageEmail = 'support@garagesaas.com';
-    let items = [{ description: 'Automotive Service', quantity: 1, unitPrice: 0, total: 0 }];
+    let garageName = 'MotoFit 2 Workshop';
+    let garagePhone = '+91 63596 35416';
+    let garageEmail = 'support@motoban.in';
+    let garageAddress = 'Nigam Nagar HQ, Ahmedabad';
+    let items: Array<{ description: string; details?: string | null; quantity: number; unitPrice: number; total: number }> = [
+      { description: 'Automotive Service', quantity: 1, unitPrice: 0, total: 0 },
+    ];
 
     if (invoice) {
       customerName = invoice.customer?.name || customerName;
@@ -109,12 +126,13 @@ export async function GET(request: Request) {
       paid = invoice.paid;
       balance = invoice.balance;
       dateStr = invoice.createdAt.toLocaleDateString('en-GB');
-      garageName = invoice.user?.name || garageName;
+      garageName = invoice.user?.branding?.garageName || invoice.user?.name || garageName;
       garagePhone = invoice.user?.phone || garagePhone;
       garageEmail = invoice.user?.email || garageEmail;
       if (invoice.items && invoice.items.length > 0) {
-        items = invoice.items.map((it) => ({
+        items = invoice.items.map((it: any) => ({
           description: it.description,
+          details: it.details || null,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
           total: it.total,
@@ -132,12 +150,13 @@ export async function GET(request: Request) {
       total = est;
       balance = est;
       dateStr = jobCard.createdAt.toLocaleDateString('en-GB');
-      garageName = jobCard.user?.name || garageName;
+      garageName = jobCard.user?.branding?.garageName || jobCard.user?.name || garageName;
       garagePhone = jobCard.user?.phone || garagePhone;
       garageEmail = jobCard.user?.email || garageEmail;
       if (jobCard.tasks && jobCard.tasks.length > 0) {
         items = jobCard.tasks.map((t: any) => ({
           description: t.description || 'Service Task',
+          details: 'Mechanical inspection & certified workshop execution',
           quantity: 1,
           unitPrice: Math.round(subtotal / jobCard.tasks.length),
           total: Math.round(subtotal / jobCard.tasks.length),
@@ -146,6 +165,7 @@ export async function GET(request: Request) {
         items = [
           {
             description: jobCard.description || 'Estimated Service & Parts Inspection',
+            details: 'Comprehensive multi-point vehicle evaluation and servicing',
             quantity: 1,
             unitPrice: subtotal,
             total: subtotal,
@@ -153,6 +173,21 @@ export async function GET(request: Request) {
         ];
       }
     }
+
+    // Vehicle and Service Type Resolution
+    const vehicleObj = invoice?.jobCard?.vehicle || jobCard?.vehicle;
+    const vehicleData = vehicleObj
+      ? {
+          makeModel: `${vehicleObj.make || ''} ${vehicleObj.model || ''}`.trim() || 'Hero Xtreme 200 (2019 ABS Variant)',
+          registrationNo: vehicleObj.registrationNo || 'As Per Estimate',
+          refEstimate: invoice?.jobCard?.jobNumber ? `Ref: ${invoice.jobCard.jobNumber}` : undefined,
+        }
+      : {
+          makeModel: 'Hero Xtreme 200 (2019 ABS Variant)',
+          registrationNo: 'As Per Estimate',
+        };
+
+    const serviceType = invoice?.jobCard?.description || jobCard?.description || 'Half Engine Rebuild';
 
     let upiQrDataUrl: string | null = null;
     if (balance > 0) {
@@ -175,6 +210,8 @@ export async function GET(request: Request) {
       documentType: docType,
       documentNumber: docNumber,
       date: dateStr,
+      serviceType,
+      vehicle: vehicleData,
       customer: {
         name: customerName,
         phone: customerPhone,
@@ -185,6 +222,8 @@ export async function GET(request: Request) {
         name: garageName,
         phone: garagePhone,
         email: garageEmail,
+        address: garageAddress,
+        contacts: 'Manash: +91 63596 35416 (Client Service Manager) | Munna: +91 91232 93450 (Senior Mechanic)',
       },
       items,
       subtotal,
@@ -201,7 +240,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${docType}_${docNumber}.pdf"`,
+        'Content-Disposition': `inline; filename="${docType.replace(/\s+/g, '_')}_${docNumber}.pdf"`,
         'Cache-Control': 'no-store, max-age=0',
       },
     });

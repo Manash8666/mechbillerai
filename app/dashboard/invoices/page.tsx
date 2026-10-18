@@ -56,8 +56,27 @@ export default function InvoicesPage() {
   const [paymentMode, setPaymentMode] = useState('cash');
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'ESTIMATE'>('INVOICE');
   const [lineItems, setLineItems] = useState<
-    { description: string; quantity: number; unitPrice: number }[]
-  >([{ description: 'General Service & Inspection', quantity: 1, unitPrice: 1500 }]);
+    { description: string; details?: string; quantity: number; unitPrice: number }[]
+  >([
+    {
+      description: 'CYLINDER BLOCK & PISTON KIT (OEM)',
+      details: 'Top End Core: OEM cylinder block, piston, rings, pin & circlips assembly',
+      quantity: 1,
+      unitPrice: 5200,
+    },
+    {
+      description: 'CYLINDER HEAD VALVES, SEALS & GUIDES',
+      details: 'Top End Core: Intake & exhaust valves, viton stem seals & bronze guide set',
+      quantity: 1,
+      unitPrice: 1100,
+    },
+    {
+      description: 'MECHANIC LABOUR (TOP END REBUILD)',
+      details: 'Labour: Engine top end teardown, decarb, precision assembly, valve lash setup & road test',
+      quantity: 1,
+      unitPrice: 2500,
+    },
+  ]);
 
   // Counter UPI QR Modal State
   const [selectedUpiInvoice, setSelectedUpiInvoice] = useState<Invoice | null>(null);
@@ -87,7 +106,10 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleDownloadBillPdf = async (invoice: Invoice, docType: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
+  const handleDownloadBillPdf = async (
+    invoice: Invoice,
+    docType: 'INVOICE' | 'ESTIMATE' | 'SOW_BILL' | 'SOW_ESTIMATE' = 'INVOICE'
+  ) => {
     const fileName = `${docType}_${invoice.invoiceNumber}.pdf`;
     const toastId = toast.loading(`Generating ${fileName}...`);
     const url = `/api/pdf/invoice?id=${invoice.invoiceNumber}&docType=${docType}`;
@@ -221,7 +243,7 @@ export default function InvoicesPage() {
   };
 
   const handleAddItem = () => {
-    setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }]);
+    setLineItems([...lineItems, { description: '', details: '', quantity: 1, unitPrice: 0 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -231,7 +253,7 @@ export default function InvoicesPage() {
 
   const handleItemChange = (
     index: number,
-    field: 'description' | 'quantity' | 'unitPrice',
+    field: 'description' | 'details' | 'quantity' | 'unitPrice',
     val: any
   ) => {
     const updated = [...lineItems];
@@ -275,6 +297,7 @@ export default function InvoicesPage() {
         notes: invoiceType === 'ESTIMATE' ? '[ESTIMATE] Workshop Quotation' : undefined,
         items: lineItems.map((item) => ({
           description: item.description || 'Workshop Service',
+          details: item.details || undefined,
           quantity: Number(item.quantity) || 1,
           unitPrice: Number(item.unitPrice) || 0,
           tax: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 0.18),
@@ -571,6 +594,15 @@ export default function InvoicesPage() {
                       <Download className="w-3.5 h-3.5" />
                       Estimate PDF
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadBillPdf(invoice, 'SOW_BILL')}
+                      className="flex-1 lg:flex-none px-3 py-1.5 bg-gradient-to-r from-amber-500 to-red-600 text-white font-bold rounded-lg hover:opacity-95 transition-all text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                      title="Download Scope of Work (SOW) Bill with Detailed Parts/Labour Breakdown & Run-In Schedule"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      SOW Bill PDF
+                    </button>
                   </div>
               </div>
             </div>
@@ -674,44 +706,54 @@ export default function InvoicesPage() {
                   </button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {lineItems.map((item, index) => (
-                    <div key={index} className="flex gap-2 items-center">
+                    <div key={index} className="p-3 rounded-xl border border-border bg-muted/20 space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Service / Spare Title (e.g. CYLINDER BLOCK & PISTON KIT)"
+                          value={item.description}
+                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          required
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                          className="w-16 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-center focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          required
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Price (₹)"
+                          value={item.unitPrice}
+                          onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
+                          className="w-24 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          required
+                        />
+                        {lineItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(index)}
+                            className="p-2 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      {/* Detailed explanation of what the work or spare part does */}
                       <input
                         type="text"
-                        placeholder="Description (e.g. Engine Oil, Brake Pad)"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-luxury-gold"
-                        required
+                        placeholder="Detailed Work / Spare Explanation (e.g. Top End Core: OEM cylinder block, rings, pin & circlips assembly)"
+                        value={item.details || ''}
+                        onChange={(e) => handleItemChange(index, 'details', e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-border/80 bg-background/80 text-foreground text-[11px] placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-luxury-gold"
                       />
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
-                        className="w-16 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-center focus:outline-none focus:ring-2 focus:ring-luxury-gold"
-                        required
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Price (₹)"
-                        value={item.unitPrice}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
-                        className="w-24 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-2 focus:ring-luxury-gold"
-                        required
-                      />
-                      {lineItems.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="p-2 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>

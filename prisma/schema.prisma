@@ -178,6 +178,7 @@ model InvoiceItem {
   id          String  @id @default(cuid())
   invoiceId   String
   description String
+  details     String? // Detailed description of what the work or spare does
   quantity    Float
   unitPrice   Float
   tax         Float   @default(0)
