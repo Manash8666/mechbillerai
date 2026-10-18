@@ -83,10 +83,9 @@ export interface ImportParseResult {
  * Parses Gemini-generated SOW bills or general automotive invoice PDFs
  */
 export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult> {
-  const { PDFParse } = await import('pdf-parse');
-  const parser = new PDFParse({ data: buffer });
-  const parsed = await parser.getText();
-  const text = parsed.text || '';
+  const { extractText } = await import('unpdf');
+  const res = await extractText(new Uint8Array(buffer));
+  const text = Array.isArray(res.text) ? res.text.join('\n') : String(res.text || '');
 
   // 1. Check for Gemini / MotoFit SOW Bill format
   const isGeminiSow =
