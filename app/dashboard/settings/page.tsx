@@ -14,11 +14,11 @@ export default function SettingsPage() {
 
   const settingsCategories = [
     {
-      name: 'Branding & Customization',
-      description: 'Upload logo and customize your brand colors',
+      name: 'Branding & Payment QR',
+      description: 'Upload logo, personal GPay / PhonePe QR standee, and custom brand theme',
       icon: Palette,
       href: '/dashboard/settings/branding',
-      badge: 'New',
+      badge: 'QR & Colors',
       color: 'text-luxury-gold',
     },
     {

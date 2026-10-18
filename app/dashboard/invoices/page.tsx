@@ -150,17 +150,25 @@ export default function InvoicesPage() {
     setSelectedUpiInvoice(invoice);
     setLoadingQr(true);
     try {
-      const { generateUpiQrDataUrl } = await import('@/lib/upi');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const amount = invoice.balance > 0 ? invoice.balance : invoice.total;
-      const dataUrl = await generateUpiQrDataUrl({
-        vpa: 'motoban@icici',
-        payeeName: user.name || 'MotoBan Workshop',
-        amount: amount,
-        invoiceNumber: invoice.invoiceNumber,
-        notes: `Bill #${invoice.invoiceNumber}`,
-      });
-      setUpiQrDataUrl(dataUrl);
+      const customQr = typeof window !== 'undefined' ? localStorage.getItem('paymentQrUrl') : null;
+      const savedUpiId = typeof window !== 'undefined' ? localStorage.getItem('upiId') : null;
+
+      // If garage uploaded their own custom QR image, display their authentic standee QR
+      if (customQr) {
+        setUpiQrDataUrl(customQr);
+      } else {
+        const { generateUpiQrDataUrl } = await import('@/lib/upi');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const amount = invoice.balance > 0 ? invoice.balance : invoice.total;
+        const dataUrl = await generateUpiQrDataUrl({
+          vpa: savedUpiId || 'motoban@icici',
+          payeeName: user.name || 'MotoBan Workshop',
+          amount: amount,
+          invoiceNumber: invoice.invoiceNumber,
+          notes: `Bill #${invoice.invoiceNumber}`,
+        });
+        setUpiQrDataUrl(dataUrl);
+      }
     } catch (err) {
       console.error('Failed to generate UPI QR:', err);
       toast.error('Could not generate UPI QR code');
@@ -1185,6 +1193,15 @@ export default function InvoicesPage() {
               >
                 Close Counter Display
               </button>
+            </div>
+
+            <div className="mt-3 text-center">
+              <Link
+                href="/dashboard/settings/branding"
+                className="text-[11px] text-luxury-gold hover:underline inline-flex items-center gap-1 font-medium"
+              >
+                ⚙️ Upload or Change Workshop Standee QR in Settings
+              </Link>
             </div>
           </div>
         </div>

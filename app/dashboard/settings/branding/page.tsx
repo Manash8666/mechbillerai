@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Upload, Palette, Save, RotateCcw, Sparkles } from 'lucide-react';
+import { Upload, Palette, Save, RotateCcw, Sparkles, QrCode, Trash2, CheckCircle2, IndianRupee, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PearlButton from '@/components/PearlButton';
 import {
@@ -14,13 +14,18 @@ import {
 export default function BrandingSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  const [paymentQrFile, setPaymentQrFile] = useState<File | null>(null);
+  const [paymentQrPreview, setPaymentQrPreview] = useState<string>('');
   const [formData, setFormData] = useState({
     garageName: '',
     logoUrl: '',
+    paymentQrUrl: '',
+    upiId: '',
     primaryColor: '#E5C07B',
     subdomain: '',
   });
@@ -44,12 +49,18 @@ export default function BrandingSettingsPage() {
         setFormData({
           garageName: data.garageName || '',
           logoUrl: data.logoUrl || '',
+          paymentQrUrl: data.paymentQrUrl || '',
+          upiId: data.upiId || '',
           primaryColor: data.primaryColor || '#E5C07B',
           subdomain: data.subdomain || '',
         });
         
         if (data.logoUrl) {
           setLogoPreview(data.logoUrl);
+        }
+
+        if (data.paymentQrUrl) {
+          setPaymentQrPreview(data.paymentQrUrl);
         }
 
         if (data.primaryColor) {
@@ -72,6 +83,27 @@ export default function BrandingSettingsPage() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handlePaymentQrChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPaymentQrFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setPaymentQrPreview(result);
+        setFormData((prev) => ({ ...prev, paymentQrUrl: result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePaymentQr = () => {
+    setPaymentQrFile(null);
+    setPaymentQrPreview('');
+    setFormData((prev) => ({ ...prev, paymentQrUrl: '' }));
+    toast.success('Payment QR removed');
   };
 
   const handleExtractColors = async () => {
@@ -265,12 +297,35 @@ export default function BrandingSettingsPage() {
         setUploading(false);
       }
 
+      let paymentQrUrl = formData.paymentQrUrl;
+
+      // Upload payment QR if new file selected
+      if (paymentQrFile) {
+        setUploadingQr(true);
+        const qrFormData = new FormData();
+        qrFormData.append('qrImage', paymentQrFile);
+        qrFormData.append('upiId', formData.upiId || '');
+
+        const qrResponse = await fetch('/api/upload/payment-qr', {
+          method: 'POST',
+          body: qrFormData,
+        });
+
+        const qrData = await qrResponse.json();
+        if (qrData.success && qrData.paymentQrUrl) {
+          paymentQrUrl = qrData.paymentQrUrl;
+        }
+        setUploadingQr(false);
+      }
+
       // Save branding settings
       const brandingData = {
         userId: user.id,
         garageName: formData.garageName,
         subdomain: formData.subdomain,
         logoUrl,
+        paymentQrUrl,
+        upiId: formData.upiId || null,
         primaryColor: formData.primaryColor,
         secondaryColor: generatedPalette?.secondary,
         accentColor: generatedPalette?.accent,
@@ -291,7 +346,16 @@ export default function BrandingSettingsPage() {
       if (response.ok) {
         toast.success('Branding saved successfully!');
         
-        // Store in localStorage for immediate theme update
+        // Store in localStorage for immediate theme & payment update
+        if (paymentQrUrl) {
+          localStorage.setItem('paymentQrUrl', paymentQrUrl);
+        } else {
+          localStorage.removeItem('paymentQrUrl');
+        }
+        if (formData.upiId) {
+          localStorage.setItem('upiId', formData.upiId);
+        }
+
         if (generatedPalette) {
           localStorage.setItem('brandingColors', JSON.stringify(generatedPalette));
           localStorage.setItem('garageName', formData.garageName);
@@ -508,6 +572,127 @@ export default function BrandingSettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Workshop Payment QR Scanner (GPay / PhonePe / Paytm / Personal Standee) */}
+          <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20 relative overflow-hidden">
+            <div className="flex items-start justify-between gap-2 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-luxury-ink-light dark:text-luxury-ink-dark flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-luxury-gold" />
+                  Payment QR Scanner (GPay / PhonePe / Paytm)
+                </h2>
+                <p className="text-xs text-luxury-muted-light dark:text-luxury-muted-dark mt-1">
+                  Upload your counter standee photo or personal UPI QR. It will automatically be printed on all SoW Bills, Estimates, and Invoices.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 bg-luxury-gold/10 text-luxury-gold border border-luxury-gold/30 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                Auto-Printed on Bills
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {/* QR Image Preview or Upload Dropzone */}
+              {paymentQrPreview ? (
+                <div className="p-4 bg-luxury-canvas-light dark:bg-luxury-canvas-dark rounded-xl border border-luxury-gold/30 flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative p-2 bg-white rounded-xl shadow-md border border-gray-200">
+                    <img
+                      src={paymentQrPreview}
+                      alt="Workshop Payment QR"
+                      className="w-32 h-32 object-contain rounded-lg"
+                    />
+                    <div className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-1 rounded-full shadow">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-500 text-xs font-semibold rounded-full border border-emerald-500/20">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Active on Invoices & SOW Bills
+                    </div>
+                    <p className="text-xs text-luxury-muted-light dark:text-luxury-muted-dark">
+                      This QR image is active and will be rendered directly inside the Payment Acceptance card on all your customer PDFs.
+                    </p>
+                    <div className="flex items-center justify-center sm:justify-start gap-3 pt-1">
+                      <label className="cursor-pointer text-xs font-bold text-luxury-gold hover:underline">
+                        Change Standee Image
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handlePaymentQrChange}
+                        />
+                      </label>
+                      <span className="text-muted-foreground text-xs">·</span>
+                      <button
+                        type="button"
+                        onClick={handleRemovePaymentQr}
+                        className="text-xs font-semibold text-red-500 hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Remove QR
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center p-6 bg-luxury-canvas-light dark:bg-luxury-canvas-dark rounded-xl border-2 border-dashed border-luxury-gold/30 cursor-pointer hover:border-luxury-gold transition-colors text-center group">
+                  <div className="w-12 h-12 rounded-full bg-luxury-gold/10 flex items-center justify-center text-luxury-gold mb-3 group-hover:scale-105 transition-transform">
+                    <QrCode className="h-6 w-6" />
+                  </div>
+                  <span className="text-sm font-semibold text-luxury-ink-light dark:text-luxury-ink-dark mb-1">
+                    Upload GPay / PhonePe / Paytm Standee Photo
+                  </span>
+                  <span className="text-xs text-luxury-muted-light dark:text-luxury-muted-dark max-w-xs mb-2">
+                    Take a photo of your counter standee or upload a screenshot of your personal QR
+                  </span>
+                  <span className="px-3 py-1 bg-luxury-gold/10 text-luxury-gold rounded-lg text-xs font-medium border border-luxury-gold/20">
+                    PNG, JPG, WebP up to 5MB
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handlePaymentQrChange}
+                  />
+                </label>
+              )}
+
+              {/* UPI ID Field */}
+              <div>
+                <label
+                  htmlFor="upi-id-input"
+                  className="block text-xs font-medium text-luxury-ink-light dark:text-luxury-ink-dark mb-1"
+                >
+                  Workshop UPI ID / VPA (Optional)
+                </label>
+                <div className="relative">
+                  <input
+                    id="upi-id-input"
+                    type="text"
+                    value={formData.upiId || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, upiId: e.target.value.trim() })
+                    }
+                    className="w-full px-4 py-2 bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-muted-light/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-transparent text-luxury-ink-light dark:text-luxury-ink-dark font-mono text-sm"
+                    placeholder="e.g. motofit@okhdfcbank or 9876543210@paytm"
+                  />
+                </div>
+                <p className="text-[11px] text-luxury-muted-light dark:text-luxury-muted-dark mt-1">
+                  Printed as text on the bill so customers can type your UPI address manually if needed.
+                </p>
+              </div>
+
+              {/* Supported Apps Badges */}
+              <div className="pt-2 border-t border-luxury-gold/10 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] text-muted-foreground">Supported payment apps:</span>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded border border-blue-500/20">Google Pay</span>
+                  <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 rounded border border-purple-500/20">PhonePe</span>
+                  <span className="px-2 py-0.5 bg-sky-500/10 text-sky-500 rounded border border-sky-500/20">Paytm</span>
+                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded border border-emerald-500/20">BHIM UPI</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Column - Preview */}
@@ -580,6 +765,80 @@ export default function BrandingSettingsPage() {
                 Secondary Button
               </button>
             </div>
+          </div>
+
+          {/* Live SOW Bill Payment Card Preview */}
+          <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border border-luxury-gold/20">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-luxury-ink-light dark:text-luxury-ink-dark flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-luxury-gold" />
+                  SoW Bill & Estimate Payment Preview
+                </h2>
+                <p className="text-xs text-luxury-muted-light dark:text-luxury-muted-dark mt-0.5">
+                  Exact preview of the Payment Acceptance Card that appears opposite the ledger on customer bills.
+                </p>
+              </div>
+              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold border border-emerald-500/20">
+                PDF Layout
+              </span>
+            </div>
+
+            {/* Mocked Bill Payment Card */}
+            <div className="bg-[#F9FAFB] text-[#1F2937] rounded-xl border border-gray-300 shadow-sm overflow-hidden p-4">
+              <div className="bg-gray-100 -mx-4 -mt-4 px-4 py-2 border-b border-gray-200 mb-3 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                  SCAN TO PAY VIA ANY UPI APP (GPAY / PHONEPE / PAYTM / BHIM)
+                </span>
+                <span className="text-[9px] font-mono text-gray-500">Live PDF Card</span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {/* QR Square */}
+                <div className="w-24 h-24 bg-white rounded-lg p-1.5 border border-gray-300 shadow-sm flex items-center justify-center shrink-0">
+                  {paymentQrPreview ? (
+                    <img
+                      src={paymentQrPreview}
+                      alt="Payment QR"
+                      className="w-full h-full object-contain rounded"
+                    />
+                  ) : (
+                    <div className="text-center p-2">
+                      <QrCode className="w-8 h-8 text-gray-400 mx-auto mb-1" />
+                      <span className="text-[9px] font-bold text-gray-500 block leading-tight">
+                        COUNTER QR
+                      </span>
+                      <span className="text-[7px] text-gray-400 block">NOT UPLOADED</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div className="space-y-1 text-left flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">
+                    {formData.garageName || 'MOTOFIT 2 WORKSHOP'}
+                  </p>
+                  <p className="text-xs font-mono text-gray-600 truncate">
+                    UPI: {formData.upiId || 'Personal GPay / PhonePe / Counter QR'}
+                  </p>
+                  <p className="text-[10px] text-gray-500">
+                    Scan with Google Pay, PhonePe, Paytm, BHIM, or any banking UPI app.
+                  </p>
+                  <div className="pt-1 flex items-center justify-between">
+                    <span className="text-xs font-bold text-red-600">
+                      Total Payable: ₹ 14,220.00
+                    </span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">
+                      Instant Verification
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-luxury-muted-light dark:text-luxury-muted-dark mt-3">
+              💡 Garages with counter standees from Google Pay, PhonePe, or Paytm don&apos;t need complex merchant gateways — just upload the standee photo and your customers can pay directly into your account!
+            </p>
           </div>
         </div>
       </div>

@@ -65,6 +65,8 @@ export interface InvoicePdfData {
   warrantyTitle?: string | null;
   warrantyText?: string | null;
   runInServices?: { title: string; desc: string }[] | null;
+  paymentQrUrl?: string | null;
+  upiId?: string | null;
   upiQrDataUrl?: string | null;
 }
 
@@ -443,7 +445,85 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     { align: 'right' }
   );
 
-  let bottomCardsY = ledgerY + 12;
+  // 4b. Payment Acceptance & UPI QR Scanner Card (Left-Aligned, opposite Financial Ledger)
+  const qrImage = data.paymentQrUrl || data.upiQrDataUrl || null;
+  const paymentBoxX = margin;
+  const paymentBoxW = summaryBoxX - margin - 4;
+  const paymentBoxH = Math.max(34, ledgerY + 8 - finalY);
+
+  doc.setFillColor(249, 250, 251);
+  doc.setDrawColor(229, 231, 235);
+  doc.roundedRect(paymentBoxX, finalY, paymentBoxW, paymentBoxH, 2, 2, 'FD');
+
+  // Header band
+  doc.setFillColor(243, 244, 246);
+  doc.roundedRect(paymentBoxX, finalY, paymentBoxW, 5.5, 2, 2, 'F');
+  doc.rect(paymentBoxX, finalY + 3.5, paymentBoxW, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(31, 41, 55);
+  doc.text('SCAN TO PAY VIA ANY UPI APP (GPAY / PHONEPE / PAYTM / BHIM)', paymentBoxX + 3, finalY + 4);
+
+  const qrSize = 24;
+  const qrX = paymentBoxX + 3.5;
+  const qrY = finalY + 7.5;
+
+  if (qrImage) {
+    try {
+      // White container behind QR for clean contrast
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(209, 213, 219);
+      doc.roundedRect(qrX, qrY, qrSize, qrSize, 1.5, 1.5, 'FD');
+
+      let format = 'PNG';
+      if (qrImage.includes('image/jpeg') || qrImage.includes('image/jpg')) format = 'JPEG';
+      else if (qrImage.includes('image/webp')) format = 'WEBP';
+
+      doc.addImage(qrImage, format, qrX + 0.8, qrY + 0.8, qrSize - 1.6, qrSize - 1.6);
+    } catch (imgErr) {
+      console.warn('Could not render QR code image on PDF:', imgErr);
+    }
+  } else {
+    // Placeholder container when no QR uploaded
+    doc.setFillColor(243, 244, 246);
+    doc.setDrawColor(209, 213, 219);
+    doc.roundedRect(qrX, qrY, qrSize, qrSize, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(107, 114, 128);
+    doc.text('UPI QR', qrX + qrSize / 2, qrY + qrSize / 2 - 1, { align: 'center' });
+    doc.setFontSize(5);
+    doc.text('ACCEPTED HERE', qrX + qrSize / 2, qrY + qrSize / 2 + 3, { align: 'center' });
+  }
+
+  // Payment Details Text beside QR
+  const infoX = qrX + qrSize + 4;
+  const maxInfoW = paymentBoxW - (qrSize + 11);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(17, 24, 39);
+  const payee = data.garage.name || 'Workshop Account';
+  doc.text(payee.slice(0, 32), infoX, qrY + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(75, 85, 99);
+  const upiIdDisplay = data.upiId || 'Personal GPay / PhonePe / Counter QR';
+  doc.text(`UPI: ${upiIdDisplay}`, infoX, qrY + 8.5);
+
+  doc.setFontSize(5.5);
+  doc.setTextColor(107, 114, 128);
+  doc.text('Scan with Google Pay, PhonePe, Paytm, or any UPI app.', infoX, qrY + 13, { maxWidth: maxInfoW });
+  doc.text('Instant digital confirmation upon payment.', infoX, qrY + 17, { maxWidth: maxInfoW });
+
+  // Amount badge
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text(`Total Payable: ₹ ${data.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, infoX, qrY + 22.5);
+
+  let bottomCardsY = Math.max(ledgerY + 12, finalY + paymentBoxH + 4);
 
   // 5. Dual Execution Cards: 1-Year Warranty (Left) + Post-Rebuild Run-In Service Breakdown (Right)
   if (isSow) {

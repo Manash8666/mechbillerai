@@ -189,11 +189,15 @@ export async function GET(request: Request) {
 
     const serviceType = invoice?.jobCard?.description || jobCard?.description || 'Half Engine Rebuild';
 
+    const userBranding = invoice?.user?.branding || jobCard?.user?.branding;
+    const paymentQrUrl = userBranding?.paymentQrUrl || null;
+    const upiId = userBranding?.upiId || null;
+
     let upiQrDataUrl: string | null = null;
-    if (balance > 0) {
+    if (balance > 0 && !paymentQrUrl) {
       try {
         const { generateUpiQrDataUrl } = await import('@/lib/upi');
-        const vpa = 'motoban@icici';
+        const vpa = upiId || 'motoban@icici';
         upiQrDataUrl = await generateUpiQrDataUrl({
           vpa,
           payeeName: garageName,
@@ -231,6 +235,8 @@ export async function GET(request: Request) {
       total,
       paid,
       balance,
+      paymentQrUrl,
+      upiId,
       upiQrDataUrl,
     });
 

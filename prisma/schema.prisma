@@ -321,6 +321,8 @@ model BrandingSettings {
   userId              String   @unique
   garageName          String?
   logoUrl             String?
+  paymentQrUrl        String?
+  upiId               String?
   primaryColor        String   @default("#C9A84C")
   secondaryColor      String?
   accentColor         String?

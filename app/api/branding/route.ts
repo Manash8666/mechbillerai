@@ -27,6 +27,8 @@ export async function GET(request: Request) {
         accentColor: '#00F0FF',
         garageName: user?.name || null,
         logoUrl: null,
+        paymentQrUrl: null,
+        upiId: null,
         subdomain: user?.subdomain || null,
       });
     }
@@ -55,6 +57,8 @@ export async function POST(request: Request) {
     const {
       garageName,
       logoUrl,
+      paymentQrUrl,
+      upiId,
       primaryColor,
       secondaryColor,
       accentColor,
@@ -72,6 +76,8 @@ export async function POST(request: Request) {
       update: {
         garageName,
         logoUrl,
+        ...(paymentQrUrl !== undefined && { paymentQrUrl }),
+        ...(upiId !== undefined && { upiId }),
         primaryColor,
         secondaryColor,
         accentColor,
@@ -87,6 +93,8 @@ export async function POST(request: Request) {
         userId,
         garageName,
         logoUrl,
+        paymentQrUrl: paymentQrUrl || null,
+        upiId: upiId || null,
         primaryColor: primaryColor || '#C9F31D',
         secondaryColor: secondaryColor || '#FF5E14',
         accentColor: accentColor || '#00F0FF',
