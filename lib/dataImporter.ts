@@ -108,8 +108,8 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
       text.match(/(?:Total\s*Payable\s*Amount|Grand\s*Total|Net\s*Amount|Final\s*Total)\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i) ||
       text.match(/\bTotal\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
 
-    // Extract items: S.NO. DESCRIPTION \n DETAILS \t QTY \t RATE \t AMOUNT
-    const itemRegex = /^(\d+)\s+([^\n]+)\n([^\t\n]+?)\s*\t\s*(\d+(?:\.\d+)?)\s*\t\s*([\d,]+(?:\.\d+)?)\s*\t\s*([\d,]+(?:\.\d+)?)/gm;
+    // Extract items: S.NO. DESCRIPTION \n DETAILS (space or tab) QTY (space or tab) RATE (space or tab) AMOUNT
+    const itemRegex = /^(\d+)\s+([A-Z0-9\s/&,().-]+)\n([^\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
     let match;
     const items: ImportedLineItem[] = [];
     while ((match = itemRegex.exec(text)) !== null) {
