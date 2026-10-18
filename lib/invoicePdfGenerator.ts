@@ -292,7 +292,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     let details = item.details ? item.details.trim() : '';
 
     // If details are empty, automatically generate technical explanation for SOW
-    if (!details && (isSowBill || isSowEstimate)) {
+    if (!details && isSow) {
       details = getAutomotiveTechnicalExplanation(item.description);
     }
 
@@ -357,7 +357,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
           const startX = hookData.cell.x + 3;
           const title = (item.description || '').toUpperCase();
           let details = item.details ? item.details.trim() : '';
-          if (!details && (isSowBill || isSowEstimate)) {
+          if (!details && isSow) {
             details = getAutomotiveTechnicalExplanation(item.description);
           }
 
