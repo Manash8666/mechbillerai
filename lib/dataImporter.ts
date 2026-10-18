@@ -1,6 +1,15 @@
-import { PDFParse } from 'pdf-parse';
-import * as XLSX from 'xlsx';
-import { getAutomotiveTechnicalExplanation } from '@/lib/aiExplainer';
+if (typeof globalThis !== 'undefined' && !(globalThis as any).DOMMatrix) {
+  (globalThis as any).DOMMatrix = class DOMMatrix {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    m11 = 1; m12 = 0; m13 = 0; m14 = 0;
+    m21 = 0; m22 = 1; m23 = 0; m24 = 0;
+    m31 = 0; m32 = 0; m33 = 1; m34 = 0;
+    m41 = 0; m42 = 0; m43 = 0; m44 = 1;
+    static fromMatrix() { return new DOMMatrix(); }
+  };
+}
+
+import { getAutomotiveTechnicalExplanation } from './aiExplainer';
 
 export interface ImportedCustomer {
   name: string;
@@ -74,6 +83,7 @@ export interface ImportParseResult {
  * Parses Gemini-generated SOW bills or general automotive invoice PDFs
  */
 export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult> {
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
   const parsed = await parser.getText();
   const text = parsed.text || '';
@@ -231,6 +241,7 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
  * Parses Vyapar / Tally / Marg Excel & CSV spreadsheets
  */
 export async function parseExcelOrCsv(buffer: Buffer, filename: string): Promise<ImportParseResult> {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const firstSheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[firstSheetName];
