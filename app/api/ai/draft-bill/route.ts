@@ -3,8 +3,19 @@ import { draftBillFromPrompt } from '@/lib/aiExplainer';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { prompt, vehicleModel, serviceType } = body;
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch {
+      const rawText = await request.text();
+      try {
+        body = JSON.parse(rawText);
+      } catch {
+        body = { prompt: rawText };
+      }
+    }
+
+    const { prompt, vehicleModel, serviceType } = body || {};
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return NextResponse.json({ error: 'Please provide a repair prompt or service notes' }, { status: 400 });

@@ -177,14 +177,19 @@ Format your response strictly as valid JSON mapping item names to their 1-line e
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
-          const parsed = JSON.parse(text);
-          for (const item of items) {
-            const matchedKey = Object.keys(parsed).find(
-              (k) => k.toLowerCase() === item.toLowerCase() || item.toLowerCase().includes(k.toLowerCase())
-            );
-            if (matchedKey && parsed[matchedKey]) {
-              results[item] = parsed[matchedKey];
+          try {
+            const cleanJson = text.replace(/```(?:json)?/gi, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            for (const item of items) {
+              const matchedKey = Object.keys(parsed).find(
+                (k) => k.toLowerCase() === item.toLowerCase() || item.toLowerCase().includes(k.toLowerCase())
+              );
+              if (matchedKey && parsed[matchedKey]) {
+                results[item] = parsed[matchedKey];
+              }
             }
+          } catch (jsonErr) {
+            console.warn('Failed to parse Gemini explanation JSON:', jsonErr);
           }
         }
       }
@@ -279,19 +284,24 @@ Return strictly a JSON object formatted as:
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
-          const parsed = JSON.parse(text);
-          if (Array.isArray(parsed.items) && parsed.items.length > 0) {
-            return {
-              vehicleModel: parsed.vehicleModel || context?.vehicleModel || 'Vehicle Service',
-              serviceType: parsed.serviceType || context?.serviceType || 'Half Engine Rebuild',
-              items: parsed.items.map((it: any) => ({
-                description: String(it.description || 'Service Work').toUpperCase(),
-                details: it.details || getAutomotiveTechnicalExplanation(it.description),
-                quantity: Number(it.quantity) || 1,
-                unitPrice: Number(it.unitPrice) || 0,
-                total: (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0),
-              })),
-            };
+          try {
+            const cleanJson = text.replace(/```(?:json)?/gi, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+              return {
+                vehicleModel: parsed.vehicleModel || context?.vehicleModel || 'Vehicle Service',
+                serviceType: parsed.serviceType || context?.serviceType || 'Half Engine Rebuild',
+                items: parsed.items.map((it: any) => ({
+                  description: String(it.description || 'Service Work').toUpperCase(),
+                  details: it.details || getAutomotiveTechnicalExplanation(it.description),
+                  quantity: Number(it.quantity) || 1,
+                  unitPrice: Number(it.unitPrice) || 0,
+                  total: (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0),
+                })),
+              };
+            }
+          } catch (jsonErr) {
+            console.warn('Failed to parse Gemini draft JSON output:', jsonErr);
           }
         }
       }
