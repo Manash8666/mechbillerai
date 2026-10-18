@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -82,6 +82,7 @@ export default function InvoicesPage() {
   const [selectedUpiInvoice, setSelectedUpiInvoice] = useState<Invoice | null>(null);
   const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
+  const [aiExplaining, setAiExplaining] = useState(false);
 
   useEffect(() => {
     void fetchInvoices();
@@ -258,7 +259,68 @@ export default function InvoicesPage() {
   ) => {
     const updated = [...lineItems];
     updated[index] = { ...updated[index], [field]: val };
+
+    // Auto-fill details if description is typed and details is empty
+    if (field === 'description' && val && (!updated[index].details || updated[index].details.trim() === '')) {
+      try {
+        const { getAutomotiveTechnicalExplanation } = require('@/lib/aiExplainer');
+        const autoText = getAutomotiveTechnicalExplanation(val);
+        if (autoText) {
+          updated[index].details = autoText;
+        }
+      } catch (e) {}
+    }
+
     setLineItems(updated);
+  };
+
+  const handleAiAutoExplainAll = async () => {
+    const itemsToExplain = lineItems.filter((it) => it.description && it.description.trim());
+    if (itemsToExplain.length === 0) {
+      toast.error('Add at least one service or spare title first');
+      return;
+    }
+
+    setAiExplaining(true);
+    const toastId = toast.loading('Gemini AI generating technical breakdowns...');
+    try {
+      const res = await fetch('/api/ai/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: itemsToExplain.map((it) => it.description),
+        }),
+      });
+
+      if (!res.ok) throw new Error('AI Explainer response error');
+      const data = await res.json();
+      const explanations = data.explanations || {};
+
+      setLineItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          details: explanations[it.description] || it.details || '',
+        }))
+      );
+      toast.success('Gemini AI auto-filled technical explanations!', { id: toastId });
+    } catch (err) {
+      console.error('AI Explain error:', err);
+      // Fallback to local automotive knowledge engine
+      try {
+        const { getAutomotiveTechnicalExplanation } = require('@/lib/aiExplainer');
+        setLineItems((prev) =>
+          prev.map((it) => ({
+            ...it,
+            details: it.details || getAutomotiveTechnicalExplanation(it.description),
+          }))
+        );
+        toast.success('Auto-filled technical explanations!', { id: toastId });
+      } catch (fallbackErr) {
+        toast.error('Failed to auto-generate explanations', { id: toastId });
+      }
+    } finally {
+      setAiExplaining(false);
+    }
   };
 
   const calculatedSubtotal = lineItems.reduce(
@@ -295,14 +357,23 @@ export default function InvoicesPage() {
         docType: invoiceType,
         isEstimate: invoiceType === 'ESTIMATE',
         notes: invoiceType === 'ESTIMATE' ? '[ESTIMATE] Workshop Quotation' : undefined,
-        items: lineItems.map((item) => ({
-          description: item.description || 'Workshop Service',
-          details: item.details || undefined,
-          quantity: Number(item.quantity) || 1,
-          unitPrice: Number(item.unitPrice) || 0,
-          tax: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 0.18),
-          total: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 1.18),
-        })),
+        items: lineItems.map((item) => {
+          let det = item.details;
+          if (!det || !det.trim()) {
+            try {
+              const { getAutomotiveTechnicalExplanation } = require('@/lib/aiExplainer');
+              det = getAutomotiveTechnicalExplanation(item.description);
+            } catch (e) {}
+          }
+          return {
+            description: item.description || 'Workshop Service',
+            details: det || undefined,
+            quantity: Number(item.quantity) || 1,
+            unitPrice: Number(item.unitPrice) || 0,
+            tax: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 0.18),
+            total: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 1.18),
+          };
+        }),
       };
 
       const res = await fetch('/api/invoices', {
@@ -697,13 +768,25 @@ export default function InvoicesPage() {
                   <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Items & Labor Charges *
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    className="text-xs font-semibold text-luxury-gold hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Line
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAiAutoExplainAll}
+                      disabled={aiExplaining}
+                      className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-lg hover:opacity-90 transition-all text-xs flex items-center gap-1.5 shadow-sm"
+                      title="Automatically generate technical work/spare explanations via Gemini AI"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                      {aiExplaining ? 'AI Generating...' : '✨ Gemini AI Auto-Explain'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="text-xs font-semibold text-luxury-gold hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Line
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
