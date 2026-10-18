@@ -355,7 +355,11 @@ export const API = {
     return `${currentResolvedUrl}/pdf/jobcard?id=${jobCardId}`;
   },
 
-  getInvoicePdfUrl: (invoiceId: string, type: 'INVOICE' | 'ESTIMATE' = 'INVOICE', token?: string) => {
+  getInvoicePdfUrl: (
+    invoiceId: string,
+    type: 'INVOICE' | 'ESTIMATE' | 'SOW_BILL' | 'SOW_ESTIMATE' = 'INVOICE',
+    token?: string
+  ) => {
     const tokenQuery = token ? `&token=${token}` : '';
     return `${currentResolvedUrl}/pdf/invoice?id=${invoiceId}&type=${type}${tokenQuery}`;
   },

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getAutomotiveTechnicalExplanation } from '@/lib/aiExplainer';
 
 // Universal constructor that works seamlessly across all ESM/CJS bundlers, Next.js, and Node runtimes
 function createPdfDoc(options: any): any {
@@ -288,7 +289,12 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   const colDescWidth = 102;
   const tableData = data.items.map((item, idx) => {
     const title = (item.description || 'Service Work').toUpperCase();
-    const details = item.details ? item.details.trim() : '';
+    let details = item.details ? item.details.trim() : '';
+
+    // If details are empty, automatically generate technical explanation for SOW
+    if (!details && (isSowBill || isSowEstimate)) {
+      details = getAutomotiveTechnicalExplanation(item.description);
+    }
 
     // Calculate lines required for cell height allocation
     let combinedText = title;
@@ -350,7 +356,10 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
 
           const startX = hookData.cell.x + 3;
           const title = (item.description || '').toUpperCase();
-          const details = item.details ? item.details.trim() : '';
+          let details = item.details ? item.details.trim() : '';
+          if (!details && (isSowBill || isSowEstimate)) {
+            details = getAutomotiveTechnicalExplanation(item.description);
+          }
 
           // 1. Title: Bold, Dark, Uppercase
           doc.setFont('helvetica', 'bold');

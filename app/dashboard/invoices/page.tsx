@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
 import { generateInvoiceOrEstimatePdf } from '@/lib/invoicePdfGenerator';
+import { getAutomotiveTechnicalExplanation } from '@/lib/aiExplainer';
 
 interface Invoice {
   id: string;
@@ -83,6 +84,9 @@ export default function InvoicesPage() {
   const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [aiExplaining, setAiExplaining] = useState(false);
+  const [aiPromptInput, setAiPromptInput] = useState('');
+  const [draftingWithAi, setDraftingWithAi] = useState(false);
+  const [editingDetailIndex, setEditingDetailIndex] = useState<number | null>(null);
 
   useEffect(() => {
     void fetchInvoices();
@@ -260,18 +264,171 @@ export default function InvoicesPage() {
     const updated = [...lineItems];
     updated[index] = { ...updated[index], [field]: val };
 
-    // Auto-fill details if description is typed and details is empty
-    if (field === 'description' && val && (!updated[index].details || updated[index].details.trim() === '')) {
-      try {
-        const { getAutomotiveTechnicalExplanation } = require('@/lib/aiExplainer');
-        const autoText = getAutomotiveTechnicalExplanation(val);
-        if (autoText) {
-          updated[index].details = autoText;
-        }
-      } catch (e) {}
+    // Automatically generate technical explanation as the user types the item name!
+    if (field === 'description' && val) {
+      const autoText = getAutomotiveTechnicalExplanation(val);
+      if (autoText) {
+        updated[index].details = autoText;
+      }
     }
 
     setLineItems(updated);
+  };
+
+  const handleDraftWithAi = async () => {
+    if (!aiPromptInput || !aiPromptInput.trim()) {
+      toast.error('Enter a repair job or paste items (e.g. Himalayan 411 engine rebuild)');
+      return;
+    }
+
+    setDraftingWithAi(true);
+    const toastId = toast.loading('Gemini AI drafting full SOW bill & explanations...');
+    try {
+      const res = await fetch('/api/ai/draft-bill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPromptInput }),
+      });
+
+      if (!res.ok) throw new Error('AI Draft failed');
+      const data = await res.json();
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        setLineItems(data.items);
+        toast.success(`✨ Gemini AI generated ${data.items.length} SOW line items & technical breakdowns!`, { id: toastId });
+        setAiPromptInput('');
+      } else {
+        throw new Error('No items returned');
+      }
+    } catch (err) {
+      console.error('Draft with AI error:', err);
+      toast.error('Could not auto-draft with AI. Try one of the quick templates below.', { id: toastId });
+    } finally {
+      setDraftingWithAi(false);
+    }
+  };
+
+  const handleApplyQuickTemplate = (templateType: 'himalayan' | 'classic' | 'service') => {
+    if (templateType === 'himalayan') {
+      setLineItems([
+        {
+          description: 'CYLINDER BLOCK & PISTON KIT (OEM)',
+          details: 'Top End Core: OEM cylinder block, piston, rings, pin & circlips assembly',
+          quantity: 1,
+          unitPrice: 5850,
+        },
+        {
+          description: 'LATHE / HEAD FACING / VALVE GUIDE & SEATING',
+          details: 'Machining: Precision cylinder head facing, valve seat angle cutting & guide reaming',
+          quantity: 1,
+          unitPrice: 1450,
+        },
+        {
+          description: 'INTAKE & EXHAUST VALVE SET (OEM)',
+          details: 'Top End Core: Intake & exhaust valves, viton stem seals & bronze guide set',
+          quantity: 1,
+          unitPrice: 950,
+        },
+        {
+          description: 'ENGINE GASKET & SEAL KIT (FULL TOP END)',
+          details: 'Consumables: Cylinder head, base gasket, O-rings & high-temp engine sealant',
+          quantity: 1,
+          unitPrice: 780,
+        },
+        {
+          description: 'MOTUL 3100 15W50 SEMI-SYNTHETIC ENGINE OIL (2L)',
+          details: 'Consumables: Premium 4T engine oil, drain plug washer & chemical engine flush',
+          quantity: 2,
+          unitPrice: 550,
+        },
+        {
+          description: 'ENGINE OIL FILTER ELEMENT',
+          details: 'Consumables: High-flow oil filter element, O-ring seal & sump plug cleaning',
+          quantity: 1,
+          unitPrice: 180,
+        },
+        {
+          description: 'ENGINE TEARDOWN, CLEANING, DECARB & REBUILD LABOUR',
+          details: 'Labour: Certified technician bench teardown, precision fitment, valve lash & test run',
+          quantity: 1,
+          unitPrice: 2800,
+        },
+        {
+          description: 'POST-REBUILD TUNING & ROAD TESTING DINO RUN',
+          details: 'Diagnostics: Full OBD-II scan, thermal cycle monitoring & road test validation',
+          quantity: 1,
+          unitPrice: 450,
+        },
+      ]);
+      toast.success('Loaded Himalayan 411 Rebuild SOW Package with Gemini details!');
+    } else if (templateType === 'classic') {
+      setLineItems([
+        {
+          description: 'CYLINDER BORE & PISTON OVERSIZE KIT',
+          details: 'Machining: Precision cylinder reboring to next oversize with plateau cross-hatch honing',
+          quantity: 1,
+          unitPrice: 3800,
+        },
+        {
+          description: 'LATHE HEAD FACING & VALVE SEATING',
+          details: 'Machining: Precision head facing to restore true flatness and optimal combustion sealing',
+          quantity: 1,
+          unitPrice: 1200,
+        },
+        {
+          description: 'HEAVY DUTY CLUTCH PLATE & FRICTION SET',
+          details: 'Transmission Core: Heavy-duty friction plates, steel drive plates & damper springs kit',
+          quantity: 1,
+          unitPrice: 1650,
+        },
+        {
+          description: 'PREMIUM ENGINE OIL 15W50 (2.5L)',
+          details: 'Consumables: Premium fully synthetic 4T engine oil, drain plug washer & flush',
+          quantity: 1,
+          unitPrice: 1250,
+        },
+        {
+          description: 'FULL ENGINE OVERHAUL & BLUEPRINTING LABOUR',
+          details: 'Labour: Certified technician bench teardown, precision fitment, valve lash & test run',
+          quantity: 1,
+          unitPrice: 3200,
+        },
+      ]);
+      toast.success('Loaded Classic 350 SOW Package with Gemini details!');
+    } else {
+      setLineItems([
+        {
+          description: 'PREMIUM FULLY SYNTHETIC 4T ENGINE OIL',
+          details: 'Consumables: Premium fully synthetic 4T engine oil, drain plug washer & flush',
+          quantity: 1,
+          unitPrice: 850,
+        },
+        {
+          description: 'HIGH-FLOW OIL FILTER ELEMENT',
+          details: 'Consumables: High-flow oil filter element, O-ring seal & magnetic sump plug cleaning',
+          quantity: 1,
+          unitPrice: 160,
+        },
+        {
+          description: 'CERAMIC FRONT & REAR BRAKE PADS OVERHAUL',
+          details: 'Braking System: Sintered brake pads, rotor caliper pin greasing & disc skim facing',
+          quantity: 1,
+          unitPrice: 750,
+        },
+        {
+          description: 'LASER IRIDIUM SPARK PLUG',
+          details: 'Ignition: Laser iridium / nickel spark plug with calibrated electrode gap',
+          quantity: 1,
+          unitPrice: 320,
+        },
+        {
+          description: '32-POINT GENERAL INSPECTION, LUBRICATION & LABOUR',
+          details: 'Labour: Complete 32-point inspection, chain slack adjustment, fastener torquing & wash',
+          quantity: 1,
+          unitPrice: 950,
+        },
+      ]);
+      toast.success('Loaded Periodic Major Service SOW Package with Gemini details!');
+    }
   };
 
   const handleAiAutoExplainAll = async () => {
@@ -299,25 +456,20 @@ export default function InvoicesPage() {
       setLineItems((prev) =>
         prev.map((it) => ({
           ...it,
-          details: explanations[it.description] || it.details || '',
+          details: explanations[it.description] || it.details || getAutomotiveTechnicalExplanation(it.description),
         }))
       );
       toast.success('Gemini AI auto-filled technical explanations!', { id: toastId });
     } catch (err) {
       console.error('AI Explain error:', err);
       // Fallback to local automotive knowledge engine
-      try {
-        const { getAutomotiveTechnicalExplanation } = require('@/lib/aiExplainer');
-        setLineItems((prev) =>
-          prev.map((it) => ({
-            ...it,
-            details: it.details || getAutomotiveTechnicalExplanation(it.description),
-          }))
-        );
-        toast.success('Auto-filled technical explanations!', { id: toastId });
-      } catch (fallbackErr) {
-        toast.error('Failed to auto-generate explanations', { id: toastId });
-      }
+      setLineItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          details: it.details || getAutomotiveTechnicalExplanation(it.description),
+        }))
+      );
+      toast.success('Auto-filled technical explanations!', { id: toastId });
     } finally {
       setAiExplaining(false);
     }
@@ -700,6 +852,70 @@ export default function InvoicesPage() {
             </div>
 
             <form onSubmit={handleCreateInvoice} className="space-y-4">
+              {/* Gemini AI Auto-Draft Assistant Box */}
+              <div className="p-3.5 bg-gradient-to-r from-purple-900/25 via-indigo-900/20 to-amber-900/15 border border-purple-500/30 rounded-xl space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                    <span className="text-xs font-bold text-foreground">✨ Gemini AI Auto-Draft SOW Bill</span>
+                    <span className="text-[9px] bg-purple-500/20 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                      Zero Typing Needed
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Type prompt or pick template</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. 'Royal Enfield Himalayan 411 half engine rebuild' or paste parts list..."
+                    value={aiPromptInput}
+                    onChange={(e) => setAiPromptInput(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-xs focus:ring-2 focus:ring-luxury-gold"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleDraftWithAi();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleDraftWithAi}
+                    disabled={draftingWithAi}
+                    className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shrink-0 shadow active:scale-95 transition-all"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    {draftingWithAi ? 'AI Generating...' : '✨ Generate with AI'}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-muted-foreground mr-1">1-Click SOW Templates:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickTemplate('himalayan')}
+                    className="text-[10px] px-2.5 py-1 bg-background hover:bg-muted border border-border rounded-md text-foreground font-medium transition-colors shadow-xs"
+                  >
+                    🏍️ Himalayan 411 Rebuild
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickTemplate('classic')}
+                    className="text-[10px] px-2.5 py-1 bg-background hover:bg-muted border border-border rounded-md text-foreground font-medium transition-colors shadow-xs"
+                  >
+                    🔧 Classic 350 Overhaul
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickTemplate('service')}
+                    className="text-[10px] px-2.5 py-1 bg-background hover:bg-muted border border-border rounded-md text-foreground font-medium transition-colors shadow-xs"
+                  >
+                    ⚡ Periodic Major Service
+                  </button>
+                </div>
+              </div>
+
               {/* Type Switcher */}
               <div className="grid grid-cols-2 gap-2 bg-muted p-1 rounded-lg">
                 <button
@@ -774,10 +990,10 @@ export default function InvoicesPage() {
                       onClick={handleAiAutoExplainAll}
                       disabled={aiExplaining}
                       className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-lg hover:opacity-90 transition-all text-xs flex items-center gap-1.5 shadow-sm"
-                      title="Automatically generate technical work/spare explanations via Gemini AI"
+                      title="Automatically regenerate all technical work/spare explanations via Gemini AI"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                      {aiExplaining ? 'AI Generating...' : '✨ Gemini AI Auto-Explain'}
+                      {aiExplaining ? 'AI Generating...' : '✨ Gemini Re-Explain'}
                     </button>
                     <button
                       type="button"
@@ -829,14 +1045,36 @@ export default function InvoicesPage() {
                           </button>
                         )}
                       </div>
-                      {/* Detailed explanation of what the work or spare part does */}
-                      <input
-                        type="text"
-                        placeholder="Detailed Work / Spare Explanation (e.g. Top End Core: OEM cylinder block, rings, pin & circlips assembly)"
-                        value={item.details || ''}
-                        onChange={(e) => handleItemChange(index, 'details', e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-border/80 bg-background/80 text-foreground text-[11px] placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-luxury-gold"
-                      />
+
+                      {/* Automated Gemini AI Technical Explanation Badge with optional customize */}
+                      <div className="flex items-center justify-between bg-purple-500/10 dark:bg-purple-500/15 border border-purple-500/25 rounded-lg px-2.5 py-1.5 text-[11px]">
+                        <div className="flex items-center gap-1.5 text-purple-900 dark:text-purple-300 font-medium truncate flex-1 mr-2">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span className="font-bold text-[9px] uppercase tracking-wide bg-purple-500/20 text-purple-950 dark:text-purple-200 px-1 py-0.5 rounded shrink-0">
+                            Gemini Auto-Detail
+                          </span>
+                          <span className="truncate text-foreground/80 italic font-normal">
+                            "{item.details || getAutomotiveTechnicalExplanation(item.description)}"
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingDetailIndex(editingDetailIndex === index ? null : index)}
+                          className="text-[10px] text-muted-foreground hover:text-foreground font-semibold underline shrink-0"
+                          title="Override or edit this technical description if needed"
+                        >
+                          {editingDetailIndex === index ? 'Done' : 'Customize'}
+                        </button>
+                      </div>
+                      {editingDetailIndex === index && (
+                        <input
+                          type="text"
+                          value={item.details || ''}
+                          onChange={(e) => handleItemChange(index, 'details', e.target.value)}
+                          placeholder="Customize Gemini technical explanation..."
+                          className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-1 focus:ring-luxury-gold"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

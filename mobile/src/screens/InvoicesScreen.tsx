@@ -87,7 +87,11 @@ export default function InvoicesScreen() {
     }
   };
 
-  const handleOpenPdf = async (invoiceId: string, type: 'INVOICE' | 'ESTIMATE' = 'INVOICE') => {
+  const handleOpenPdf = async (
+    invoiceId: string,
+    type: 'INVOICE' | 'ESTIMATE' | 'SOW_BILL' | 'SOW_ESTIMATE' = 'INVOICE'
+  ) => {
+    const label = type.includes('SOW') ? 'Scope of Work (SOW) AI Bill' : `${type} PDF`;
     try {
       const url = API.getInvoicePdfUrl(invoiceId, type);
       const supported = await Linking.canOpenURL(url);
@@ -95,13 +99,13 @@ export default function InvoicesScreen() {
         await Linking.openURL(url);
       } else {
         await Share.share({
-          title: `${type} PDF`,
-          message: `View your ${type} PDF at: ${url}`,
+          title: label,
+          message: `View your ${label} at: ${url}`,
           url,
         });
       }
     } catch {
-      Alert.alert('PDF Viewer', `Opening ${type} PDF: ${API.getInvoicePdfUrl(invoiceId, type)}`);
+      Alert.alert('PDF Viewer', `Opening ${label}: ${API.getInvoicePdfUrl(invoiceId, type)}`);
     }
   };
 
@@ -378,6 +382,14 @@ export default function InvoicesScreen() {
           >
             <MaterialCommunityIcons name="printer-pos" size={15} color={COLORS.primary} />
             <Text style={styles.actionBtnSecondaryText}>Slip</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtnSecondary, { borderColor: '#8B5CF6' }]}
+            onPress={() => handleOpenPdf(item.id, 'SOW_BILL')}
+          >
+            <MaterialCommunityIcons name="auto-fix" size={14} color="#8B5CF6" />
+            <Text style={[styles.actionBtnSecondaryText, { color: '#8B5CF6' }]}>SOW</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

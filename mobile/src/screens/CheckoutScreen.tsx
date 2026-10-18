@@ -156,23 +156,28 @@ export default function CheckoutScreen() {
     );
   };
 
-  const handleOpenInvoicePdf = async (jobNumber: string, vehicle: string) => {
-    const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
+  const handleOpenInvoicePdf = async (
+    jobNumber: string,
+    vehicle: string,
+    type: 'INVOICE' | 'SOW_BILL' = 'INVOICE'
+  ) => {
+    const url = API.getInvoicePdfUrl(jobNumber, type);
+    const label = type === 'SOW_BILL' ? 'Scope of Work (SOW) AI Bill' : 'Tax Invoice Bill';
     try {
       const supported = await Linking.canOpenURL(url).catch(() => true);
       if (supported) {
         await Linking.openURL(url);
       } else {
         await Share.share({
-          title: `PDF Bill - ${vehicle}`,
-          message: `Tax Invoice Bill for ${vehicle}: ${url}`,
+          title: `${label} - ${vehicle}`,
+          message: `${label} for ${vehicle}: ${url}`,
           url,
         });
       }
     } catch (e: any) {
       Alert.alert(
-        'Invoice Bill Ready',
-        `Tax Invoice PDF Link: ${url}`,
+        `${label} Ready`,
+        `PDF Link: ${url}`,
         [
           { text: 'Share Link', onPress: () => void Share.share({ message: url, url }) },
           { text: 'OK', style: 'cancel' }
@@ -181,11 +186,11 @@ export default function CheckoutScreen() {
     }
   };
 
-  const handleShareInvoicePdf = async (job: any) => {
+  const handleShareInvoicePdf = async (job: any, type: 'INVOICE' | 'SOW_BILL' = 'INVOICE') => {
     const { vehicle, jobNumber, customerPhone, customerName, amount } = job;
     try {
       const { launchWhatsAppBill } = await import('../services/payments');
-      const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
+      const url = API.getInvoicePdfUrl(jobNumber, type);
       await launchWhatsAppBill({
         phone: customerPhone || '9876543210',
         customerName: customerName || 'Valued Customer',
@@ -198,10 +203,10 @@ export default function CheckoutScreen() {
         invoiceUrl: url,
       });
     } catch {
-      const url = API.getInvoicePdfUrl(jobNumber, 'INVOICE');
+      const url = API.getInvoicePdfUrl(jobNumber, type);
       await Share.share({
         title: `Bill - ${vehicle}`,
-        message: `Tax Invoice Bill for ${vehicle}: ${url}`,
+        message: `Bill for ${vehicle}: ${url}`,
         url,
       });
     }
@@ -318,18 +323,25 @@ export default function CheckoutScreen() {
                     </View>
                   <View style={{ alignItems: 'flex-end', gap: 6 }}>
                     <TouchableOpacity
-                      style={styles.reviewBtn}
-                      onPress={() => handleOpenInvoicePdf(job.jobNumber || job.id, job.vehicle)}
+                      style={styles.sowBtn}
+                      onPress={() => handleOpenInvoicePdf(job.jobNumber || job.id, job.vehicle, 'SOW_BILL')}
                     >
-                      <MaterialCommunityIcons name="file-pdf-box" size={18} color={COLORS.background} />
+                      <MaterialCommunityIcons name="auto-fix" size={16} color="#FFF" />
+                      <Text style={styles.sowBtnText}>AI SOW Bill</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.reviewBtn}
+                      onPress={() => handleOpenInvoicePdf(job.jobNumber || job.id, job.vehicle, 'INVOICE')}
+                    >
+                      <MaterialCommunityIcons name="file-pdf-box" size={16} color={COLORS.background} />
                       <Text style={styles.reviewBtnText}>PDF Bill</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.shareBtnMini}
-                      onPress={() => handleShareInvoicePdf(job)}
+                      onPress={() => handleShareInvoicePdf(job, 'SOW_BILL')}
                     >
-                      <MaterialCommunityIcons name="share-variant" size={15} color={COLORS.primary} />
-                      <Text style={styles.shareBtnMiniText}>Share</Text>
+                      <MaterialCommunityIcons name="share-variant" size={14} color={COLORS.primary} />
+                      <Text style={styles.shareBtnMiniText}>Share SOW</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -460,6 +472,20 @@ const styles = StyleSheet.create({
   collectBtnText: {
     color: '#FFF',
     fontSize: 13,
+    fontWeight: 'bold',
+  },
+  sowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    gap: 4,
+  },
+  sowBtnText: {
+    color: '#FFF',
+    fontSize: 11,
     fontWeight: 'bold',
   },
   reviewBtn: {
