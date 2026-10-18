@@ -384,17 +384,23 @@ export default function BrandingSettingsPage() {
     setFormData({
       garageName: '',
       logoUrl: '',
+      paymentQrUrl: '',
+      upiId: '',
       primaryColor: '#C9A84C',
       subdomain: formData.subdomain,
     });
     setLogoFile(null);
     setLogoPreview('');
+    setPaymentQrFile(null);
+    setPaymentQrPreview('');
     setGeneratedPalette(defaultPalette);
     
     // Remove from localStorage
     localStorage.removeItem('brandingColors');
     localStorage.removeItem('garageName');
     localStorage.removeItem('logoUrl');
+    localStorage.removeItem('paymentQrUrl');
+    localStorage.removeItem('upiId');
     
     // Remove custom styles to revert to default
     const styleElement = document.getElementById('custom-branding-styles');

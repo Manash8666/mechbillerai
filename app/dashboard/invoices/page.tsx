@@ -150,8 +150,27 @@ export default function InvoicesPage() {
     setSelectedUpiInvoice(invoice);
     setLoadingQr(true);
     try {
-      const customQr = typeof window !== 'undefined' ? localStorage.getItem('paymentQrUrl') : null;
-      const savedUpiId = typeof window !== 'undefined' ? localStorage.getItem('upiId') : null;
+      let customQr = typeof window !== 'undefined' ? localStorage.getItem('paymentQrUrl') : null;
+      let savedUpiId = typeof window !== 'undefined' ? localStorage.getItem('upiId') : null;
+
+      if (!customQr || !savedUpiId) {
+        try {
+          const bRes = await fetch('/api/branding');
+          if (bRes.ok) {
+            const bData = await bRes.json();
+            if (bData.paymentQrUrl) {
+              customQr = bData.paymentQrUrl;
+              localStorage.setItem('paymentQrUrl', bData.paymentQrUrl);
+            }
+            if (bData.upiId) {
+              savedUpiId = bData.upiId;
+              localStorage.setItem('upiId', bData.upiId);
+            }
+          }
+        } catch {
+          // Fallback to local or defaults silently
+        }
+      }
 
       // If garage uploaded their own custom QR image, display their authentic standee QR
       if (customQr) {
