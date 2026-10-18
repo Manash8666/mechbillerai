@@ -20,6 +20,12 @@
         "buildType": "apk",
         "image": "latest"
       }
+    },
+    "production-aab": {
+      "android": {
+        "buildType": "app-bundle",
+        "image": "latest"
+      }
     }
   },
   "submit": {
