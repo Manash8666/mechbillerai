@@ -101,6 +101,13 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
     }
   }
 
+  return parseTextInvoice(text);
+}
+
+/**
+ * Parses raw text extracted from PDF or pasted transcript
+ */
+export function parseTextInvoice(text: string): ImportParseResult {
   if (!text || text.trim().length < 10) {
     return {
       success: false,
@@ -110,7 +117,68 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
     };
   }
 
-  // 1. Check for Gemini / MotoFit SOW Bill format
+  // 1. Check if document contains MULTIPLE JSON-formatted bills (e.g. Gemini SOW chat transcript)
+  const jsonInvoiceMap = new Map<string, ImportedInvoice>();
+  const jsonBlockRegex = /\{\s*"id":\s*"(MF2-[^"]+)"[\s\S]*?"items":\s*\[[\s\S]*?\][\s\S]*?\}/g;
+  let jsonMatch;
+  while ((jsonMatch = jsonBlockRegex.exec(text)) !== null) {
+    try {
+      const obj = JSON.parse(jsonMatch[0]);
+      if (obj.id && Array.isArray(obj.items) && obj.items.length > 0) {
+        const invItems: ImportedLineItem[] = obj.items.map((it: any) => ({
+          description: (it.item || it.description || 'Automotive Part / Service').trim().toUpperCase(),
+          details: it.description || it.item || undefined,
+          quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+          unitPrice: typeof it.rate === 'number' ? it.rate : typeof it.amount === 'number' ? it.amount : 0,
+          total: typeof it.amount === 'number' ? it.amount : (it.quantity || 1) * (it.rate || 0),
+        }));
+        const subtotal = obj.subtotal || obj.total_amount || invItems.reduce((acc, i) => acc + i.total, 0);
+        const discount = obj.discount || 0;
+        const total = obj.total_amount || (subtotal - discount);
+
+        jsonInvoiceMap.set(obj.id, {
+          invoiceNumber: obj.id,
+          date: obj.date || '2026-10-15',
+          serviceType: obj.service_type || 'General Service & Spares',
+          customer: {
+            name: obj.customer_name || 'Workshop Client',
+            phone: obj.phone || undefined,
+            vehicleModel: obj.vehicle_model || undefined,
+            vehicleReg: obj.registration_no || undefined,
+          },
+          vehicle: {
+            makeModel: obj.vehicle_model || 'Motorcycle',
+            registrationNo: obj.registration_no || undefined,
+          },
+          items: invItems,
+          subtotal,
+          discount,
+          tax: Math.round(total * 0.18),
+          total,
+          paid: total,
+          balance: 0,
+          paymentMode: 'cash',
+          garageName: 'MotoFit 2',
+        });
+      }
+    } catch {
+      // Continue searching
+    }
+  }
+
+  if (jsonInvoiceMap.size > 0) {
+    const multiInvoices = Array.from(jsonInvoiceMap.values());
+    const totalRev = multiInvoices.reduce((s, i) => s + i.total, 0);
+    return {
+      success: true,
+      sourceType: 'GEMINI_SOW_PDF',
+      summary: `Successfully parsed ${multiInvoices.length} MotoFit 2 SOW bills and estimates (Total Value: ₹${totalRev.toLocaleString('en-IN')}) from Gemini transcript!`,
+      invoices: multiInvoices,
+      rawTextPreview: text.slice(0, 1000),
+    };
+  }
+
+  // 2. Check for single Gemini / MotoFit SOW Bill format
   const isGeminiSow =
     text.includes('SCOPE OF WORK') ||
     text.includes('SOW BILL') ||

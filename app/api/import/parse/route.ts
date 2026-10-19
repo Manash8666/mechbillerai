@@ -10,7 +10,7 @@ if (typeof globalThis !== 'undefined' && !(globalThis as any).DOMMatrix) {
 }
 
 import { NextResponse } from 'next/server';
-import { parsePdfInvoice, parseExcelOrCsv, ImportParseResult } from '@/lib/dataImporter';
+import { parsePdfInvoice, parseTextInvoice, parseExcelOrCsv, ImportParseResult } from '@/lib/dataImporter';
 
 export async function POST(request: Request) {
   try {
@@ -234,6 +234,20 @@ export async function POST(request: Request) {
     }
 
     if (rawText && typeof rawText === 'string') {
+      if (
+        rawText.includes('MF2-') ||
+        rawText.includes('SCOPE OF WORK') ||
+        rawText.includes('SOW BILL') ||
+        rawText.includes('MOTOFIT') ||
+        rawText.includes('MotoFit') ||
+        rawText.includes('INVOICE ID')
+      ) {
+        const result = parseTextInvoice(rawText);
+        if (!result.success) {
+          return NextResponse.json({ error: result.summary }, { status: 400 });
+        }
+        return NextResponse.json(result);
+      }
       const buffer = Buffer.from(rawText, 'utf-8');
       const result = await parseExcelOrCsv(buffer, 'pasted_data.csv');
       return NextResponse.json(result);

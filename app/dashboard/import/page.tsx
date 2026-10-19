@@ -107,20 +107,62 @@ export default function ImportDataPage() {
     const toastId = toast.loading(`Parsing ${targetFile.name}...`);
 
     try {
-      const formData = new FormData();
-      formData.append('file', targetFile);
+      const isPdf = targetFile.name.toLowerCase().endsWith('.pdf') || targetFile.type === 'application/pdf';
+      let data: any = null;
 
-      const res = await fetch('/api/import/parse', {
-        method: 'POST',
-        body: formData,
-      });
+      // For PDFs, pre-extract text in the browser to avoid Vercel's 4.5MB request payload limit
+      if (isPdf) {
+        try {
+          const { extractText } = await import('unpdf');
+          const arrayBuffer = await targetFile.arrayBuffer();
+          const extracted = await extractText(new Uint8Array(arrayBuffer));
+          const text = Array.isArray(extracted.text) ? extracted.text.join('\n') : String(extracted.text || '');
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to parse file');
+          if (text && text.trim().length > 20) {
+            const res = await fetch('/api/import/parse', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rawText: text, fileName: targetFile.name }),
+            });
+            if (res.ok) {
+              data = await res.json();
+            } else {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error || 'Server failed to parse PDF text');
+            }
+          }
+        } catch (clientExtractErr: any) {
+          console.warn('Client-side PDF extraction fallback:', clientExtractErr);
+          if (clientExtractErr.message && !clientExtractErr.message.includes('fetch')) {
+            // If it's a parse error from server, rethrow it
+            throw clientExtractErr;
+          }
+        }
       }
 
-      const data = await res.json();
+      // If not parsed via client-side text (e.g. Excel, CSV, small file fallback), send as FormData
+      if (!data) {
+        const formData = new FormData();
+        formData.append('file', targetFile);
+
+        const res = await fetch('/api/import/parse', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(
+            errData.error ||
+              (res.status === 413
+                ? 'File too large for direct upload (>4.5MB). Please ensure selectable text in PDF.'
+                : 'Failed to parse file')
+          );
+        }
+
+        data = await res.json();
+      }
+
       setParseResult(data);
 
       if (data.invoices && Array.isArray(data.invoices)) {
