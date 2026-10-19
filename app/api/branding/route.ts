@@ -5,9 +5,25 @@ import { requireAuth } from '@/lib/auth';
 // GET branding settings
 export async function GET(request: Request) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
+    const url = new URL(request.url);
+    const queryUserId = url.searchParams.get('userId');
+    const querySubdomain = url.searchParams.get('subdomain');
+
+    let userId: string | null = queryUserId;
+
+    if (!userId && querySubdomain) {
+      const matchedUser = await prisma.user.findFirst({
+        where: { subdomain: querySubdomain },
+        select: { id: true },
+      });
+      if (matchedUser) userId = matchedUser.id;
+    }
+
+    if (!userId) {
+      const auth = await requireAuth(request);
+      if (auth.errorResponse) return auth.errorResponse;
+      userId = auth.user.userId;
+    }
 
     const branding = await prisma.brandingSettings.findUnique({
       where: { userId },

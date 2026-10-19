@@ -123,13 +123,14 @@ export const ADDONS = {
  * Can be customized via environment variable VIP_FREE_GARAGES (comma-separated emails)
  */
 export const VIP_FOUNDING_GARAGES: string[] = [
-  'motofit2@garagesaas.com', // Primary Laboratory: MotoFit 2 Workshop, Ahmedabad
+  'garage2motofit@gmail.com', // Primary Laboratory: MotoFit 2 Workshop, Ahmedabad
+  'motofit2@garagesaas.com', // Legacy Alias
   'vipgarage@motoban.in',     // Second Founding Garage
   ...(process.env.VIP_FREE_GARAGES ? process.env.VIP_FREE_GARAGES.split(',').map((e) => e.trim().toLowerCase()) : []),
 ];
 
 export const VIP_FOUNDING_KEYS = [
-  'MOTOBAN-VIP-FOUNDER-01',
+  'MOTOBAN-VIP-FOUNDER-01', // MotoFit 2 Lifetime Key
   'MOTOBAN-VIP-FOUNDER-02',
 ];
 

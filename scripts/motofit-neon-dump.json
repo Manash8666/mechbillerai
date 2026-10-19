@@ -1,0 +1,309 @@
+{
+  "exportedAt": "2026-10-19T12:05:19.299Z",
+  "source": "Neon PostgreSQL (MotoFit Billing)",
+  "targetGarage": "Garage2Motofit@gmail.com",
+  "stats": {
+    "users": 4,
+    "customers": 2,
+    "documents": 3,
+    "parts": 6,
+    "transactions": 0
+  },
+  "data": {
+    "users": [
+      {
+        "id": "9786d809-6255-43d1-9127-840b8efa3634",
+        "name": "Kunal Chota Thakor",
+        "phone": "6354473666",
+        "pinHash": "$2b$10$0LPKDErSgzGRvV/i0YOFPOiGvmHQEF/84Ud6oQGGYDkClUfAcyWOq",
+        "role": "SENIOR_MECHANIC",
+        "isActive": true,
+        "failedAttempts": 0,
+        "lastLogin": null,
+        "createdAt": "2026-10-01T10:07:28.625Z",
+        "updatedAt": "2026-10-02T06:24:46.037Z",
+        "deletedAt": null
+      },
+      {
+        "id": "28db2f4f-8ba2-4bfb-afbd-4f815e9c11da",
+        "name": "Motofit x Munna ",
+        "phone": "9123293450",
+        "pinHash": "$2b$10$umYjhuDaiwkbIhjwV7EiaeIIkB6YJI26QSuUsQCvooOVQ6MT1.SvS",
+        "role": "SENIOR_MECHANIC",
+        "isActive": true,
+        "failedAttempts": 0,
+        "lastLogin": null,
+        "createdAt": "2026-10-01T10:07:27.881Z",
+        "updatedAt": "2026-10-02T14:57:02.503Z",
+        "deletedAt": null
+      },
+      {
+        "id": "17b6ce0a-13ef-474d-9169-b2f687e7481a",
+        "name": "Akshat Mohanty",
+        "phone": "7259625881",
+        "pinHash": "$2b$10$.kKOOpUz7FdTgK2y2F3wpuB3ltmyOaWuCDw4wlT5p8Hrv8Tdt6zGy",
+        "role": "SUPER_ADMIN",
+        "isActive": true,
+        "failedAttempts": 0,
+        "lastLogin": null,
+        "createdAt": "2026-10-01T10:07:26.369Z",
+        "updatedAt": "2026-10-10T09:14:58.297Z",
+        "deletedAt": null
+      },
+      {
+        "id": "6f556afb-0b46-4bec-bd2a-20bedafa0143",
+        "name": "Samael Morningstar",
+        "phone": "6359635416",
+        "pinHash": "$2b$10$/WzjcELTWofIFunoWHamROld6FCeDd3row7yiS0.9QnxG2WcKCrpy",
+        "role": "SUPER_ADMIN",
+        "isActive": true,
+        "failedAttempts": 0,
+        "lastLogin": "2026-10-12T10:58:14.782Z",
+        "createdAt": "2026-10-01T10:07:27.127Z",
+        "updatedAt": "2026-10-12T10:58:14.783Z",
+        "deletedAt": null
+      }
+    ],
+    "customers": [
+      {
+        "id": "15b9aa71-2254-469b-8514-6fe42641c870",
+        "name": "Test Customer",
+        "phone": "9876543210",
+        "email": null,
+        "vatNumber": null,
+        "createdAt": "2026-10-10T09:24:56.092Z",
+        "updatedAt": "2026-10-10T09:24:56.092Z",
+        "deletedAt": null,
+        "vehicles": [
+          {
+            "id": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+            "regNumber": "GJ 01 AB 1234",
+            "makeModel": "Unknown",
+            "runningKm": 15000,
+            "customerId": "15b9aa71-2254-469b-8514-6fe42641c870",
+            "createdAt": "2026-10-10T09:24:56.549Z",
+            "updatedAt": "2026-10-10T09:47:12.239Z",
+            "deletedAt": null
+          }
+        ]
+      },
+      {
+        "id": "54394900-febf-48cc-949d-6a28af54039a",
+        "name": "Test Customer",
+        "phone": "9999999999",
+        "email": null,
+        "vatNumber": null,
+        "createdAt": "2026-10-10T09:38:12.320Z",
+        "updatedAt": "2026-10-10T09:47:11.786Z",
+        "deletedAt": null,
+        "vehicles": []
+      }
+    ],
+    "documents": [
+      {
+        "id": "7532f349-9a03-4f83-a277-9630697640d6",
+        "docNumber": "MF2-PASS-01",
+        "type": "SOW_BILL",
+        "status": "DRAFT",
+        "date": "2026-10-10T00:00:00.000Z",
+        "vehicleId": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+        "complaints": null,
+        "aiDiagnosis": null,
+        "workTypeNote": "",
+        "paymentMethod": "CASH",
+        "subtotal": "350",
+        "mdrSurcharge": "0",
+        "finalTotal": "350",
+        "isLocked": false,
+        "isHidden": false,
+        "pdfUrl": null,
+        "proofImage": null,
+        "createdById": "17b6ce0a-13ef-474d-9169-b2f687e7481a",
+        "integrityHash": null,
+        "createdAt": "2026-10-10T09:24:57.465Z",
+        "updatedAt": "2026-10-10T09:24:57.465Z",
+        "deletedAt": null,
+        "items": [
+          {
+            "id": "606ba27d-ae38-411f-ae0f-01da36d042ed",
+            "documentId": "7532f349-9a03-4f83-a277-9630697640d6",
+            "sortOrder": 0,
+            "sectionName": "",
+            "title": "Engine Oil Change",
+            "description": "",
+            "quantity": "1",
+            "qtyUnit": "Pcs",
+            "rate": "350",
+            "mrpDiscount": "0",
+            "amount": "350"
+          }
+        ],
+        "vehicle": {
+          "id": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+          "regNumber": "GJ 01 AB 1234",
+          "makeModel": "Unknown",
+          "runningKm": 15000,
+          "customerId": "15b9aa71-2254-469b-8514-6fe42641c870",
+          "createdAt": "2026-10-10T09:24:56.549Z",
+          "updatedAt": "2026-10-10T09:47:12.239Z",
+          "deletedAt": null
+        }
+      },
+      {
+        "id": "10828dd2-5f49-4fbf-9fec-b526942add4f",
+        "docNumber": "MF2-PASS-02",
+        "type": "SOW_BILL",
+        "status": "DRAFT",
+        "date": "2026-10-10T00:00:00.000Z",
+        "vehicleId": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+        "complaints": null,
+        "aiDiagnosis": null,
+        "workTypeNote": "",
+        "paymentMethod": "CASH",
+        "subtotal": "500",
+        "mdrSurcharge": "0",
+        "finalTotal": "500",
+        "isLocked": false,
+        "isHidden": false,
+        "pdfUrl": null,
+        "proofImage": null,
+        "createdById": "17b6ce0a-13ef-474d-9169-b2f687e7481a",
+        "integrityHash": null,
+        "createdAt": "2026-10-10T09:38:13.645Z",
+        "updatedAt": "2026-10-10T09:38:13.645Z",
+        "deletedAt": null,
+        "items": [
+          {
+            "id": "c6977310-3de2-490c-ba66-9739b3329ae0",
+            "documentId": "10828dd2-5f49-4fbf-9fec-b526942add4f",
+            "sortOrder": 0,
+            "sectionName": "",
+            "title": "General Service",
+            "description": "",
+            "quantity": "1",
+            "qtyUnit": "Pcs",
+            "rate": "500",
+            "mrpDiscount": "0",
+            "amount": "500"
+          }
+        ],
+        "vehicle": {
+          "id": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+          "regNumber": "GJ 01 AB 1234",
+          "makeModel": "Unknown",
+          "runningKm": 15000,
+          "customerId": "15b9aa71-2254-469b-8514-6fe42641c870",
+          "createdAt": "2026-10-10T09:24:56.549Z",
+          "updatedAt": "2026-10-10T09:47:12.239Z",
+          "deletedAt": null
+        }
+      },
+      {
+        "id": "5d6b4ee4-0613-4c1f-ab71-c606547707bc",
+        "docNumber": "MF2-PASS-03",
+        "type": "SOW_BILL",
+        "status": "DRAFT",
+        "date": "2026-10-10T00:00:00.000Z",
+        "vehicleId": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+        "complaints": null,
+        "aiDiagnosis": null,
+        "workTypeNote": "",
+        "paymentMethod": "CASH",
+        "subtotal": "500500",
+        "mdrSurcharge": "0",
+        "finalTotal": "500500",
+        "isLocked": false,
+        "isHidden": false,
+        "pdfUrl": null,
+        "proofImage": null,
+        "createdById": "17b6ce0a-13ef-474d-9169-b2f687e7481a",
+        "integrityHash": null,
+        "createdAt": "2026-10-10T09:47:13.147Z",
+        "updatedAt": "2026-10-10T09:47:13.147Z",
+        "deletedAt": null,
+        "items": [
+          {
+            "id": "a9629af6-f6a6-4bef-bea1-7148c2983dd2",
+            "documentId": "5d6b4ee4-0613-4c1f-ab71-c606547707bc",
+            "sortOrder": 0,
+            "sectionName": "",
+            "title": "Engine Service",
+            "description": "",
+            "quantity": "1",
+            "qtyUnit": "Pcs",
+            "rate": "500500",
+            "mrpDiscount": "0",
+            "amount": "500500"
+          }
+        ],
+        "vehicle": {
+          "id": "f65d25ef-1874-4d39-90b3-79539d8f0160",
+          "regNumber": "GJ 01 AB 1234",
+          "makeModel": "Unknown",
+          "runningKm": 15000,
+          "customerId": "15b9aa71-2254-469b-8514-6fe42641c870",
+          "createdAt": "2026-10-10T09:24:56.549Z",
+          "updatedAt": "2026-10-10T09:47:12.239Z",
+          "deletedAt": null
+        }
+      }
+    ],
+    "parts": [
+      {
+        "id": "210dc590-35e9-4e81-bf50-30e17c0b005f",
+        "name": "Motul Engine Oil Mineral 900 ML",
+        "category": "Engine Oil",
+        "price": "524",
+        "stock": 10,
+        "createdAt": "2026-10-02T18:02:50.399Z",
+        "updatedAt": "2026-10-02T18:02:50.399Z"
+      },
+      {
+        "id": "26be33ea-50da-4649-84c3-a3855c804c1e",
+        "name": "Motul Engine Oil Mineral 900 ML",
+        "category": "Engine Oil",
+        "price": "524",
+        "stock": 10,
+        "createdAt": "2026-10-02T18:02:51.475Z",
+        "updatedAt": "2026-10-02T18:02:51.475Z"
+      },
+      {
+        "id": "07ed8e47-c659-4f87-87d7-b95d4a456ffe",
+        "name": "Motul Engine Oil Mineral 900 ML",
+        "category": "Engine Oil",
+        "price": "524",
+        "stock": 10,
+        "createdAt": "2026-10-02T18:02:53.100Z",
+        "updatedAt": "2026-10-02T18:02:53.100Z"
+      },
+      {
+        "id": "c22ae87a-a221-4b46-bef8-c84e60082f73",
+        "name": "Motul Engine Oil Mineral 900 ML",
+        "category": "Engine Oil",
+        "price": "524",
+        "stock": 10,
+        "createdAt": "2026-10-02T18:02:52.178Z",
+        "updatedAt": "2026-10-02T18:02:52.178Z"
+      },
+      {
+        "id": "9d64e4b6-c7cb-4a1f-8f2c-b889d7969e31",
+        "name": "Motul Engine Oil Mineral 900 ML",
+        "category": "Engine Oil",
+        "price": "524",
+        "stock": 10,
+        "createdAt": "2026-10-02T18:02:52.607Z",
+        "updatedAt": "2026-10-02T18:02:52.607Z"
+      },
+      {
+        "id": "d7c32d6e-0256-4e28-b604-bfcd99e1b77f",
+        "name": "Motul Engine Oil Mineral 900 ML",
+        "category": "Engine Oil",
+        "price": "524",
+        "stock": 10,
+        "createdAt": "2026-10-02T18:02:52.882Z",
+        "updatedAt": "2026-10-02T18:02:52.882Z"
+      }
+    ],
+    "transactions": []
+  }
+}

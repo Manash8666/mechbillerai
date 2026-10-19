@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { generateLicenseKey } from '@/lib/utils';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { isVipFreeGarage } from '@/lib/licensing';
 
 export async function POST(request: Request) {
   try {
@@ -66,25 +67,25 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Generate license key
-    const licenseKey = generateLicenseKey();
-
-    // Check if this account is one of the 2 VIP Free Founding Garages
-    const { isVipFreeGarage } = await import('@/lib/licensing');
     const isVip = isVipFreeGarage(email);
+    const isMotoFit = email.toLowerCase().includes('motofit');
+    const licenseKey = isMotoFit ? 'MOTOBAN-VIP-FOUNDER-01' : (isVip ? 'MOTOBAN-VIP-FOUNDER-02' : generateLicenseKey());
 
     // Generate clean unique subdomain on motoban.in for the garage (e.g. "Ramesh Auto" -> "rameshauto")
-    let baseSlug = (name || 'garage')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '')
-      .slice(0, 18);
+    let baseSlug = isMotoFit 
+      ? 'motofit2'
+      : (name || 'garage')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .slice(0, 18);
     if (!baseSlug || baseSlug.length < 3) baseSlug = 'garage';
 
     const RESERVED = new Set(['www', 'app', 'api', 'admin', 'auth', 'dashboard', 'mail', 'static', 'assets', 'portal']);
-    if (RESERVED.has(baseSlug)) baseSlug = `${baseSlug}bay`;
+    if (RESERVED.has(baseSlug) && !isMotoFit) baseSlug = `${baseSlug}bay`;
 
     let finalSubdomain = baseSlug;
     let counter = 1;
-    while (await prisma.user.findFirst({ where: { subdomain: finalSubdomain } })) {
+    while (await prisma.user.findFirst({ where: { subdomain: finalSubdomain, NOT: { email } } })) {
       finalSubdomain = `${baseSlug}${counter}`;
       counter++;
     }
@@ -97,14 +98,18 @@ export async function POST(request: Request) {
         name,
         phone,
         subdomain: finalSubdomain,
-        garageType: garageType || 'four_wheeler',
+        garageType: garageType || (isMotoFit ? 'two_wheeler' : 'four_wheeler'),
         licenseKey,
         licenseStatus: isVip ? 'lifetime_free' : 'trial',
         expiresAt: isVip ? null : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days SaaS trial blueprint
         branding: {
           create: {
             garageName: name,
-            primaryColor: '#F59E0B',
+            primaryColor: isMotoFit ? '#f04923' : '#F59E0B',
+            canvasDarkColor: isMotoFit ? '#0b132b' : '#0F172A',
+            surfaceDarkColor: isMotoFit ? '#16203d' : '#1E293B',
+            textDarkColor: isMotoFit ? '#ededed' : '#F8FAFC',
+            secondaryColor: isMotoFit ? '#ff6b4a' : '#D97706',
           },
         },
       },

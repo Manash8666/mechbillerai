@@ -19,21 +19,21 @@ export function BrandingLoader() {
         // Generate full palette
         const palette = {
           primary: branding.primaryColor,
-          secondary: branding.secondaryColor,
-          accent: branding.accentColor,
-          light: branding.light,
-          dark: branding.dark,
+          secondary: branding.secondaryColor || '#ff6b4a',
+          accent: branding.accentColor || branding.primaryColor,
+          light: branding.light || branding.secondaryColor || branding.primaryColor,
+          dark: branding.dark || branding.primaryColor,
           canvas: {
-            light: branding.canvasLightColor,
-            dark: branding.canvasDarkColor,
+            light: branding.canvasLightColor || '#ffffff',
+            dark: branding.canvasDarkColor || '#0b132b',
           },
           surface: {
-            light: branding.surfaceLightColor,
-            dark: branding.surfaceDarkColor,
+            light: branding.surfaceLightColor || '#f8fafc',
+            dark: branding.surfaceDarkColor || '#16203d',
           },
           text: {
-            light: branding.textLightColor,
-            dark: branding.textDarkColor,
+            light: branding.textLightColor || '#0f172a',
+            dark: branding.textDarkColor || '#ededed',
           },
         };
 
