@@ -6,9 +6,15 @@ import { PRICING_TIERS, ADDONS, isVipFreeGarage, VIP_FOUNDING_KEYS } from '@/lib
 // GET - Current user's SaaS trial status, daily quotas, and pricing plans
 export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const queryUserId = url.searchParams.get('userId');
     const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
+    const userId = auth.user?.userId || queryUserId;
+
+    if (!userId) {
+      if (auth.errorResponse) return auth.errorResponse;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

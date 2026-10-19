@@ -78,10 +78,24 @@ export default function LicensingSection() {
   const fetchLicensingStatus = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/licensing');
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const userObj = userStr ? JSON.parse(userStr) : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('motoban_token') : null;
+
+      const url = userObj?.id ? `/api/licensing?userId=${userObj.id}` : '/api/licensing';
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(url, { headers });
       if (res.ok) {
         const json = await res.json();
         setData(json);
+
+        // Keep local user in sync if VIP
+        if (json.isVip && userObj && userObj.licenseStatus !== 'lifetime_free') {
+          userObj.licenseStatus = 'lifetime_free';
+          localStorage.setItem('user', JSON.stringify(userObj));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch licensing status:', err);
@@ -297,6 +311,20 @@ export default function LicensingSection() {
 
       {/* 2. Official Pricing Tiers Grid */}
       <div>
+        {data?.isVip && (
+          <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-2 border-amber-500/40 shadow-xl text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-wider mb-2">
+              <Award className="h-4 w-4" /> VIP Founding Partner Garage
+            </div>
+            <h4 className="text-xl font-bold text-pure-white">
+              Permanent 100% Free Lifetime Pro Access Active
+            </h4>
+            <p className="text-sm text-slate-300 mt-1 max-w-xl mx-auto">
+              Your workshop is permanently licensed under Key <code className="text-amber-400 font-mono bg-black/40 px-2 py-0.5 rounded">MOTOBAN-VIP-FOUNDER-01</code>. You have unlimited bills, estimates, job cards, and zero renewal fees.
+            </p>
+          </div>
+        )}
+
         <div className="text-center max-w-3xl mx-auto mb-8">
           <h3 className="text-3xl font-extrabold text-luxury-ink-light dark:text-luxury-ink-dark">
             MotoBan Ecosystem Pricing Tiers

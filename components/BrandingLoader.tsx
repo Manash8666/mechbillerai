@@ -24,15 +24,15 @@ export function BrandingLoader() {
           light: branding.light || branding.secondaryColor || branding.primaryColor,
           dark: branding.dark || branding.primaryColor,
           canvas: {
-            light: branding.canvasLightColor || '#ffffff',
+            light: branding.canvasLightColor || branding.canvasDarkColor || '#0b132b',
             dark: branding.canvasDarkColor || '#0b132b',
           },
           surface: {
-            light: branding.surfaceLightColor || '#f8fafc',
+            light: branding.surfaceLightColor || branding.surfaceDarkColor || '#16203d',
             dark: branding.surfaceDarkColor || '#16203d',
           },
           text: {
-            light: branding.textLightColor || '#0f172a',
+            light: branding.textLightColor || branding.textDarkColor || '#ededed',
             dark: branding.textDarkColor || '#ededed',
           },
         };

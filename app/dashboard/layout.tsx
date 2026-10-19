@@ -38,7 +38,28 @@ function DashboardContent({
     if (!userData) {
       router.push('/login');
     } else {
-      setUser(JSON.parse(userData));
+      const parsed = JSON.parse(userData);
+      setUser(parsed);
+      
+      // Keep dark mode active by default, especially for MotoFit
+      if (parsed.email?.toLowerCase().includes('motofit') || parsed.subdomain === 'motofit2') {
+        document.documentElement.classList.add('dark');
+      }
+
+      // Live-sync license status in case server-side VIP status updated
+      const token = localStorage.getItem('motoban_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      fetch(`/api/licensing?userId=${parsed.id}`, { headers })
+        .then((r) => r.json())
+        .then((lic) => {
+          if (lic?.licenseStatus && lic.licenseStatus !== parsed.licenseStatus) {
+            parsed.licenseStatus = lic.licenseStatus;
+            localStorage.setItem('user', JSON.stringify(parsed));
+            setUser({ ...parsed });
+          }
+        })
+        .catch(() => {});
     }
   }, [router]);
 
@@ -71,7 +92,7 @@ function DashboardContent({
   }
 
   return (
-    <div className="min-h-screen bg-luxury-canvas-light dark:bg-luxury-canvas-dark">
+    <div className="min-h-screen bg-[#0B0F19] dark:bg-[#0B0F19] bg-luxury-canvas-light dark:bg-luxury-canvas-dark text-slate-100">
       <BrandingLoader />
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
@@ -116,14 +137,18 @@ function DashboardContent({
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <span
                 className={`inline-block px-2 py-0.5 text-xs font-semibold rounded border ${
-                  user.licenseStatus === 'active'
+                  user.licenseStatus === 'lifetime_free'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                    : user.licenseStatus === 'active'
                     ? 'bg-emerald-sync/20 text-emerald-sync border-emerald-sync/40'
                     : user.licenseStatus === 'trial'
                     ? 'bg-amber-alert/20 text-amber-alert border-amber-alert/40'
                     : 'bg-crimson-brake/20 text-crimson-brake border-crimson-brake/40'
                 }`}
               >
-                {user.licenseStatus === 'active'
+                {user.licenseStatus === 'lifetime_free'
+                  ? '👑 VIP Lifetime Free'
+                  : user.licenseStatus === 'active'
                   ? 'Active License'
                   : user.licenseStatus === 'trial'
                   ? 'Trial'
