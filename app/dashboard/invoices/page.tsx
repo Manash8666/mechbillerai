@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -88,6 +88,122 @@ export default function InvoicesPage() {
   const [aiPromptInput, setAiPromptInput] = useState('');
   const [draftingWithAi, setDraftingWithAi] = useState(false);
   const [editingDetailIndex, setEditingDetailIndex] = useState<number | null>(null);
+
+  // Edit Invoice State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editCustomerId, setEditCustomerId] = useState('');
+  const [editPaymentMode, setEditPaymentMode] = useState('cash');
+  const [editStatus, setEditStatus] = useState('paid');
+  const [editDiscount, setEditDiscount] = useState('0');
+  const [editPaid, setEditPaid] = useState('0');
+  const [editNotes, setEditNotes] = useState('');
+  const [editLineItems, setEditLineItems] = useState<
+    { description: string; details?: string; quantity: number; unitPrice: number }[]
+  >([]);
+  const [updatingInvoice, setUpdatingInvoice] = useState(false);
+
+  const handleDeleteInvoice = async (id: string, invoiceNumber: string) => {
+    if (!confirm(`Are you sure you want to delete Invoice #${invoiceNumber}? This will permanently remove its records.`)) {
+      return;
+    }
+    const toastId = toast.loading(`Deleting Invoice #${invoiceNumber}...`);
+    try {
+      const res = await fetch(`/api/invoices/${id}?force=true`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`Invoice #${invoiceNumber} deleted successfully`, { id: toastId });
+        setInvoices((prev) => prev.filter((i) => i.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to delete invoice', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Network error deleting invoice', { id: toastId });
+    }
+  };
+
+  const handleOpenEditModal = (inv: Invoice) => {
+    setEditingInvoice(inv);
+    setEditCustomerId((inv as any).customerId || '');
+    setEditPaymentMode(inv.paymentMode || 'cash');
+    setEditStatus(inv.status || 'paid');
+    setEditDiscount(String((inv as any).discount || 0));
+    setEditPaid(String(inv.paid || 0));
+    setEditNotes((inv as any).notes || '');
+    setEditLineItems(
+      (inv.items || []).map((it) => ({
+        description: it.description,
+        details: (it as any).details || '',
+        quantity: it.quantity || 1,
+        unitPrice: it.unitPrice || 0,
+      }))
+    );
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInvoice) return;
+    if (editLineItems.length === 0) {
+      toast.error('Invoice must have at least one line item');
+      return;
+    }
+
+    try {
+      setUpdatingInvoice(true);
+      const subtotal = editLineItems.reduce(
+        (acc, item) => acc + (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
+        0
+      );
+      const discountVal = Number(editDiscount) || 0;
+      const taxVal = Math.round((subtotal - discountVal) * 0.18);
+      const totalVal = Math.max(0, subtotal - discountVal + taxVal);
+      const paidVal = Number(editPaid) || 0;
+      const balanceVal = Math.max(0, totalVal - paidVal);
+
+      const payload = {
+        paymentMode: editPaymentMode,
+        status: editStatus,
+        notes: editNotes,
+        subtotal,
+        discount: discountVal,
+        tax: taxVal,
+        total: totalVal,
+        paid: paidVal,
+        balance: balanceVal,
+        items: editLineItems.map((item) => ({
+          description: item.description || 'Workshop Service',
+          details: item.details || undefined,
+          quantity: Number(item.quantity) || 1,
+          unitPrice: Number(item.unitPrice) || 0,
+          tax: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 0.18),
+          total: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 1.18),
+        })),
+      };
+
+      const res = await fetch(`/api/invoices/${editingInvoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || 'Failed to update invoice');
+      }
+
+      const updated = await res.json();
+      toast.success(`Invoice #${updated.invoiceNumber || editingInvoice.invoiceNumber} updated!`);
+      setIsEditModalOpen(false);
+      setEditingInvoice(null);
+      await fetchInvoices();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Error updating invoice');
+    } finally {
+      setUpdatingInvoice(false);
+    }
+  };
 
   useEffect(() => {
     void fetchInvoices();
@@ -809,6 +925,26 @@ export default function InvoicesPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
+                    <div className="flex gap-1.5 w-full">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(invoice)}
+                        className="flex-1 px-2.5 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
+                        title="Edit Invoice Details & Line Items"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
+                        className="px-2.5 py-1.5 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
+                        title="Delete Invoice"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleOpenCounterUpi(invoice)}
@@ -1222,6 +1358,233 @@ export default function InvoicesPage() {
                 ⚙️ Upload or Change Workshop Standee QR in Settings
               </Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Invoice Modal */}
+      {isEditModalOpen && editingInvoice && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-luxury-surface-light dark:bg-[#151D2F] border border-amber-500/40 rounded-2xl max-w-2xl w-full p-6 relative shadow-2xl my-8">
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingInvoice(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">
+                  Edit Invoice #{editingInvoice.invoiceNumber}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Customer: {editingInvoice.customer?.name || 'Walk-in'}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateInvoice} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="pending">Pending</option>
+                    <option value="partially_paid">Partially Paid</option>
+                    <option value="paid">Paid</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Payment Mode</label>
+                  <select
+                    value={editPaymentMode}
+                    onChange={(e) => setEditPaymentMode(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI / QR</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              <div className="border border-border/60 rounded-xl p-3 bg-black/10 dark:bg-black/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                    Line Items ({editLineItems.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditLineItems((prev) => [
+                        ...prev,
+                        { description: '', quantity: 1, unitPrice: 0 },
+                      ])
+                    }
+                    className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Item
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {editLineItems.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-center bg-card/60 p-2 rounded-lg border border-border/40">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Item Description"
+                          value={item.description}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, description: val } : it))
+                            );
+                          }}
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs text-foreground"
+                          required
+                        />
+                      </div>
+                      <div className="w-16">
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 1;
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, quantity: val } : it))
+                            );
+                          }}
+                          className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs text-foreground text-center"
+                          required
+                        />
+                      </div>
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, unitPrice: val } : it))
+                            );
+                          }}
+                          className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs text-foreground text-right font-mono"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditLineItems((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        disabled={editLineItems.length <= 1}
+                        className="p-1.5 text-rose-400 hover:text-rose-300 disabled:opacity-30 rounded"
+                        title="Remove Item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financials & Discount */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Discount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editDiscount}
+                    onChange={(e) => setEditDiscount(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Amount Paid (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editPaid}
+                    onChange={(e) => setEditPaid(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Notes / Remarks</label>
+                <textarea
+                  rows={2}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Optional technician or customer note..."
+                  className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground"
+                />
+              </div>
+
+              {/* Summary Calculation */}
+              <div className="p-3 bg-muted/40 rounded-xl border border-border/50 text-xs flex justify-between items-center font-mono">
+                <div>
+                  <span className="text-muted-foreground">Subtotal: </span>
+                  <span className="font-bold text-foreground">
+                    ₹{editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">GST (18%): </span>
+                  <span className="font-bold text-foreground">
+                    ₹{Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0) - (Number(editDiscount) || 0)) * 0.18).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Total: </span>
+                  <span className="font-black text-amber-400">
+                    ₹{Math.max(0, editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0) - (Number(editDiscount) || 0) + Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0) - (Number(editDiscount) || 0)) * 0.18)).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingInvoice(null);
+                  }}
+                  className="w-1/2 py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingInvoice}
+                  className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-lg text-sm transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {updatingInvoice ? 'Saving Changes...' : 'Save Invoice'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

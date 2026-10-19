@@ -142,6 +142,10 @@ export async function DELETE(
       );
     }
 
+    await prisma.inventoryTransaction.deleteMany({
+      where: { itemId: id },
+    });
+
     await prisma.inventoryItem.delete({
       where: { id },
     });

@@ -147,6 +147,17 @@ export async function DELETE(
       );
     }
 
+    // Unlink any invoice referencing this job card
+    await prisma.invoice.updateMany({
+      where: { jobCardId: id },
+      data: { jobCardId: null },
+    });
+
+    // Delete tasks
+    await prisma.jobTask.deleteMany({
+      where: { jobCardId: id },
+    });
+
     await prisma.jobCard.delete({
       where: { id },
     });

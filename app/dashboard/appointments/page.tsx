@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Calendar, Clock, MapPin, CheckCircle, X } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Clock, MapPin, CheckCircle, X, Edit3, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
@@ -47,6 +47,18 @@ export default function AppointmentsPage() {
   const [startTime, setStartTime] = useState('10:00 AM');
   const [endTime, setEndTime] = useState('12:00 PM');
   const [bay, setBay] = useState('Bay 1 - Express Service');
+
+  // Edit Appointment Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [editServiceType, setEditServiceType] = useState('Periodic Maintenance Service');
+  const [editDate, setEditDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('10:00 AM');
+  const [editEndTime, setEditEndTime] = useState('12:00 PM');
+  const [editBay, setEditBay] = useState('Bay 1 - Express Service');
+  const [editStatus, setEditStatus] = useState('confirmed');
+  const [editDescription, setEditDescription] = useState('');
+  const [updatingAppointment, setUpdatingAppointment] = useState(false);
 
   useEffect(() => {
     void fetchAppointments();
@@ -130,6 +142,77 @@ export default function AppointmentsPage() {
       toast.error(err.message || 'Failed to schedule appointment');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteAppointment = async (id: string, serviceName: string) => {
+    if (!confirm(`Are you sure you want to delete this appointment (${serviceName})?`)) {
+      return;
+    }
+    const toastId = toast.loading('Deleting appointment...');
+    try {
+      const res = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Appointment deleted successfully', { id: toastId });
+        setAppointments((prev) => prev.filter((a) => a.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to delete appointment', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Network error deleting appointment', { id: toastId });
+    }
+  };
+
+  const handleOpenEditModal = (apt: Appointment) => {
+    setEditingAppointment(apt);
+    setEditServiceType(apt.serviceType || 'Periodic Maintenance Service');
+    const d = apt.date ? new Date(apt.date).toISOString().split('T')[0] : '';
+    setEditDate(d);
+    setEditStartTime(apt.startTime || '10:00 AM');
+    setEditEndTime(apt.endTime || '12:00 PM');
+    setEditBay(apt.bay || 'Bay 1 - Express Service');
+    setEditStatus(apt.status || 'confirmed');
+    setEditDescription(apt.description || apt.notes || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAppointment) return;
+
+    try {
+      setUpdatingAppointment(true);
+      const payload = {
+        serviceType: editServiceType,
+        date: editDate,
+        startTime: editStartTime,
+        endTime: editEndTime,
+        bay: editBay,
+        status: editStatus,
+        description: editDescription,
+      };
+
+      const res = await fetch(`/api/appointments/${editingAppointment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update appointment');
+      }
+
+      toast.success('Appointment updated successfully!');
+      setIsEditModalOpen(false);
+      setEditingAppointment(null);
+      await fetchAppointments();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Error updating appointment');
+    } finally {
+      setUpdatingAppointment(false);
     }
   };
 
@@ -351,6 +434,28 @@ export default function AppointmentsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Right Section - Actions */}
+                <div className="flex lg:flex-col gap-1.5 self-start lg:self-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(appointment)}
+                    className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
+                    title="Edit Appointment"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAppointment(appointment.id, appointment.serviceType)}
+                    className="px-3 py-1.5 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
+                    title="Delete Appointment"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))
@@ -496,6 +601,164 @@ export default function AppointmentsPage() {
                 <PearlButton type="submit" disabled={submitting}>
                   {submitting ? 'Booking...' : 'Confirm Appointment'}
                 </PearlButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Appointment Modal */}
+      {isEditModalOpen && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-luxury-surface-light dark:bg-[#151D2F] border border-amber-500/40 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative my-8">
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingAppointment(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Edit Appointment</h2>
+                <p className="text-xs text-muted-foreground">
+                  Customer: {editingAppointment.customer?.name} ({editingAppointment.customer?.phone})
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateAppointment} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Service Type *
+                </label>
+                <select
+                  value={editServiceType}
+                  onChange={(e) => setEditServiceType(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  <option value="Periodic Maintenance Service">Periodic Maintenance Service (PMS)</option>
+                  <option value="Brake Inspection & Overhaul">Brake Inspection & Overhaul</option>
+                  <option value="Engine Diagnostics & Tuning">Engine Diagnostics & Tuning</option>
+                  <option value="Suspension & Steering">Suspension & Steering Repair</option>
+                  <option value="Wheel Alignment & Balancing">Wheel Alignment & Balancing</option>
+                  <option value="Electrical & Battery Diagnostics">Electrical & Battery Diagnostics</option>
+                  <option value="Full Vehicle Detailing & Ceramic Wash">Full Vehicle Detailing & Ceramic Wash</option>
+                  <option value="Express Oil & Filter Change">Express Oil & Filter Change</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Start Time
+                  </label>
+                  <input
+                    type="text"
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    placeholder="10:00 AM"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    End Time
+                  </label>
+                  <input
+                    type="text"
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    placeholder="12:00 PM"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Assigned Bay
+                </label>
+                <select
+                  value={editBay}
+                  onChange={(e) => setEditBay(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  <option value="Bay 1 - Express Service">Bay 1 - Express Service</option>
+                  <option value="Bay 2 - Heavy Mechanical Lift">Bay 2 - Heavy Mechanical Lift</option>
+                  <option value="Bay 3 - Electrical & Diagnostics">Bay 3 - Electrical & Diagnostics</option>
+                  <option value="Bay 4 - Detailing & Wash">Bay 4 - Detailing & Wash</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Customer Notes / Symptoms
+                </label>
+                <textarea
+                  rows={2}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Notes, symptoms, customer requests..."
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingAppointment(null);
+                  }}
+                  className="w-1/2 py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingAppointment}
+                  className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-lg text-sm transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {updatingAppointment ? 'Saving...' : 'Save Appointment'}
+                </button>
               </div>
             </form>
           </div>

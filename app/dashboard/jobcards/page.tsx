@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download, X, Camera, Mic } from 'lucide-react';
+import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download, X, Camera, Mic, Edit3, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 import Loader from '@/components/Loader';
@@ -21,6 +21,7 @@ interface JobCard {
   completedDate?: string;
   voiceNote?: string | null;
   preInspectionShield?: string | null;
+  notes?: string | null;
   customer: {
     name: string;
     phone: string;
@@ -44,6 +45,17 @@ export default function JobCardsPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'evening-triage'>('all');
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
   const [selectedShieldJob, setSelectedShieldJob] = useState<JobCard | null>(null);
+
+  // Edit Job Card State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<JobCard | null>(null);
+  const [editStatus, setEditStatus] = useState('pending');
+  const [editPriority, setEditPriority] = useState('normal');
+  const [editDescription, setEditDescription] = useState('');
+  const [editEstimatedCost, setEditEstimatedCost] = useState('0');
+  const [editActualCost, setEditActualCost] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [updatingJob, setUpdatingJob] = useState(false);
 
   useEffect(() => {
     void fetchJobCards();
@@ -156,6 +168,74 @@ export default function JobCardsPage() {
       }
     } catch {
       toast.error('Failed to create invoice');
+    }
+  };
+
+  const handleDeleteJobCard = async (id: string, jobNumber: string) => {
+    if (!confirm(`Are you sure you want to delete Job Card #${jobNumber}? This will permanently remove it.`)) {
+      return;
+    }
+    const toastId = toast.loading(`Deleting Job Card #${jobNumber}...`);
+    try {
+      const res = await fetch(`/api/jobcards/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`Job Card #${jobNumber} deleted successfully`, { id: toastId });
+        setJobCards((prev) => prev.filter((j) => j.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to delete job card', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Network error deleting job card', { id: toastId });
+    }
+  };
+
+  const handleOpenEditModal = (job: JobCard) => {
+    setEditingJob(job);
+    setEditStatus(job.status || 'pending');
+    setEditPriority(job.priority || 'normal');
+    setEditDescription(job.description || '');
+    setEditEstimatedCost(String(job.estimatedCost || 0));
+    setEditActualCost(job.actualCost !== undefined && job.actualCost !== null ? String(job.actualCost) : '');
+    setEditNotes(job.notes || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateJobCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingJob) return;
+
+    try {
+      setUpdatingJob(true);
+      const payload = {
+        status: editStatus,
+        priority: editPriority,
+        description: editDescription,
+        estimatedCost: Number(editEstimatedCost) || 0,
+        actualCost: editActualCost !== '' ? Number(editActualCost) : null,
+        notes: editNotes,
+      };
+
+      const res = await fetch(`/api/jobcards/${editingJob.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update job card');
+      }
+
+      toast.success(`Job Card #${editingJob.jobNumber} updated successfully!`);
+      setIsEditModalOpen(false);
+      setEditingJob(null);
+      await fetchJobCards();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Error updating job card');
+    } finally {
+      setUpdatingJob(false);
     }
   };
 
@@ -550,6 +630,32 @@ export default function JobCardsPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
+                    <div className="flex gap-1.5 w-full">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditModal(job);
+                        }}
+                        className="flex-1 px-2.5 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
+                        title="Edit Job Card Details & Costs"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteJobCard(job.id, job.jobNumber);
+                        }}
+                        className="px-2.5 py-1.5 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
+                        title="Delete Job Card"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleDownloadJobCardPdf(job)}
@@ -726,6 +832,135 @@ export default function JobCardsPage() {
           </div>
         );
       })()}
+
+      {/* Edit Job Card Modal */}
+      {isEditModalOpen && editingJob && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-luxury-surface-light dark:bg-[#151D2F] border border-amber-500/40 rounded-2xl max-w-lg w-full p-6 relative shadow-2xl my-8">
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingJob(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">
+                  Edit Job Card #{editingJob.jobNumber}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {editingJob.vehicle.registrationNo} ({editingJob.vehicle.make} {editingJob.vehicle.model}) · {editingJob.customer.name}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateJobCard} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="pending">⏳ Pending</option>
+                    <option value="in-progress">🔧 In Progress</option>
+                    <option value="completed">✅ Completed</option>
+                    <option value="cancelled">❌ Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Priority</label>
+                  <select
+                    value={editPriority}
+                    onChange={(e) => setEditPriority(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Work Description</label>
+                <textarea
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Estimated Cost (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editEstimatedCost}
+                    onChange={(e) => setEditEstimatedCost(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">Actual Cost (₹) (Optional)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Leave blank if pending"
+                    value={editActualCost}
+                    onChange={(e) => setEditActualCost(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Notes / Technician Remarks</label>
+                <textarea
+                  rows={2}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Internal notes, customer requests or spare parts info..."
+                  className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-xs text-foreground focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingJob(null);
+                  }}
+                  className="w-1/2 py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingJob}
+                  className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-lg text-sm transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {updatingJob ? 'Saving Changes...' : 'Save Job Card'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

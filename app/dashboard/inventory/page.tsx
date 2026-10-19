@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Filter, Package, AlertTriangle, TrendingUp, TrendingDown, X, FileUp } from 'lucide-react';
+import { Plus, Search, Filter, Package, AlertTriangle, TrendingUp, TrendingDown, X, FileUp, Edit3, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
@@ -42,6 +42,19 @@ export default function InventoryPage() {
   const [costPrice, setCostPrice] = useState('350');
   const [sellingPrice, setSellingPrice] = useState('500');
   const [gstRate, setGstRate] = useState('18');
+
+  // Edit Item Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editCategory, setEditCategory] = useState('Lubricants');
+  const [editQuantity, setEditQuantity] = useState('0');
+  const [editUnit, setEditUnit] = useState('Pcs');
+  const [editCostPrice, setEditCostPrice] = useState('0');
+  const [editSellingPrice, setEditSellingPrice] = useState('0');
+  const [editGstRate, setEditGstRate] = useState('18');
+  const [updatingItem, setUpdatingItem] = useState(false);
 
   useEffect(() => {
     void fetchInventory();
@@ -107,6 +120,82 @@ export default function InventoryPage() {
       toast.error(err.message || 'Failed to add item');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteItem = async (id: string, itemName: string) => {
+    if (!confirm(`Are you sure you want to delete "${itemName}" from inventory?`)) {
+      return;
+    }
+    const toastId = toast.loading(`Deleting ${itemName}...`);
+    try {
+      const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`"${itemName}" deleted from inventory`, { id: toastId });
+        setItems((prev) => prev.filter((i) => i.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || err.message || 'Failed to delete item', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Network error deleting item', { id: toastId });
+    }
+  };
+
+  const handleOpenEditModal = (item: InventoryItem) => {
+    setEditingItem(item);
+    setEditName(item.name || '');
+    setEditCode(item.code || '');
+    setEditCategory(item.category || 'Lubricants');
+    setEditQuantity(String(item.quantity ?? 0));
+    setEditUnit(item.unit || 'Pcs');
+    setEditCostPrice(String(item.costPrice ?? 0));
+    setEditSellingPrice(String(item.sellingPrice ?? 0));
+    setEditGstRate(String(item.gstRate ?? 18));
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    if (!editName.trim() || !editCode.trim()) {
+      toast.error('Item name and SKU/Code are required');
+      return;
+    }
+
+    try {
+      setUpdatingItem(true);
+      const payload = {
+        name: editName.trim(),
+        code: editCode.trim().toUpperCase(),
+        category: editCategory,
+        quantity: Number(editQuantity) || 0,
+        unit: editUnit,
+        costPrice: Number(editCostPrice) || 0,
+        sellingPrice: Number(editSellingPrice) || 0,
+        gstRate: Number(editGstRate) || 18,
+      };
+
+      const res = await fetch(`/api/inventory/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || 'Failed to update item');
+      }
+
+      toast.success(`Item "${editName}" updated!`);
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+      await fetchInventory();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Error updating inventory item');
+    } finally {
+      setUpdatingItem(false);
     }
   };
 
@@ -307,12 +396,15 @@ export default function InventoryPage() {
                 <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
                     No items found
                   </td>
                 </tr>
@@ -381,6 +473,28 @@ export default function InventoryPage() {
                             ? 'LOW STOCK'
                             : 'IN STOCK'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(item)}
+                            className="px-2.5 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs flex items-center gap-1 shadow-sm"
+                            title="Edit Inventory Item"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(item.id, item.name)}
+                            className="px-2.5 py-1 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 font-bold rounded-lg transition-colors text-xs flex items-center gap-1 shadow-sm"
+                            title="Delete Inventory Item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -536,6 +650,181 @@ export default function InventoryPage() {
                 <PearlButton type="submit" disabled={submitting}>
                   {submitting ? 'Adding...' : 'Save Item'}
                 </PearlButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Inventory Item Modal */}
+      {isEditModalOpen && editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-luxury-surface-light dark:bg-[#151D2F] border border-amber-500/40 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative my-8">
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingItem(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Edit Inventory Item</h2>
+                <p className="text-xs text-muted-foreground">SKU: {editingItem.code}</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateItem} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Item Name *
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    SKU / Item Code *
+                  </label>
+                  <input
+                    type="text"
+                    value={editCode}
+                    onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="Lubricants">Lubricants</option>
+                    <option value="Engine Parts">Engine Parts</option>
+                    <option value="Brakes">Brakes</option>
+                    <option value="Suspension">Suspension</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Filters">Filters</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Tires">Tires</option>
+                    <option value="Consumables">Consumables</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Current Stock *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Unit
+                  </label>
+                  <select
+                    value={editUnit}
+                    onChange={(e) => setEditUnit(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="Liters">Liters</option>
+                    <option value="Pcs">Pcs</option>
+                    <option value="Sets">Sets</option>
+                    <option value="Meters">Meters</option>
+                    <option value="Kg">Kg</option>
+                    <option value="Bottles">Bottles</option>
+                    <option value="Boxes">Boxes</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Cost Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editCostPrice}
+                    onChange={(e) => setEditCostPrice(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Selling Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editSellingPrice}
+                    onChange={(e) => setEditSellingPrice(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    GST (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={editGstRate}
+                    onChange={(e) => setEditGstRate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingItem(null);
+                  }}
+                  className="w-1/2 py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingItem}
+                  className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-lg text-sm transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {updatingItem ? 'Saving...' : 'Save Item'}
+                </button>
               </div>
             </form>
           </div>

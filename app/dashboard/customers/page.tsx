@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, Phone, Mail, X } from 'lucide-react';
+import { Plus, Search, Phone, Mail, X, Edit3, Trash2, MapPin, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
@@ -19,6 +19,17 @@ export default function CustomersPage() {
   const [email, setEmail] = useState('');
   const [vehicleReg, setVehicleReg] = useState('');
 
+  // Edit Customer Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editGstNumber, setEditGstNumber] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [updatingCustomer, setUpdatingCustomer] = useState(false);
+
   useEffect(() => {
     void fetchCustomers();
   }, []);
@@ -34,6 +45,78 @@ export default function CustomersPage() {
       toast.error('Failed to fetch customers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (id: string, customerName: string) => {
+    if (!confirm(`Are you sure you want to delete customer "${customerName}"? This will delete their profile and records.`)) {
+      return;
+    }
+    const toastId = toast.loading(`Deleting ${customerName}...`);
+    try {
+      const res = await fetch(`/api/customers/${id}?force=true`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`Customer "${customerName}" deleted successfully`, { id: toastId });
+        setCustomers((prev) => prev.filter((c) => c.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to delete customer', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Network error deleting customer', { id: toastId });
+    }
+  };
+
+  const handleOpenEditModal = (customer: any) => {
+    setEditingCustomer(customer);
+    setEditName(customer.name || '');
+    setEditPhone(customer.phone || '');
+    setEditEmail(customer.email || '');
+    setEditAddress(customer.address || '');
+    setEditGstNumber(customer.gstNumber || '');
+    setEditNotes(customer.notes || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    if (!editName.trim() || !editPhone.trim()) {
+      toast.error('Name and Phone are required');
+      return;
+    }
+
+    try {
+      setUpdatingCustomer(true);
+      const payload = {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim() || null,
+        address: editAddress.trim() || null,
+        gstNumber: editGstNumber.trim() || null,
+        notes: editNotes.trim() || null,
+      };
+
+      const res = await fetch(`/api/customers/${editingCustomer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update customer');
+      }
+
+      toast.success(`Customer "${editName}" updated successfully!`);
+      setIsEditModalOpen(false);
+      setEditingCustomer(null);
+      await fetchCustomers();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Error updating customer');
+    } finally {
+      setUpdatingCustomer(false);
     }
   };
 
@@ -190,6 +273,26 @@ export default function CustomersPage() {
                     <div className="text-sm text-luxury-ink-light/60 dark:text-luxury-ink-dark/60">
                       {customer._count?.jobCards || 0} jobs
                     </div>
+                    <div className="flex items-center gap-1.5 mt-3 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(customer)}
+                        className="px-2.5 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs flex items-center gap-1 shadow-sm"
+                        title="Edit Customer Details"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomer(customer.id, customer.name)}
+                        className="px-2.5 py-1 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 font-bold rounded-lg transition-colors text-xs flex items-center gap-1 shadow-sm"
+                        title="Delete Customer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -271,6 +374,131 @@ export default function CustomersPage() {
                 <PearlButton type="submit" disabled={submitting} className="w-full text-sm justify-center">
                   {submitting ? 'Saving Customer...' : 'Save & Register Customer'}
                 </PearlButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Modal */}
+      {isEditModalOpen && editingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-luxury-surface-light dark:bg-[#151D2F] border border-amber-500/40 rounded-2xl w-full max-w-md p-6 shadow-2xl relative my-8">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">Edit Customer</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingCustomer(null);
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCustomer} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Mobile Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  placeholder="Street, City, Pincode"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  GST Number (GSTIN)
+                </label>
+                <input
+                  type="text"
+                  value={editGstNumber}
+                  onChange={(e) => setEditGstNumber(e.target.value.toUpperCase())}
+                  placeholder="22AAAAA0000A1Z5"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Customer preferences, remarks..."
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-xs"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingCustomer(null);
+                  }}
+                  className="w-1/2 py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingCustomer}
+                  className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-lg text-sm transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {updatingCustomer ? 'Saving...' : 'Save Customer'}
+                </button>
               </div>
             </form>
           </div>

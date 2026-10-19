@@ -277,6 +277,12 @@ export async function DELETE(
       );
     }
 
+    // Unlink any invoice referencing job cards for this customer to prevent foreign key errors
+    await prisma.invoice.updateMany({
+      where: { customerId: id },
+      data: { jobCardId: null },
+    });
+
     // Delete customer (cascade will handle related data)
     await prisma.customer.delete({
       where: { id },

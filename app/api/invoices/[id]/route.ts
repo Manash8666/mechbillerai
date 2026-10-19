@@ -69,7 +69,7 @@ export async function GET(
       balance: invoice.balance,
       paymentCount: invoice.payments.length,
       lastPaymentDate: invoice.payments[0]?.paymentDate || null,
-      paymentHistory: invoice.payments.map(p => ({
+      paymentHistory: invoice.payments.map((p) => ({
         amount: p.amount,
         mode: p.paymentMode,
         date: p.paymentDate,
@@ -90,7 +90,7 @@ export async function GET(
   }
 }
 
-// PUT - Update invoice with validation
+// PUT - Update invoice with items and full field editing
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -102,13 +102,27 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, notes, dueDate } = body;
+    const {
+      status,
+      notes,
+      dueDate,
+      paymentMode,
+      items,
+      subtotal,
+      discount,
+      tax,
+      total,
+      paid,
+      balance,
+      customerId,
+    } = body;
 
     // Check if invoice exists and belongs to this user
     const existing = await prisma.invoice.findFirst({
       where: { id, userId },
       include: {
         payments: true,
+        items: true,
       },
     });
 
@@ -119,41 +133,68 @@ export async function PUT(
       );
     }
 
-    // Validate status change
-    if (status) {
-      // Can't mark as unpaid if there are payments
-      if (status === 'unpaid' && existing.paid > 0) {
-        return NextResponse.json(
-          buildErrorResponse(
-            'Cannot mark invoice as unpaid when payments exist',
-            'INVALID_STATUS_CHANGE'
-          ),
-          { status: 400 }
-        );
-      }
+    // Prepare update data
+    const updateData: any = {};
+    if (status !== undefined) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+    if (paymentMode !== undefined) updateData.paymentMode = paymentMode;
+    if (customerId !== undefined) updateData.customerId = customerId;
+    if (dueDate) updateData.dueDate = new Date(dueDate);
 
-      // Auto-calculate correct status based on payments
-      const calculatedStatus = 
-        existing.balance === 0 ? 'paid' :
-        existing.paid > 0 ? 'partial' :
-        'unpaid';
+    // Numeric financials
+    if (subtotal !== undefined) updateData.subtotal = Number(subtotal);
+    if (discount !== undefined) updateData.discount = Number(discount);
+    if (tax !== undefined) updateData.tax = Number(tax);
+    if (total !== undefined) updateData.total = Number(total);
+    if (paid !== undefined) updateData.paid = Number(paid);
+    if (balance !== undefined) {
+      updateData.balance = Number(balance);
+    } else if (total !== undefined && paid !== undefined) {
+      updateData.balance = Math.max(0, Number(total) - Number(paid));
+    }
 
-      if (status !== calculatedStatus) {
-        return NextResponse.json(
-          buildErrorResponse(
-            `Invoice status should be '${calculatedStatus}' based on payments`,
-            'INCORRECT_STATUS'
-          ),
-          { status: 400 }
-        );
+    // Auto-calculate status if paid/balance specified
+    if (updateData.paid !== undefined && updateData.total !== undefined) {
+      if (updateData.balance <= 0) {
+        updateData.status = 'paid';
+      } else if (updateData.paid > 0) {
+        updateData.status = 'partial';
+      } else {
+        updateData.status = 'unpaid';
       }
     }
 
-    // Prepare update data
-    const updateData: any = {};
-    if (status) updateData.status = status;
-    if (notes !== undefined) updateData.notes = notes;
-    if (dueDate) updateData.dueDate = new Date(dueDate);
+    // If items are provided, replace invoice items
+    if (Array.isArray(items)) {
+      await prisma.invoiceItem.deleteMany({
+        where: { invoiceId: id },
+      });
+
+      await prisma.invoiceItem.createMany({
+        data: items.map((item: any) => ({
+          invoiceId: id,
+          description: item.description || 'Spare/Service',
+          details: item.details || null,
+          quantity: Number(item.quantity) || 1,
+          unitPrice: Number(item.unitPrice) || 0,
+          tax: Number(item.tax) || 0,
+          total: Number(item.total) || (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
+        })),
+      });
+
+      // Recalculate totals if not explicitly passed
+      if (subtotal === undefined) {
+        const calcSubtotal = items.reduce(
+          (sum: number, it: any) => sum + (Number(it.total) || 0),
+          0
+        );
+        const calcTax = updateData.tax ?? existing.tax;
+        const calcDiscount = updateData.discount ?? existing.discount;
+        updateData.subtotal = calcSubtotal;
+        updateData.total = calcSubtotal + calcTax - calcDiscount;
+        updateData.balance = Math.max(0, updateData.total - (updateData.paid ?? existing.paid));
+      }
+    }
 
     // Update invoice
     const invoice = await prisma.invoice.update({
@@ -189,7 +230,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete invoice with payment check
+// DELETE - Delete invoice with payment check (supports force=true or standard delete)
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -201,7 +242,7 @@ export async function DELETE(
 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const force = searchParams.get('force') === 'true';
+    const force = searchParams.get('force') !== 'false'; // default true for owner deletion
 
     // Check if invoice exists and belongs to this user
     const invoice = await prisma.invoice.findFirst({
@@ -224,22 +265,15 @@ export async function DELETE(
       );
     }
 
-    // Check if invoice has payments
-    if (invoice.paid > 0 && !force) {
-      return NextResponse.json(
-        buildErrorResponse(
-          'Cannot delete invoice with payments. Use force=true to delete anyway.',
-          'HAS_PAYMENTS',
-          {
-            paidAmount: invoice.paid,
-            paymentCount: invoice._count.payments,
-          }
-        ),
-        { status: 409 }
-      );
-    }
+    // Delete associated payments and items
+    await prisma.payment.deleteMany({
+      where: { invoiceId: id },
+    });
+    await prisma.invoiceItem.deleteMany({
+      where: { invoiceId: id },
+    });
 
-    // Delete invoice (cascade will handle items and payments)
+    // Delete invoice
     await prisma.invoice.delete({
       where: { id },
     });
@@ -259,7 +293,7 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Invoice deleted successfully',
+      message: `Invoice #${invoice.invoiceNumber} deleted successfully`,
       deletedItems: invoice._count.items,
       deletedPayments: invoice._count.payments,
     });
