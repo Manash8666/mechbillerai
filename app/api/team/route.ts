@@ -6,7 +6,7 @@ export interface TeamMember {
   id: string;
   name: string;
   phone: string;
-  role: 'owner' | 'manager' | 'senior_mechanic' | 'technician' | 'auditor';
+  role: 'owner' | 'super_admin' | 'manager' | 'senior_mechanic' | 'technician' | 'auditor';
   pin: string;
   isActive: boolean;
   createdAt: string;
@@ -17,7 +17,7 @@ const DEFAULT_MOTOFIT_TEAM: TeamMember[] = [
     id: 'team_akshat',
     name: 'Akshat Mohanty',
     phone: '7259625881',
-    role: 'manager',
+    role: 'owner',
     pin: '1234',
     isActive: true,
     createdAt: '2026-10-01T10:00:00.000Z',
@@ -26,7 +26,7 @@ const DEFAULT_MOTOFIT_TEAM: TeamMember[] = [
     id: 'team_samael',
     name: 'Samael Morningstar',
     phone: '6359635416',
-    role: 'owner',
+    role: 'super_admin',
     pin: '1234',
     isActive: true,
     createdAt: '2026-10-01T10:00:00.000Z',

@@ -21,7 +21,7 @@ interface TeamMember {
   id: string;
   name: string;
   phone: string;
-  role: 'owner' | 'manager' | 'senior_mechanic' | 'technician' | 'auditor';
+  role: 'owner' | 'super_admin' | 'manager' | 'senior_mechanic' | 'technician' | 'auditor';
   pin: string;
   isActive: boolean;
   createdAt: string;
@@ -31,6 +31,11 @@ const ROLE_LABELS: Record<string, { label: string; badge: string; icon: any }> =
   owner: {
     label: 'Workshop Owner',
     badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    icon: Shield,
+  },
+  super_admin: {
+    label: 'Super Admin (Full Privileges)',
+    badge: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
     icon: Shield,
   },
   manager: {
@@ -330,11 +335,12 @@ export default function TeamSettingsPage() {
                   onChange={(e: any) => setRole(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-void-black/70 border border-luxury-gold/30 text-pure-white text-sm focus:outline-none focus:border-geek-lime"
                 >
+                  <option value="owner">Workshop Owner</option>
+                  <option value="super_admin">Super Admin (Full Privileges)</option>
+                  <option value="manager">Service Manager / Advisor</option>
                   <option value="senior_mechanic">Senior Mechanic</option>
                   <option value="technician">Technician / Helper</option>
-                  <option value="manager">Service Manager / Advisor</option>
                   <option value="auditor">Auditor / Accountant</option>
-                  <option value="owner">Workshop Partner / Co-Owner</option>
                 </select>
               </div>
 
