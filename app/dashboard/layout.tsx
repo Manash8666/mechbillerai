@@ -18,6 +18,7 @@ import {
   Moon,
   Sun,
   FileUp,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { BrandingLoader } from '@/components/BrandingLoader';
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider';
@@ -81,6 +82,7 @@ function DashboardContent({
     { name: 'Job Cards', href: '/dashboard/jobcards', icon: Car },
     { name: 'Invoices', href: '/dashboard/invoices', icon: FileText },
     { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
+    { name: 'CA Audit Reports', href: '/dashboard/reports', icon: FileSpreadsheet },
     { name: 'Import Data', href: '/dashboard/import', icon: FileUp },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
     { name: 'Branding', href: '/dashboard/settings/branding', icon: Palette },

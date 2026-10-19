@@ -14,6 +14,8 @@ import {
   Wrench,
   UserCheck,
   RefreshCw,
+  Sparkles,
+  Edit2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -66,11 +68,16 @@ export default function TeamSettingsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form State
+  // Form State for Add Member
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'owner' | 'manager' | 'senior_mechanic' | 'technician' | 'auditor'>('senior_mechanic');
   const [pin, setPin] = useState('1234');
+
+  // State for PIN Reset Modal
+  const [pinResetMember, setPinResetMember] = useState<TeamMember | null>(null);
+  const [newPin, setNewPin] = useState('');
+  const [pinUpdating, setPinUpdating] = useState(false);
 
   const fetchTeam = async () => {
     try {
@@ -141,6 +148,63 @@ export default function TeamSettingsPage() {
     }
   };
 
+  const openPinResetModal = (member: TeamMember) => {
+    setPinResetMember(member);
+    setNewPin(member.pin || '1234');
+  };
+
+  const handleResetPinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinResetMember) return;
+
+    if (!/^\d{4,6}$/.test(newPin.trim())) {
+      toast.error('PIN must be 4 to 6 digits (e.g. 1234)');
+      return;
+    }
+
+    try {
+      setPinUpdating(true);
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const userObj = userStr ? JSON.parse(userStr) : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('motoban_token') : null;
+
+      const url = userObj?.id ? `/api/team?userId=${userObj.id}` : '/api/team';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          memberId: pinResetMember.id,
+          newPin: newPin.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`PIN for ${pinResetMember.name} successfully reset to ${newPin.trim()}!`);
+        setTeam((prev) =>
+          prev.map((m) => (m.id === pinResetMember.id ? { ...m, pin: newPin.trim() } : m))
+        );
+        setPinResetMember(null);
+      } else {
+        toast.error(data.error || 'Failed to reset PIN');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error resetting PIN');
+    } finally {
+      setPinUpdating(false);
+    }
+  };
+
+  const generateRandomPin = () => {
+    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+    setNewPin(randomPin);
+    toast.success(`Generated PIN: ${randomPin}`);
+  };
+
   const handleDeleteMember = async (id: string, memberName: string) => {
     if (!confirm(`Are you sure you want to remove "${memberName}" from workshop staff?`)) return;
 
@@ -181,10 +245,10 @@ export default function TeamSettingsPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-pure-white flex items-center gap-2">
               <Users className="h-7 w-7 text-geek-lime" />
-              Workshop Staff & Floor Mechanics
+              Workshop Staff & PIN Management
             </h1>
             <p className="text-xs sm:text-sm text-steel-dim mt-0.5">
-              Manage mechanics, technicians, and advisors with 4-digit quick PINs for the Mobile App.
+              Reset 4-digit floor mechanic PINs, manage roles, and grant Mobile App access.
             </p>
           </div>
         </div>
@@ -256,15 +320,25 @@ export default function TeamSettingsPage() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-luxury-gold/15 flex items-center justify-between">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${roleMeta.badge}`}>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${roleMeta.badge}`}
+                    >
                       <Icon className="h-3 w-3" />
                       {roleMeta.label}
                     </span>
 
-                    <div className="flex items-center gap-1.5 text-xs text-amber-400 bg-black/40 px-2.5 py-1 rounded-lg border border-amber-500/20 font-mono">
-                      <KeyRound className="h-3 w-3" />
+                    {/* PIN Display & Reset Action */}
+                    <button
+                      onClick={() => openPinResetModal(member)}
+                      className="group flex items-center gap-1.5 text-xs text-amber-300 hover:text-white bg-black/60 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30 hover:border-amber-400 font-mono transition-all"
+                      title="Click to Reset PIN"
+                    >
+                      <KeyRound className="h-3.5 w-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
                       <span>PIN: {member.pin || '1234'}</span>
-                    </div>
+                      <span className="text-[10px] text-amber-400/70 ml-1 underline group-hover:text-amber-300">
+                        Reset
+                      </span>
+                    </button>
                   </div>
                 </div>
 
@@ -272,11 +346,87 @@ export default function TeamSettingsPage() {
                   <span className="flex items-center gap-1 text-emerald-400 font-medium">
                     <CheckCircle2 className="h-3 w-3" /> Mobile App Login Enabled
                   </span>
-                  <span>Active</span>
+                  <button
+                    onClick={() => openPinResetModal(member)}
+                    className="text-geek-lime hover:underline font-semibold"
+                  >
+                    Reset PIN &rarr;
+                  </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* PIN Reset Modal */}
+      {pinResetMember && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#151D2F] rounded-2xl max-w-md w-full p-6 border-2 border-luxury-gold/40 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-luxury-gold/20">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-6 w-6 text-amber-400" />
+                <div>
+                  <h3 className="text-lg font-bold text-pure-white">Reset 4-Digit Quick PIN</h3>
+                  <p className="text-xs text-steel-dim">{pinResetMember.name} ({ROLE_LABELS[pinResetMember.role]?.label || pinResetMember.role})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPinResetMember(null)}
+                className="text-steel-dim hover:text-pure-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPinSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs uppercase font-bold text-steel-dim mb-1">
+                  New 4-Digit Quick PIN (e.g. 1234 or 9821)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-void-black/70 border border-luxury-gold/30 text-pure-white text-lg font-mono text-center tracking-widest focus:outline-none focus:border-geek-lime"
+                    placeholder="1234"
+                  />
+                  <button
+                    type="button"
+                    onClick={generateRandomPin}
+                    className="px-3 py-2.5 rounded-xl bg-void-black border border-amber-500/30 hover:border-amber-400 text-amber-300 text-xs font-bold flex items-center gap-1.5"
+                    title="Generate Random 4-digit PIN"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Random PIN
+                  </button>
+                </div>
+                <p className="text-[11px] text-steel-dim mt-2">
+                  The mechanic will use this PIN along with their mobile phone number ({pinResetMember.phone}) to login to the mobile floor app.
+                </p>
+              </div>
+
+              <div className="pt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPinResetMember(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-void-black/50 border border-steel-dim/30 text-steel-dim text-sm font-bold hover:text-pure-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={pinUpdating}
+                  className="flex-1 py-2.5 rounded-xl bg-geek-lime text-void-black text-sm font-bold shadow-lime-glow hover:bg-geek-lime-hover transition-all"
+                >
+                  {pinUpdating ? 'Resetting PIN...' : 'Save New PIN'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -353,7 +503,7 @@ export default function TeamSettingsPage() {
                   maxLength={6}
                   placeholder="1234"
                   value={pin}
-                  onChange={(e) => setPin(e.target.value)}
+                  onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full px-4 py-2.5 rounded-xl bg-void-black/70 border border-luxury-gold/30 text-pure-white text-sm font-mono focus:outline-none focus:border-geek-lime"
                 />
                 <p className="text-[11px] text-steel-dim mt-1">

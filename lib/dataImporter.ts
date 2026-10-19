@@ -83,9 +83,32 @@ export interface ImportParseResult {
  * Parses Gemini-generated SOW bills or general automotive invoice PDFs
  */
 export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult> {
-  const { extractText } = await import('unpdf');
-  const res = await extractText(new Uint8Array(buffer));
-  const text = Array.isArray(res.text) ? res.text.join('\n') : String(res.text || '');
+  let text = '';
+  try {
+    const { extractText } = await import('unpdf');
+    const res = await extractText(new Uint8Array(buffer));
+    text = Array.isArray(res.text) ? res.text.join('\n') : String(res.text || '');
+  } catch (pdfErr) {
+    console.warn('unpdf extractText failed, trying raw binary fallback:', pdfErr);
+    const raw = buffer.toString('latin1');
+    const matches = raw.match(/\(([^()]{2,})\)\s*(?:Tj|TJ|\')/g) || [];
+    text = matches
+      .map((m) => m.replace(/^[(\s]+|[)\s]+(?:Tj|TJ|\')?$/g, ''))
+      .join(' ');
+    if (!text || text.length < 30) {
+      const readable = raw.match(/[a-zA-Z0-9\s/&,().:;₹\-=+]{4,}/g) || [];
+      text = readable.join(' ');
+    }
+  }
+
+  if (!text || text.trim().length < 10) {
+    return {
+      success: false,
+      sourceType: 'UNKNOWN',
+      summary: 'Unable to extract text from PDF (it may be a flat image scan). Please upload an Excel/CSV file or text-based invoice PDF.',
+      invoices: [],
+    };
+  }
 
   // 1. Check for Gemini / MotoFit SOW Bill format
   const isGeminiSow =

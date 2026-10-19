@@ -32,6 +32,9 @@ export async function POST(request: Request) {
 
       if (ext === 'pdf' || file.type === 'application/pdf') {
         const result = await parsePdfInvoice(buffer);
+        if (!result.success) {
+          return NextResponse.json({ error: result.summary }, { status: 400 });
+        }
         return NextResponse.json(result);
       }
 

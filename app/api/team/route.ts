@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 export interface TeamMember {
   id: string;
@@ -55,11 +55,10 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const queryUserId = url.searchParams.get('userId');
-    const auth = await requireAuth(request);
-    const userId = auth.user?.userId || queryUserId;
+    const session = await getSessionUser(request);
+    const userId = session?.userId || queryUserId;
 
     if (!userId) {
-      if (auth.errorResponse) return auth.errorResponse;
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -118,16 +117,15 @@ export async function POST(request: Request) {
   try {
     const url = new URL(request.url);
     const queryUserId = url.searchParams.get('userId');
-    const auth = await requireAuth(request);
-    const userId = auth.user?.userId || queryUserId;
+    const session = await getSessionUser(request);
+    const body = await request.json().catch(() => ({}));
+    const userId = session?.userId || body.userId || queryUserId;
 
     if (!userId) {
-      if (auth.errorResponse) return auth.errorResponse;
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { name, phone, role, pin } = body;
+    const { name, phone, role, pin, id } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 });
@@ -147,16 +145,18 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check duplicate phone
+    // Check duplicate phone or existing ID
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const existingIndex = team.findIndex((m) => m.phone.replace(/[^0-9]/g, '') === cleanPhone);
+    const existingIndex = team.findIndex(
+      (m) => (id && m.id === id) || m.phone.replace(/[^0-9]/g, '') === cleanPhone
+    );
 
     const newMember: TeamMember = {
-      id: existingIndex >= 0 ? team[existingIndex].id : `team_${Date.now()}`,
+      id: existingIndex >= 0 ? team[existingIndex].id : id || `team_${Date.now()}`,
       name: name.trim(),
       phone: phone.trim(),
-      role: role || 'senior_mechanic',
-      pin: pin ? pin.trim() : '1234',
+      role: role || (existingIndex >= 0 ? team[existingIndex].role : 'senior_mechanic'),
+      pin: pin ? pin.trim() : existingIndex >= 0 ? team[existingIndex].pin : '1234',
       isActive: true,
       createdAt: existingIndex >= 0 ? team[existingIndex].createdAt : new Date().toISOString(),
     };
@@ -180,16 +180,95 @@ export async function POST(request: Request) {
   }
 }
 
+// PATCH: Dedicated PIN Reset & Quick Role/Status Update
+export async function PATCH(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const queryUserId = url.searchParams.get('userId');
+    const session = await getSessionUser(request);
+    const body = await request.json().catch(() => ({}));
+    const userId = session?.userId || body.userId || queryUserId;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { memberId, newPin, role, name, phone } = body;
+
+    if (!memberId) {
+      return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
+    }
+
+    const settingKey = `team_${userId}`;
+    const setting = await prisma.settings.findUnique({
+      where: { key: settingKey },
+    });
+
+    if (!setting) {
+      return NextResponse.json({ error: 'Team settings not found' }, { status: 404 });
+    }
+
+    let team: TeamMember[] = [];
+    try {
+      team = JSON.parse(setting.value);
+    } catch {
+      return NextResponse.json({ error: 'Invalid team data format' }, { status: 500 });
+    }
+
+    const memberIndex = team.findIndex((m) => m.id === memberId);
+    if (memberIndex === -1) {
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+    }
+
+    // Update PIN if provided
+    if (newPin !== undefined) {
+      const cleanPin = String(newPin).trim();
+      if (!/^\d{4,6}$/.test(cleanPin)) {
+        return NextResponse.json({ error: 'PIN must be 4 to 6 digits' }, { status: 400 });
+      }
+      team[memberIndex].pin = cleanPin;
+    }
+
+    // Update Name if provided
+    if (name && typeof name === 'string') {
+      team[memberIndex].name = name.trim();
+    }
+
+    // Update Phone if provided
+    if (phone && typeof phone === 'string') {
+      team[memberIndex].phone = phone.trim();
+    }
+
+    // Update Role if provided
+    if (role) {
+      team[memberIndex].role = role;
+    }
+
+    await prisma.settings.update({
+      where: { key: settingKey },
+      data: { value: JSON.stringify(team) },
+    });
+
+    return NextResponse.json({
+      message: `PIN for ${team[memberIndex].name} reset to ${team[memberIndex].pin} successfully`,
+      teamMember: team[memberIndex],
+      team,
+    });
+  } catch (error) {
+    console.error('Error in PATCH /api/team:', error);
+    return NextResponse.json({ error: 'Internal server error resetting PIN' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const url = new URL(request.url);
     const queryUserId = url.searchParams.get('userId');
     const id = url.searchParams.get('id');
-    const auth = await requireAuth(request);
-    const userId = auth.user?.userId || queryUserId;
+    const session = await getSessionUser(request);
+    const userId = session?.userId || queryUserId;
 
     if (!userId) {
-      if (auth.errorResponse) return auth.errorResponse;
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
