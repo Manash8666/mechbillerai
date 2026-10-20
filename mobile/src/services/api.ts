@@ -1,13 +1,18 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Official MotoBan Cloud API URLs with dual-cloud failover
-export const VERCEL_ACTIVE_URL = 'https://mechbillerai.vercel.app/api';
-export const MOTOBAN_CUSTOM_URL = 'https://motoban.in/api';
+// Official MotoBan Cloud App & API URLs with dual-cloud failover
+export const MOTOBAN_APP_URL = 'https://app.motoban.in';
+export const MOTOBAN_ACTIVE_URL = 'https://app.motoban.in/api';
+export const VERCEL_FALLBACK_URL = 'https://mechbillerai.vercel.app/api';
 export const LOCAL_API_URL = 'http://localhost:3000/api';
 
+// Backward compatibility aliases
+export const MOTOBAN_CUSTOM_URL = MOTOBAN_ACTIVE_URL;
+export const VERCEL_ACTIVE_URL = MOTOBAN_ACTIVE_URL;
+
 // On physical Android devices, connect directly to active verified cloud API
-let currentResolvedUrl = VERCEL_ACTIVE_URL;
+let currentResolvedUrl = MOTOBAN_ACTIVE_URL;
 
 export const getApiBaseUrl = async (): Promise<string> => {
   try {
@@ -24,7 +29,7 @@ export const getApiBaseUrl = async (): Promise<string> => {
   return currentResolvedUrl;
 };
 
-export const API_BASE_URL = VERCEL_ACTIVE_URL;
+export const API_BASE_URL = MOTOBAN_ACTIVE_URL;
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 7000): Promise<Response> => {
   const controller = new AbortController();
@@ -71,10 +76,10 @@ async function apiFetch(path: string, options: RequestInit = {}, timeoutMs = 800
     const res = await fetchWithTimeout(targetUrl, mergedOptions, timeoutMs);
     return res;
   } catch (err: any) {
-    if (!custom && targetUrl !== `${VERCEL_ACTIVE_URL}${path}`) {
-      console.warn(`[MotoBan] Falling back to verified Vercel cloud API: ${VERCEL_ACTIVE_URL}`);
-      currentResolvedUrl = VERCEL_ACTIVE_URL;
-      const fallbackUrl = `${VERCEL_ACTIVE_URL}${path}`;
+    if (!custom && targetUrl !== `${VERCEL_FALLBACK_URL}${path}`) {
+      console.warn(`[MotoBan] Primary app.motoban.in offline, falling back to secondary cloud API: ${VERCEL_FALLBACK_URL}`);
+      currentResolvedUrl = VERCEL_FALLBACK_URL;
+      const fallbackUrl = `${VERCEL_FALLBACK_URL}${path}`;
       return await fetchWithTimeout(fallbackUrl, mergedOptions, timeoutMs);
     }
     throw err;

@@ -70,7 +70,7 @@ vercel --prod
 ### Vercel Environment Variables:
 ```env
 DATABASE_URL="postgresql://..."
-NEXTAUTH_URL="https://your-domain.vercel.app"
+NEXTAUTH_URL="https://app.motoban.in"
 NEXTAUTH_SECRET="super-secret-key-min-32-chars"
 ```
 

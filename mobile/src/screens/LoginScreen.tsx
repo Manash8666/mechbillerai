@@ -59,7 +59,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
 
       Alert.alert(
         'Server Unreachable',
-        'Could not connect to the MotoBan cloud server (motoban.in / mechbillerai.vercel.app).\n\nWould you like to enter in Offline Demo Mode with all garage features enabled?',
+        'Could not connect to the MotoBan cloud server (https://app.motoban.in).\n\nWould you like to enter in Offline Demo Mode with all garage features enabled?',
         [
           {
             text: 'Enter Offline Demo',
@@ -222,7 +222,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
         <View style={styles.serverInfoBox}>
           <MaterialCommunityIcons name="cloud-check" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
           <Text style={styles.serverInfoText}>
-            Cloud Server: motoban.in · Fallback: mechbillerai.vercel.app
+            Cloud Server: https://app.motoban.in/
           </Text>
         </View>
       </View>

@@ -15,6 +15,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://app.motoban.in'),
   title: "MotoBan - Automotive Garage Management & Smart Billing SaaS",
   description: "MotoBan - Next-Gen Garage Management, Job Cards & Smart GST Billing Platform. Powered by Hybrid StudioZ.",
   manifest: "/manifest.json",

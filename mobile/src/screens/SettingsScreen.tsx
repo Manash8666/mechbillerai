@@ -214,6 +214,12 @@ export default function SettingsScreen({ navigation }: any) {
       subtitle: `Configured: ${paperWidth} Bluetooth & USB POS`,
       onPress: () => setIsPrinterModalOpen(true),
     },
+    {
+      icon: 'web',
+      title: 'MotoBan Cloud Web Suite',
+      subtitle: 'https://app.motoban.in',
+      onPress: () => Linking.openURL('https://app.motoban.in/'),
+    },
   ];
 
   const getLicenseBadgeStyle = (lic: any) => {
