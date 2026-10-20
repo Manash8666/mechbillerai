@@ -84,7 +84,11 @@ export default function InventoryPage() {
     try {
       setSubmitting(true);
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
+      const userId = user.id || localStorage.getItem('userId');
+      if (!userId) {
+        toast.error('Session expired. Please log in again.');
+        return;
+      }
 
       const payload = {
         userId,

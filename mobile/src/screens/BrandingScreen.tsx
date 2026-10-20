@@ -28,10 +28,10 @@ export default function BrandingScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [garageName, setGarageName] = useState('MotoBan Workshop');
-  const [tagline, setTagline] = useState('Automotive Care & Precision Engineering');
-  const [phone, setPhone] = useState('+91 99999 88888');
-  const [address, setAddress] = useState('Plot 42, Auto Hub Industrial Area');
-  const [gstin, setGstin] = useState('24AABCM1234F1Z5');
+  const [tagline, setTagline] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [gstin, setGstin] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#C9A84C');
 
   useEffect(() => {
@@ -44,6 +44,10 @@ export default function BrandingScreen() {
       if (data) {
         if (data.garageName) setGarageName(data.garageName);
         if (data.primaryColor) setPrimaryColor(data.primaryColor);
+        if (data.tagline) setTagline(data.tagline);
+        if (data.phone) setPhone(data.phone);
+        if (data.address) setAddress(data.address);
+        if (data.gstNumber || data.gstin) setGstin(data.gstNumber || data.gstin);
       }
     } catch (e) {
       console.error('Failed to load branding:', e);
@@ -84,12 +88,16 @@ export default function BrandingScreen() {
           <MaterialCommunityIcons name="shield-star" size={24} color={COLORS.background} />
         </View>
         <Text style={styles.previewGarageName}>{garageName || 'Your Workshop Name'}</Text>
-        <Text style={styles.previewTagline}>{tagline}</Text>
-        <View style={styles.previewDivider} />
-        <View style={styles.previewFooter}>
-          <Text style={styles.previewMeta}>GSTIN: {gstin}</Text>
-          <Text style={styles.previewMeta}>{phone}</Text>
-        </View>
+        {tagline ? <Text style={styles.previewTagline}>{tagline}</Text> : null}
+        {(gstin || phone) ? (
+          <>
+            <View style={styles.previewDivider} />
+            <View style={styles.previewFooter}>
+              {gstin ? <Text style={styles.previewMeta}>GSTIN: {gstin}</Text> : null}
+              {phone ? <Text style={styles.previewMeta}>{phone}</Text> : null}
+            </View>
+          </>
+        ) : null}
       </View>
 
       {/* Workshop Profile Fields */}

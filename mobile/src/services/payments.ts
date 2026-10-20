@@ -1,7 +1,7 @@
 import { Linking, Alert } from 'react-native';
 
 export interface MobileUpiParams {
-  vpa: string; // e.g. 'motoban@icici' or custom workshop UPI ID
+  vpa: string; // Workshop UPI VPA
   payeeName: string;
   amount: number;
   invoiceNumber: string;
@@ -44,6 +44,10 @@ export function buildMobileUpiUri(params: MobileUpiParams): string {
  * Launches Android UPI App Chooser (GPay / PhonePe / Paytm / BHIM)
  */
 export async function launchMobileUpiPayment(params: MobileUpiParams): Promise<boolean> {
+  if (!params.vpa || params.vpa.trim() === '') {
+    Alert.alert('UPI Not Configured', 'Please configure your Workshop UPI ID in Settings > Branding to receive payments.');
+    return false;
+  }
   const uri = buildMobileUpiUri(params);
   try {
     const canOpen = await Linking.canOpenURL(uri);

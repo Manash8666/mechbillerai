@@ -110,10 +110,12 @@ export async function GET(request: Request) {
     let paid = 0;
     let balance = 0;
     let dateStr = new Date().toLocaleDateString('en-GB');
-    let garageName = 'MotoFit 2 Workshop';
-    let garagePhone = '+91 63596 35416';
-    let garageEmail = 'support@motoban.in';
-    let garageAddress = 'Nigam Nagar HQ, Ahmedabad';
+    let garageName = 'Automotive Service Workshop';
+    let garagePhone = '';
+    let garageEmail = '';
+    let garageAddress = '';
+    let garageGstNumber: string | null = null;
+    let garageWebsite: string | null = null;
     let items: Array<{ description: string; details?: string | null; quantity: number; unitPrice: number; total: number }> = [
       { description: 'Automotive Service', quantity: 1, unitPrice: 0, total: 0 },
     ];
@@ -131,8 +133,11 @@ export async function GET(request: Request) {
       balance = invoice.balance;
       dateStr = invoice.createdAt.toLocaleDateString('en-GB');
       garageName = invoice.user?.branding?.garageName || invoice.user?.name || garageName;
-      garagePhone = invoice.user?.phone || garagePhone;
-      garageEmail = invoice.user?.email || garageEmail;
+      garagePhone = (invoice.user?.branding as any)?.phone || invoice.user?.phone || garagePhone;
+      garageEmail = (invoice.user?.branding as any)?.email || invoice.user?.email || garageEmail;
+      garageAddress = (invoice.user?.branding as any)?.address || '';
+      garageGstNumber = (invoice.user?.branding as any)?.gstNumber || null;
+      garageWebsite = (invoice.user?.branding as any)?.website || null;
       if (invoice.items && invoice.items.length > 0) {
         items = invoice.items.map((it: any) => ({
           description: it.description,
@@ -148,15 +153,18 @@ export async function GET(request: Request) {
       customerEmail = jobCard.customer?.email || '';
       customerAddress = jobCard.customer?.address || '';
       docNumber = jobCard.jobNumber.replace('JOB-', 'EST-');
-      const est = jobCard.estimatedCost || jobCard.actualCost || 800;
+      const est = jobCard.estimatedCost || jobCard.actualCost || 0;
       subtotal = Math.round(est * 0.82);
       tax = est - subtotal;
       total = est;
       balance = est;
       dateStr = jobCard.createdAt.toLocaleDateString('en-GB');
       garageName = jobCard.user?.branding?.garageName || jobCard.user?.name || garageName;
-      garagePhone = jobCard.user?.phone || garagePhone;
-      garageEmail = jobCard.user?.email || garageEmail;
+      garagePhone = jobCard.user?.branding?.phone || jobCard.user?.phone || garagePhone;
+      garageEmail = jobCard.user?.branding?.email || jobCard.user?.email || garageEmail;
+      garageAddress = jobCard.user?.branding?.address || '';
+      garageGstNumber = jobCard.user?.branding?.gstNumber || null;
+      garageWebsite = jobCard.user?.branding?.website || null;
       if (jobCard.tasks && jobCard.tasks.length > 0) {
         items = jobCard.tasks.map((t: any) => ({
           description: t.description || 'Service Task',
@@ -248,12 +256,11 @@ export async function GET(request: Request) {
     const upiId = userBranding?.upiId || null;
 
     let upiQrDataUrl: string | null = null;
-    if (balance > 0 && !paymentQrUrl) {
+    if (balance > 0 && !paymentQrUrl && upiId) {
       try {
         const { generateUpiQrDataUrl } = await import('@/lib/upi');
-        const vpa = upiId || 'motoban@icici';
         upiQrDataUrl = await generateUpiQrDataUrl({
-          vpa,
+          vpa: upiId,
           payeeName: garageName,
           amount: balance,
           invoiceNumber: docNumber,
@@ -281,7 +288,13 @@ export async function GET(request: Request) {
         phone: garagePhone,
         email: garageEmail,
         address: garageAddress,
-        contacts: 'Manash: +91 63596 35416 (Client Service Manager) | Munna: +91 91232 93450 (Senior Mechanic)',
+        gstNumber: garageGstNumber,
+        website: garageWebsite,
+        contacts: userBranding?.tagline
+          ? `${garageName}${garagePhone ? `: ${garagePhone}` : ''} | ${userBranding.tagline}`
+          : garagePhone
+          ? `${garageName}: ${garagePhone} | Workshop Service & Technical Team`
+          : `${garageName} | Authorized Workshop Service & Technical Team`,
       },
       items,
       subtotal,

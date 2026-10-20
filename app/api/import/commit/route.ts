@@ -50,7 +50,7 @@ export async function POST(request: Request) {
             data: {
               userId,
               name: custName,
-              phone: custPhone || '9876543210',
+              phone: custPhone || '',
               email: inv.customer?.email,
               address: inv.customer?.address,
               gstNumber: inv.customer?.gstNumber,
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
             data: {
               userId,
               name: cust.name,
-              phone: cust.phone || '9876543210',
+              phone: cust.phone || '',
               email: cust.email,
               address: cust.address,
               gstNumber: cust.gstNumber,

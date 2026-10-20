@@ -94,8 +94,10 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
     }
   };
 
-  const cleanPhone = tenant.phone.replace(/\D/g, '');
-  const waUrl = `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${tenant.garageName}, I am visiting your web portal at ${tenant.subdomain}.motoban.in and would like to inquire about vehicle servicing.`)}`;
+  const cleanPhone = (tenant.phone || '').replace(/\D/g, '');
+  const waUrl = cleanPhone
+    ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${tenant.garageName}, I am visiting your web portal at ${tenant.subdomain}.motoban.in and would like to inquire about vehicle servicing.`)}`
+    : '#';
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans selection:bg-amber-400 selection:text-black">

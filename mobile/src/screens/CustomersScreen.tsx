@@ -43,6 +43,7 @@ export default function CustomersScreen() {
   const [custPhone, setCustPhone] = useState('');
   const [custEmail, setCustEmail] = useState('');
   const [regNo, setRegNo] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
 
   const fetchCustomers = async () => {
     try {
@@ -80,10 +81,13 @@ export default function CustomersScreen() {
       });
 
       if (regNo.trim() && newCustomer.id) {
+        const parts = vehicleModel.trim().split(' ');
+        const make = parts.length > 1 ? parts[0] : (vehicleModel.trim() || 'Motorcycle / Vehicle');
+        const model = parts.length > 1 ? parts.slice(1).join(' ') : (vehicleModel.trim() || 'Standard Model');
         await API.addVehicleToCustomer(newCustomer.id, {
           registrationNo: regNo.trim().toUpperCase(),
-          make: 'Standard Vehicle',
-          model: 'General',
+          make,
+          model,
         });
       }
 
@@ -93,6 +97,7 @@ export default function CustomersScreen() {
       setCustPhone('');
       setCustEmail('');
       setRegNo('');
+      setVehicleModel('');
       await fetchCustomers();
     } catch {
       Alert.alert('Error', 'Failed to save customer. Please try again.');
@@ -217,11 +222,20 @@ export default function CustomersScreen() {
               <Text style={styles.inputLabel}>Vehicle Number Plate (Optional)</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="e.g. DL01AB1234"
+                placeholder="e.g. GJ01PU7510"
                 placeholderTextColor={COLORS.textMuted}
                 autoCapitalize="characters"
                 value={regNo}
                 onChangeText={setRegNo}
+              />
+
+              <Text style={styles.inputLabel}>Vehicle Make & Model (Optional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Royal Enfield Classic 350"
+                placeholderTextColor={COLORS.textMuted}
+                value={vehicleModel}
+                onChangeText={setVehicleModel}
               />
 
               <MobilePearlButton

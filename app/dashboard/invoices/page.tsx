@@ -358,18 +358,21 @@ export default function InvoicesPage() {
       // If garage uploaded their own custom QR image, display their authentic standee QR
       if (customQr) {
         setUpiQrDataUrl(customQr);
-      } else {
+      } else if (savedUpiId) {
         const { generateUpiQrDataUrl } = await import('@/lib/upi');
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const amount = invoice.balance > 0 ? invoice.balance : invoice.total;
         const dataUrl = await generateUpiQrDataUrl({
-          vpa: savedUpiId || 'motoban@icici',
-          payeeName: user.name || 'MotoBan Workshop',
+          vpa: savedUpiId,
+          payeeName: user.name || 'Workshop',
           amount: amount,
           invoiceNumber: invoice.invoiceNumber,
           notes: `Bill #${invoice.invoiceNumber}`,
         });
         setUpiQrDataUrl(dataUrl);
+      } else {
+        setUpiQrDataUrl(null);
+        toast('No UPI ID or QR image configured in Settings > Branding.', { icon: 'ℹ️' });
       }
     } catch (err) {
       console.error('Failed to generate UPI QR:', err);
@@ -407,10 +410,11 @@ export default function InvoicesPage() {
     try {
       const { printThermalSlipBrowser } = await import('@/lib/thermalPrinter');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const savedUpiId = typeof window !== 'undefined' ? localStorage.getItem('upiId') : null;
       printThermalSlipBrowser({
-        workshopName: user.name || 'MotoBan Workshop',
+        workshopName: user.name || 'Automotive Service Workshop',
         tagline: 'Automotive Precision & Smart Care',
-        phone: user.phone || '+91 98765 43210',
+        phone: user.phone || undefined,
         invoiceNumber: invoice.invoiceNumber,
         date: new Date(invoice.createdAt).toLocaleDateString('en-IN'),
         customerName: invoice.customer?.name || 'Walk-in Customer',
@@ -433,7 +437,7 @@ export default function InvoicesPage() {
         paid: invoice.paid,
         balance: invoice.balance,
         paymentMode: invoice.paymentMode,
-        upiVpa: 'motoban@icici',
+        upiVpa: savedUpiId || undefined,
       }, '58mm');
       toast.success('Thermal receipt sent to printer!');
     } catch (err) {
@@ -711,7 +715,11 @@ export default function InvoicesPage() {
     try {
       setSubmitting(true);
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
+      const userId = user.id || localStorage.getItem('userId');
+      if (!userId) {
+        toast.error('Session expired. Please log in again.');
+        return;
+      }
 
       const finalNotes = JSON.stringify({
         vehicleModel: vehicleModel.trim() || undefined,

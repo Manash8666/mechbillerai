@@ -64,7 +64,11 @@ export default function JobCardsPage() {
   const fetchJobCards = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
+      const userId = user.id || localStorage.getItem('userId') || '';
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
       const response = await fetch(`/api/jobcards?userId=${userId}`);
       if (response.ok) {
         const contentType = response.headers.get('content-type');
@@ -137,7 +141,11 @@ export default function JobCardsPage() {
   const handleGenerateInvoiceFromJob = async (job: JobCard) => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
+      const userId = user.id || localStorage.getItem('userId');
+      if (!userId) {
+        toast.error('Session expired. Please log in again.');
+        return;
+      }
 
       const res = await fetch('/api/invoices', {
         method: 'POST',

@@ -392,7 +392,7 @@ export default function LicensingSection() {
 
             <div className="mt-6 pt-4 border-t border-luxury-gold/10">
               <a
-                href="https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20subscribe%20to%20the%20Monthly%20Plan%20at%20₹1,299/mo"
+                href="https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20subscribe%20to%20the%20Monthly%20Plan%20at%20₹1,299/mo"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center py-2.5 px-4 rounded-xl text-xs font-bold bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-gold/40 hover:bg-luxury-gold hover:text-luxury-ink-light transition-all"
@@ -462,7 +462,7 @@ export default function LicensingSection() {
 
             <div className="mt-6 pt-4 border-t border-luxury-gold/10">
               <a
-                href="https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20subscribe%20to%20the%20Quarterly%20Plan%20at%20₹1,099/mo%20(₹3,297/quarter)"
+                href="https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20subscribe%20to%20the%20Quarterly%20Plan%20at%20₹1,099/mo%20(₹3,297/quarter)"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center py-2.5 px-4 rounded-xl text-xs font-bold bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-blue-500/40 hover:bg-blue-600 hover:text-white transition-all"
@@ -536,7 +536,7 @@ export default function LicensingSection() {
 
             <div className="mt-6 pt-4 border-t border-luxury-gold/20">
               <a
-                href="https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20subscribe%20to%20the%20Annual%20Pro%20Plan%20at%20₹899/mo%20(₹10,788/yr)"
+                href="https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20subscribe%20to%20the%20Annual%20Pro%20Plan%20at%20₹899/mo%20(₹10,788/yr)"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center py-2.5 px-4 rounded-xl text-xs font-bold bg-luxury-gold text-luxury-ink-light hover:bg-luxury-gold/90 transition-all shadow-md"
@@ -606,7 +606,7 @@ export default function LicensingSection() {
 
             <div className="mt-6 pt-4 border-t border-luxury-gold/10">
               <a
-                href="https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20purchase%20the%20One-Time%20Perpetual%20License%20for%20₹15,999"
+                href="https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20purchase%20the%20One-Time%20Perpetual%20License%20for%20₹15,999"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center py-2.5 px-4 rounded-xl text-xs font-bold bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-purple-500/40 hover:bg-purple-600 hover:text-white transition-all"
@@ -745,7 +745,7 @@ export default function LicensingSection() {
                 <div className="text-xl font-extrabold text-luxury-gold">₹{calculateAddonTotal().toLocaleString('en-IN')}</div>
               </div>
               <a
-                href={`https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20add%20${franchiseCount}%20branches%20and%20${extraUsersCount}%20extra%20staff%20seats%20(Total:%20₹${calculateAddonTotal()})`}
+                href={`https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20add%20${franchiseCount}%20branches%20and%20${extraUsersCount}%20extra%20staff%20seats%20(Total:%20₹${calculateAddonTotal()})`}
                 target="_blank"
                 rel="noreferrer"
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-luxury-gold text-luxury-ink-light hover:bg-luxury-gold/90 transition-all shadow-sm"

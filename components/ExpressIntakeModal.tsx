@@ -27,6 +27,7 @@ type SideType = (typeof SIDES)[number];
 
 export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: ExpressIntakeModalProps) {
   const [vehicleNumber, setVehicleNumber] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [serviceDescription, setServiceDescription] = useState('General Maintenance & Inspection');
@@ -256,15 +257,11 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
       // 1. Ensure or find customer
       let customerId = '';
       const rawDigits = (customerPhone || '').replace(/\D/g, '');
-      const validPhone =
-        rawDigits.length === 10
-          ? rawDigits
-          : rawDigits.length === 12 && rawDigits.startsWith('91')
-          ? rawDigits.slice(2)
-          : '9876543210';
+      const validPhone = rawDigits.length >= 10 ? rawDigits.slice(-10) : '';
 
+      const custSearchQuery = validPhone || vehicleNumber.trim();
       const custRes = await fetch(
-        `/api/customers?userId=${userId}&search=${encodeURIComponent(validPhone || vehicleNumber)}`
+        `/api/customers?userId=${userId}&search=${encodeURIComponent(custSearchQuery)}`
       );
       const custData = await custRes.json();
       const existingCust = Array.isArray(custData) ? custData[0] : custData.data?.[0];
@@ -278,7 +275,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
           body: JSON.stringify({
             userId,
             name: customerName?.trim() || `Customer (${vehicleNumber.toUpperCase()})`,
-            phone: validPhone,
+            phone: validPhone || `90000${Date.now().toString().slice(-5)}`,
           }),
         });
         const newCust = await createCustRes.json();
@@ -303,13 +300,17 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
       if (matchedVeh?.id) {
         vehicleId = matchedVeh.id;
       } else {
+        const vParts = vehicleModel.trim().split(' ');
+        const make = vParts.length > 1 ? vParts[0] : (vehicleModel.trim() || 'Motorcycle / Vehicle');
+        const model = vParts.length > 1 ? vParts.slice(1).join(' ') : (vehicleModel.trim() || 'Standard Model');
+
         const createVehRes = await fetch(`/api/customers/${customerId}/vehicles`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             registrationNo: vehicleNumber.toUpperCase().trim(),
-            make: 'Two-Wheeler / Four-Wheeler',
-            model: 'General Vehicle',
+            make,
+            model,
           }),
         });
         const newVeh = await createVehRes.json();
@@ -400,7 +401,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
         {/* Modal Body */}
         <form onSubmit={handleSaveIntake} className="p-6 overflow-y-auto space-y-5">
           {/* Vehicle info grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label htmlFor="vehiclePlate" className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
                 Vehicle Plate Number *
@@ -413,6 +414,19 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
                 value={vehicleNumber}
                 onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
                 className="w-full px-3 py-2 text-sm uppercase font-mono font-bold rounded-lg border border-luxury-gold/30 bg-luxury-canvas-light dark:bg-luxury-canvas-dark text-luxury-ink-light dark:text-luxury-ink-dark focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+              />
+            </div>
+            <div>
+              <label htmlFor="vehicleModel" className="block text-xs font-semibold text-luxury-ink-light/80 dark:text-luxury-ink-dark/80 mb-1">
+                Vehicle Make & Model
+              </label>
+              <input
+                id="vehicleModel"
+                type="text"
+                placeholder="e.g. Royal Enfield Classic 350"
+                value={vehicleModel}
+                onChange={(e) => setVehicleModel(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-luxury-gold/30 bg-luxury-canvas-light dark:bg-luxury-canvas-dark text-luxury-ink-light dark:text-luxury-ink-dark focus:outline-none focus:ring-2 focus:ring-luxury-gold"
               />
             </div>
             <div>

@@ -289,8 +289,8 @@ Return strictly a JSON object formatted as:
             const parsed = JSON.parse(cleanJson);
             if (Array.isArray(parsed.items) && parsed.items.length > 0) {
               return {
-                vehicleModel: parsed.vehicleModel || context?.vehicleModel || 'Vehicle Service',
-                serviceType: parsed.serviceType || context?.serviceType || 'Half Engine Rebuild',
+                vehicleModel: parsed.vehicleModel || context?.vehicleModel || 'Vehicle',
+                serviceType: parsed.serviceType || context?.serviceType || 'General Service & Inspection',
                 items: parsed.items.map((it: any) => ({
                   description: String(it.description || 'Service Work').toUpperCase(),
                   details: it.details || getAutomotiveTechnicalExplanation(it.description),
@@ -335,8 +335,8 @@ Return strictly a JSON object formatted as:
     });
 
     return {
-      vehicleModel: context?.vehicleModel || 'Royal Enfield Himalayan 411',
-      serviceType: context?.serviceType || 'Half Engine Rebuild',
+      vehicleModel: context?.vehicleModel || 'Vehicle',
+      serviceType: context?.serviceType || 'Comprehensive Service & Repair',
       items,
     };
   }
@@ -344,8 +344,8 @@ Return strictly a JSON object formatted as:
   // Engine Rebuild standard high-end SOW package
   if (lower.includes('engine') || lower.includes('rebuild') || lower.includes('himalayan') || lower.includes('overhaul') || lower.includes('bore') || lower.includes('piston')) {
     return {
-      vehicleModel: context?.vehicleModel || 'Royal Enfield Himalayan 411',
-      serviceType: 'Half Engine Rebuild & Top End Blueprinting',
+      vehicleModel: context?.vehicleModel || (lower.includes('himalayan') ? 'Royal Enfield Himalayan' : 'Vehicle'),
+      serviceType: context?.serviceType || (lower.includes('rebuild') ? 'Engine Overhaul & Rebuild' : 'Vehicle Maintenance & Repair'),
       items: [
         {
           description: 'CYLINDER BLOCK & PISTON KIT (OEM)',

@@ -140,9 +140,14 @@ export default function JobCardsScreen({ navigation }: any) {
       if (matched) {
         customerId = matched.id;
       } else {
+        if (!custPhone.trim()) {
+          Alert.alert('Phone Required', 'Please enter customer contact number.');
+          setCreating(false);
+          return;
+        }
         const newCust = await API.createCustomer({
-          name: custName || `Owner of ${regNo.toUpperCase()}`,
-          phone: custPhone || '9876543210',
+          name: custName.trim() || `Owner of ${regNo.toUpperCase()}`,
+          phone: custPhone.trim(),
         });
         customerId = newCust.id || existingCustomers[0]?.id;
       }
@@ -158,10 +163,13 @@ export default function JobCardsScreen({ navigation }: any) {
           if (matchedVeh) {
             vehicleId = matchedVeh.id;
           } else {
+            const parts = (makeModel || '').trim().split(/\s+/);
+            const vMake = parts[0] || 'Vehicle';
+            const vModel = parts.slice(1).join(' ') || 'General';
             const newVeh = await API.addVehicleToCustomer(customerId, {
               registrationNo: regNo.toUpperCase(),
-              make: makeModel || 'Two-Wheeler / Four-Wheeler',
-              model: 'Standard',
+              make: vMake,
+              model: vModel,
             });
             vehicleId = newVeh.id;
           }
@@ -176,7 +184,7 @@ export default function JobCardsScreen({ navigation }: any) {
         vehicleId,
         description: issueDesc || 'General Service & Maintenance',
         priority,
-        estimatedCost: Number.parseFloat(estCost) || 800,
+        estimatedCost: estCost ? Number.parseFloat(estCost) : 0,
         tasks: [
           { description: 'Initial Inspection & Diagnostics' },
           { description: issueDesc || 'General Service' },

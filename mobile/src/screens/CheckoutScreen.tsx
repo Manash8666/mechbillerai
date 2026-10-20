@@ -28,6 +28,8 @@ export default function CheckoutScreen() {
     paymentQrUrl?: string | null;
     upiId?: string | null;
     garageName?: string | null;
+    phone?: string | null;
+    tagline?: string | null;
   }>({});
   const [selectedQrJob, setSelectedQrJob] = useState<any | null>(null);
   const [qrModalVisible, setQrModalVisible] = useState(false);
@@ -39,7 +41,9 @@ export default function CheckoutScreen() {
         setWorkshopBranding({
           paymentQrUrl: branding.paymentQrUrl,
           upiId: branding.upiId,
-          garageName: branding.garageName || 'MotoBan Workshop',
+          garageName: branding.garageName || 'My Garage',
+          phone: branding.phone,
+          tagline: branding.tagline,
         });
       }
     } catch (err) {
@@ -117,10 +121,14 @@ export default function CheckoutScreen() {
     actions.push({
       text: '📱 Pay via UPI Intent',
       onPress: async () => {
+        if (!workshopBranding.upiId) {
+          Alert.alert('UPI ID Missing', 'Please configure your UPI VPA in Settings > Branding.');
+          return;
+        }
         const { launchMobileUpiPayment } = await import('../services/payments');
         await launchMobileUpiPayment({
-          vpa: workshopBranding.upiId || 'motoban@icici',
-          payeeName: workshopBranding.garageName || 'MotoBan Workshop',
+          vpa: workshopBranding.upiId,
+          payeeName: workshopBranding.garageName || 'Workshop',
           amount,
           invoiceNumber: jobNumber || id,
         });
@@ -140,14 +148,14 @@ export default function CheckoutScreen() {
         const { launchWhatsAppBill } = await import('../services/payments');
         const pdfUrl = API.getInvoicePdfUrl(jobNumber || id, 'INVOICE');
         await launchWhatsAppBill({
-          phone: customerPhone || '9876543210',
+          phone: customerPhone || '',
           customerName: customerName || 'Valued Customer',
           vehicleNumber: vehicle,
           invoiceNumber: jobNumber || id,
           totalAmount: amount,
           paidAmount: 0,
           balanceAmount: amount,
-          garageName: workshopBranding.garageName || 'MotoBan Workshop',
+          garageName: workshopBranding.garageName || 'Workshop',
           invoiceUrl: pdfUrl,
         });
       },
@@ -161,9 +169,9 @@ export default function CheckoutScreen() {
         const { decodeIndianLicensePlate } = await import('../services/rtoLookup');
         const rto = decodeIndianLicensePlate(vehicle);
         await printOrShareReceipt({
-          workshopName: workshopBranding.garageName || 'MotoBan Workshop',
-          tagline: 'Express Garage & Diagnostics',
-          phone: '+91 98765 43210',
+          workshopName: workshopBranding.garageName || 'Workshop',
+          tagline: workshopBranding.tagline || 'Express Garage & Diagnostics',
+          phone: workshopBranding.phone || '',
           invoiceNumber: jobNumber || id,
           date: new Date().toLocaleDateString('en-IN'),
           customerName: customerName || 'Valued Customer',
@@ -175,7 +183,7 @@ export default function CheckoutScreen() {
           paid: amount,
           balance: 0,
           paymentMode: 'UPI / Cash',
-          upiVpa: workshopBranding.upiId || 'motoban@icici',
+          upiVpa: workshopBranding.upiId || undefined,
         });
       },
     });
@@ -239,14 +247,14 @@ export default function CheckoutScreen() {
       const { launchWhatsAppBill } = await import('../services/payments');
       const url = API.getInvoicePdfUrl(jobNumber, type);
       await launchWhatsAppBill({
-        phone: customerPhone || '9876543210',
+        phone: customerPhone || '',
         customerName: customerName || 'Valued Customer',
         vehicleNumber: vehicle,
         invoiceNumber: jobNumber,
-        totalAmount: amount || 1500,
+        totalAmount: amount || 0,
         paidAmount: 0,
-        balanceAmount: amount || 1500,
-        garageName: workshopBranding.garageName || 'MotoBan Workshop',
+        balanceAmount: amount || 0,
+        garageName: workshopBranding.garageName || 'Workshop',
         invoiceUrl: url,
       });
     } catch {

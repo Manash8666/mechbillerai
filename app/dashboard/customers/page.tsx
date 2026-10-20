@@ -18,6 +18,8 @@ export default function CustomersPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [vehicleReg, setVehicleReg] = useState('');
+  const [vehicleMake, setVehicleMake] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
 
   // Edit Customer Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -151,8 +153,8 @@ export default function CustomersPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             registrationNo: vehicleReg.trim().toUpperCase(),
-            make: 'Standard Vehicle',
-            model: 'General',
+            make: vehicleMake.trim() || 'Motorcycle / Vehicle',
+            model: vehicleModel.trim() || 'Standard Model',
           }),
         });
       }
@@ -163,6 +165,8 @@ export default function CustomersPage() {
       setPhone('');
       setEmail('');
       setVehicleReg('');
+      setVehicleMake('');
+      setVehicleModel('');
       await fetchCustomers();
     } catch {
       toast.error('Failed to create customer');
@@ -363,11 +367,38 @@ export default function CustomersPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. MH12AB1234"
+                  placeholder="e.g. GJ01PU7510"
                   value={vehicleReg}
                   onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
                   className="w-full px-3 py-2 bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-gold/30 rounded-lg text-luxury-ink-light dark:text-luxury-ink-dark focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                    Vehicle Make
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Royal Enfield"
+                    value={vehicleMake}
+                    onChange={(e) => setVehicleMake(e.target.value)}
+                    className="w-full px-3 py-2 bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-gold/30 rounded-lg text-luxury-ink-light dark:text-luxury-ink-dark text-xs focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                    Vehicle Model
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Classic 350"
+                    value={vehicleModel}
+                    onChange={(e) => setVehicleModel(e.target.value)}
+                    className="w-full px-3 py-2 bg-luxury-canvas-light dark:bg-luxury-canvas-dark border border-luxury-gold/30 rounded-lg text-luxury-ink-light dark:text-luxury-ink-dark text-xs focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  />
+                </div>
               </div>
 
               <div className="pt-2">

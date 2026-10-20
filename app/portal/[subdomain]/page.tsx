@@ -45,7 +45,7 @@ export default async function TenantPortalPage({ params }: PortalPageProps) {
     garageName: workshop.branding?.garageName || workshop.name || 'MotoBan Certified Garage',
     logoUrl: workshop.branding?.logoUrl || null,
     primaryColor: workshop.branding?.primaryColor || '#E5C07B',
-    phone: workshop.phone || '+91 99999 88888',
+    phone: workshop.phone || '',
     email: workshop.email,
     subdomain: cleanSubdomain,
     garageType: workshop.garageType,

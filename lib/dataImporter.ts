@@ -158,7 +158,7 @@ export function parseTextInvoice(text: string): ImportParseResult {
           paid: total,
           balance: 0,
           paymentMode: 'cash',
-          garageName: 'MotoFit 2',
+          garageName: obj.garage_name || 'Workshop',
         });
       }
     } catch {
@@ -172,7 +172,7 @@ export function parseTextInvoice(text: string): ImportParseResult {
     return {
       success: true,
       sourceType: 'GEMINI_SOW_PDF',
-      summary: `Successfully parsed ${multiInvoices.length} MotoFit 2 SOW bills and estimates (Total Value: ₹${totalRev.toLocaleString('en-IN')}) from Gemini transcript!`,
+      summary: `Successfully parsed ${multiInvoices.length} invoices and estimates (Total Value: ₹${totalRev.toLocaleString('en-IN')})!`,
       invoices: multiInvoices,
       rawTextPreview: text.slice(0, 1000),
     };
@@ -188,9 +188,11 @@ export function parseTextInvoice(text: string): ImportParseResult {
 
   if (isGeminiSow) {
     const invMatch = text.match(/INVOICE ID \/ DATE\s*\n\s*([^\n]+)\s*\n\s*([^\n]+)/i);
-    const vehMatch = text.match(/VEHICLE MAKE & MODEL\s*\n\s*([^\n]+)/i);
+    const vehMatch = text.match(/VEHICLE MAKE & MODEL\s*\n\s*([^\n]+)/i) ||
+                     text.match(/(?:Vehicle|Model|Bike|Car)[:\s]+([^\n,]+)/i);
     const estMatch = text.match(/Ref Estimate:\s*([^\n]+)/i);
-    const srvMatch = text.match(/JOB CARD \/ SERVICE TYPE\s*\n\s*([^\n]+)/i);
+    const srvMatch = text.match(/JOB CARD \/ SERVICE TYPE\s*\n\s*([^\n]+)/i) ||
+                     text.match(/(?:Service Type|Service|Job Type)[:\s]+([^\n,]+)/i);
     const regMatch = text.match(/Reg:\s*([^\n]+)/i);
 
     const subMatch = text.match(/(?:Gross\s+)?Subtotal(?:\s*\(Gross\))?:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
@@ -213,37 +215,56 @@ export function parseTextInvoice(text: string): ImportParseResult {
       });
     }
 
+    if (items.length === 0) {
+      const singleLineRegex = /^(\d+)\s+([A-Z0-9\s/&,().-]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
+      while ((match = singleLineRegex.exec(text)) !== null) {
+        items.push({
+          description: match[2].trim().toUpperCase(),
+          details: getAutomotiveTechnicalExplanation(match[2].trim()),
+          quantity: parseFloat(match[3]),
+          unitPrice: parseFloat(match[4].replace(/,/g, '')),
+          total: parseFloat(match[5].replace(/,/g, '')),
+        });
+      }
+    }
+
     // Extract customer / signatory
-    const signatoryMatch = text.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\nAuthorized Signatory/m);
+    const signatoryMatch = text.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\nAuthorized Signatory/m) ||
+                           text.match(/(?:Customer|Client|Party Name|Billed To)[:\s]+([^\n]+)/i);
     const customerName = signatoryMatch ? signatoryMatch[1].trim() : 'Valued Customer';
+
+    // Extract customer phone
+    const phoneMatch = text.match(/(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i) ||
+                       text.match(/(?:\+91[\s-]?)?[6-9]\d{9}/);
+    const customerPhone = phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '';
 
     // Extract garage name
     const garageMatch = text.match(/(MOTOFIT\s*\d*|MOTOBAN|GARAGE[^\n]*)/i);
-    const garageName = garageMatch ? garageMatch[1].trim() : 'MotoFit 2';
+    const garageName = garageMatch ? garageMatch[1].trim() : 'Workshop';
 
     const subtotal = subMatch ? parseFloat(subMatch[1].replace(/,/g, '')) : items.reduce((s, it) => s + it.total, 0);
     const discount = discMatch ? parseFloat(discMatch[1].replace(/,/g, '')) : 0;
-    const total = totMatch ? parseFloat(totMatch[1].replace(/,/g, '')) : subtotal - discount;
+    const total = totMatch ? parseFloat(totMatch[1].replace(/,/g, '')) : (subtotal > 0 ? subtotal - discount : 0);
 
     const invoice: ImportedInvoice = {
       invoiceNumber: invMatch ? invMatch[1].trim() : `IMP-${Date.now().toString().slice(-6)}`,
       date: invMatch ? invMatch[2].trim() : new Date().toLocaleDateString('en-GB'),
-      serviceType: srvMatch ? srvMatch[1].trim() : 'Half Engine Rebuild',
+      serviceType: srvMatch ? srvMatch[1].trim() : 'Vehicle Maintenance & Service',
       customer: {
         name: customerName,
-        phone: '9876543210',
-        vehicleModel: vehMatch ? vehMatch[1].trim() : 'Motorcycle',
+        phone: customerPhone,
+        vehicleModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
         vehicleReg: regMatch ? regMatch[1].trim() : 'As Per Estimate',
       },
       vehicle: {
-        makeModel: vehMatch ? vehMatch[1].trim() : 'Motorcycle',
+        makeModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
         registrationNo: regMatch ? regMatch[1].trim() : undefined,
         refEstimate: estMatch ? estMatch[1].trim() : undefined,
       },
       items: items.length > 0 ? items : [
         {
-          description: 'MOTORCYCLE HALF ENGINE REBUILD & OVERHAUL',
-          details: 'Certified mechanical teardown, machining & precision rebuild',
+          description: srvMatch ? srvMatch[1].trim().toUpperCase() : 'VEHICLE MAINTENANCE & SERVICE',
+          details: 'Certified mechanical inspection and servicing',
           quantity: 1,
           unitPrice: total,
           total: total,
@@ -262,7 +283,7 @@ export function parseTextInvoice(text: string): ImportParseResult {
     return {
       success: true,
       sourceType: 'GEMINI_SOW_PDF',
-      summary: `Parsed Google Gemini / MotoFit SOW Bill #${invoice.invoiceNumber} with ${invoice.items.length} line items & technical descriptions`,
+      summary: `Parsed invoice #${invoice.invoiceNumber} (${invoice.vehicle?.makeModel || 'Vehicle'}) with ${invoice.items.length} line items`,
       invoices: [invoice],
       rawTextPreview: text.slice(0, 800),
     };
@@ -273,7 +294,8 @@ export function parseTextInvoice(text: string): ImportParseResult {
   const dateMatch = text.match(/(?:Date|Dated)[:\s]+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i);
   const totalMatch = text.match(/(?:Total|Grand Total|Net Amount|Total Amount)[:\s]*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
   const custMatch = text.match(/(?:Customer|Billed To|Client|Party Name)[:\s]+([^\n]+)/i);
-  const phoneMatch = text.match(/(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i);
+  const phoneMatch = text.match(/(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i) ||
+                     text.match(/(?:\+91[\s-]?)?[6-9]\d{9}/);
 
   // Extract lines with numbers as items
   const genericItems: ImportedLineItem[] = [];
@@ -292,13 +314,14 @@ export function parseTextInvoice(text: string): ImportParseResult {
     }
   }
 
-  const grandTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : 1500;
+  const itemsSubtotal = genericItems.reduce((acc, i) => acc + i.total, 0);
+  const grandTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : (itemsSubtotal > 0 ? itemsSubtotal : 0);
   const invoice: ImportedInvoice = {
     invoiceNumber: invNum ? invNum[1].trim() : `INV-${Date.now().toString().slice(-6)}`,
     date: dateMatch ? dateMatch[1].trim() : new Date().toLocaleDateString('en-GB'),
     customer: {
       name: custMatch ? custMatch[1].trim() : 'Imported Customer',
-      phone: phoneMatch ? phoneMatch[1].trim() : '',
+      phone: phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '',
     },
     items: genericItems.length > 0 ? genericItems : [
       {

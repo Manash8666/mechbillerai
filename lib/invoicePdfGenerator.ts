@@ -116,16 +116,16 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   doc.setTextColor(210, 210, 220);
   const subTitle = data.garage.address
     ? `GENERAL MAINTENANCE & PRECISION SERVICING | ${data.garage.address.toUpperCase()}`
-    : 'GENERAL MAINTENANCE & PRECISION SERVICING | HQ WORKSHOP';
+    : 'GENERAL MAINTENANCE & PRECISION SERVICING';
   doc.text(subTitle, margin, 23);
 
   doc.setFontSize(7.5);
   doc.setTextColor(170, 170, 185);
-  const garageContacts = [
-    data.garage.phone ? `Phone: ${data.garage.phone}` : 'Phone: +91 99999 88888',
-    data.garage.email || 'support@motoban.in',
-    data.garage.website || 'https://motoban.in',
-  ].join('   |   ');
+  const contactParts: string[] = [];
+  if (data.garage.phone) contactParts.push(`Phone: ${data.garage.phone}`);
+  if (data.garage.email) contactParts.push(data.garage.email);
+  if (data.garage.website) contactParts.push(data.garage.website);
+  const garageContacts = contactParts.length > 0 ? contactParts.join('   |   ') : 'Authorized Automotive Workshop';
   doc.text(garageContacts, margin, 30);
 
   // Document Type & Number Badge (Top Right)
@@ -257,8 +257,8 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     doc.setFontSize(7.5);
     doc.setTextColor(75, 85, 99);
     doc.text(`Phone: ${data.customer.phone || 'N/A'}`, margin + 4, currentY + 17.5);
-    doc.text(`Email: ${data.customer.email || 'customer@garagesaas.com'}`, margin + 4, currentY + 22.5);
-    doc.text(`Address: ${data.customer.address || 'Local Region'}`, margin + 4, currentY + 27.5);
+    doc.text(`Email: ${data.customer.email || 'N/A'}`, margin + 4, currentY + 22.5);
+    doc.text(`Address: ${data.customer.address || 'N/A'}`, margin + 4, currentY + 27.5);
 
     const rightCardX = margin + cardW + 8;
     drawCard(rightCardX, currentY, cardW, infoCardH, 'Document Metadata & Terms');
@@ -282,7 +282,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     doc.text(`GSTIN Registration:`, rightCardX + 4, currentY + 24.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(17, 24, 39);
-    doc.text(data.garage.gstNumber || '24AABCM1234F1Z5', rightCardX + 30, currentY + 24.5);
+    doc.text(data.garage.gstNumber || 'Unregistered / N/A', rightCardX + 30, currentY + 24.5);
 
     currentY += infoCardH + 6;
   }
@@ -610,7 +610,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   doc.setTextColor(75, 85, 99);
   const contactsLine =
     data.garage.contacts ||
-    `${data.garage.name}: ${data.garage.phone || '+91 63596 35416'} | Client Service Manager & Technical Team`;
+    `${data.garage.name}${data.garage.phone ? `: ${data.garage.phone}` : ''} | Authorized Service & Technical Team`;
   doc.text(contactsLine, margin, footerY + 4.5);
 
   // Tagline

@@ -56,11 +56,13 @@ export default function InvoicesScreen() {
   const [partsCharge, setPartsCharge] = useState('400');
   const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'CARD'>('UPI');
   const [isPaid, setIsPaid] = useState(true);
+  const [branding, setBranding] = useState<any>(null);
 
   const fetchInvoices = async () => {
     try {
       const data = await API.getInvoices();
       setInvoices(data);
+      API.getBranding().then(setBranding).catch(() => {});
     } catch (e) {
       console.error('Failed to fetch invoices:', e);
     } finally {
@@ -128,9 +130,14 @@ export default function InvoicesScreen() {
       if (matched) {
         customerId = matched.id;
       } else {
+        if (!custPhone.trim()) {
+          Alert.alert('Phone Required', 'Please enter a customer contact number.');
+          setCreating(false);
+          return;
+        }
         const newCust = await API.createCustomer({
-          name: custName || 'Walk-in Customer',
-          phone: custPhone || '9876543210',
+          name: custName.trim() || 'Walk-in Customer',
+          phone: custPhone.trim(),
         });
         customerId = newCust.id || existingCustomers[0]?.id;
       }
@@ -221,10 +228,14 @@ export default function InvoicesScreen() {
         {
           text: '📱 Pay via UPI (GPay/PhonePe)',
           onPress: async () => {
+            if (!branding?.upiId) {
+              Alert.alert('UPI ID Not Configured', 'Please configure your Workshop UPI ID in Settings > Branding to receive direct UPI payments.');
+              return;
+            }
             const { launchMobileUpiPayment } = await import('../services/payments');
             await launchMobileUpiPayment({
-              vpa: 'motoban@icici',
-              payeeName: 'MotoBan Workshop',
+              vpa: branding.upiId,
+              payeeName: branding.garageName || 'Workshop',
               amount: item.balance,
               invoiceNumber: item.invoiceNumber,
             });
@@ -258,7 +269,7 @@ export default function InvoicesScreen() {
         totalAmount: item.total || 0,
         paidAmount: item.paid || 0,
         balanceAmount: item.balance || 0,
-        garageName: 'MotoBan Workshop',
+        garageName: branding?.garageName || 'My Garage',
         invoiceUrl: pdfUrl,
       });
     } catch (err: any) {
@@ -270,9 +281,9 @@ export default function InvoicesScreen() {
     try {
       const { printOrShareReceipt } = await import('../services/thermalPrinter');
       await printOrShareReceipt({
-        workshopName: 'MotoBan Workshop',
-        tagline: 'Precision Care & Diagnostics',
-        phone: '+91 98765 43210',
+        workshopName: branding?.garageName || 'My Garage',
+        tagline: branding?.tagline || 'Automotive Care & Diagnostics',
+        phone: branding?.phone || '',
         invoiceNumber: item.invoiceNumber,
         date: new Date(item.createdAt).toLocaleDateString('en-IN'),
         customerName: item.customer?.name || 'Walk-in Customer',
@@ -292,7 +303,7 @@ export default function InvoicesScreen() {
         paid: item.paid || 0,
         balance: item.balance || 0,
         paymentMode: item.paymentMode,
-        upiVpa: 'motoban@icici',
+        upiVpa: branding?.upiId || '',
       });
     } catch (err: any) {
       Alert.alert('Printer Error', err.message || 'Could not print thermal receipt.');

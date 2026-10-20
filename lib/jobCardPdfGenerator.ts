@@ -89,10 +89,10 @@ export function generateJobCardPdf(data: JobCardPdfData): any {
 
   doc.setFontSize(8);
   doc.setTextColor(170, 170, 185);
-  const contactLine = [
-    data.garagePhone ? `Tel: ${data.garagePhone}` : 'Tel: +91 99999 88888',
-    data.garageAddress || 'Workshop Floor #4, Auto Hub Zone',
-  ].join('  ·  ');
+  const contactParts: string[] = [];
+  if (data.garagePhone) contactParts.push(`Tel: ${data.garagePhone}`);
+  if (data.garageAddress) contactParts.push(data.garageAddress);
+  const contactLine = contactParts.length > 0 ? contactParts.join('  ·  ') : 'Authorized Workshop Floor';
   doc.text(contactLine, margin, 31);
 
   // Right Header: Badge for Job Card & Status
@@ -316,11 +316,13 @@ export function generateJobCardPdf(data: JobCardPdfData): any {
       ]);
     });
   } else {
-    tableRows.push(
-      ['SVC-101', 'General Vehicle Inspection & Diagnosis', '1', 'Included', 'COMPLETED'],
-      ['PRT-202', 'Engine Oil Synthetic 4T / 5W-40 (1L)', '1', 'Rs. 450', 'COMPLETED'],
-      ['LBR-303', 'Scheduled Labor & Multipoint Lubrication', '1', 'Rs. 350', 'COMPLETED']
-    );
+    tableRows.push([
+      'SVC-01',
+      data.description || 'General Vehicle Inspection & Diagnostics',
+      '1',
+      data.estimatedCost ? `Rs. ${data.estimatedCost.toLocaleString('en-IN')}` : 'As Estimated',
+      data.status === 'completed' ? 'COMPLETED' : 'INSPECTED',
+    ]);
   }
 
   applyAutoTable(doc, {
@@ -369,7 +371,8 @@ export function generateJobCardPdf(data: JobCardPdfData): any {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(201, 168, 76);
-  doc.text(`Rs. ${(data.estimatedCost || 800).toLocaleString('en-IN')}`, margin + 6, finalY + 17);
+  const budgetVal = data.estimatedCost || data.actualCost || 0;
+  doc.text(budgetVal > 0 ? `Rs. ${budgetVal.toLocaleString('en-IN')}` : 'As Per Inspection', margin + 6, finalY + 17);
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');

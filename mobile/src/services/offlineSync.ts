@@ -82,7 +82,11 @@ export const offlineSyncManager = {
 
     const base = customServerUrl || (await getApiBaseUrl());
     const currentUser = await Storage.getUser();
-    const userId = currentUser?.id || 'cmv4zl4620001d96sd1e0qto2';
+    const userId = currentUser?.id;
+    if (!userId) {
+      console.warn('Cannot sync offline queue: No active user session logged in');
+      return { synced: 0, failed: unsynced.length };
+    }
 
     for (const item of unsynced) {
       try {

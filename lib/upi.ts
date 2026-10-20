@@ -1,8 +1,8 @@
 import QRCode from 'qrcode';
 
 export interface UpiPaymentDetails {
-  vpa: string; // e.g. 'motoban@icici' or workshop VPA
-  payeeName: string; // e.g. 'MotoFit Workshop'
+  vpa: string; // Workshop UPI VPA
+  payeeName: string; // Workshop payee name
   amount: number;
   invoiceNumber: string;
   notes?: string;

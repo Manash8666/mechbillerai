@@ -14,7 +14,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isPrinterModalOpen, setIsPrinterModalOpen] = React.useState(false);
   const [paperWidth, setPaperWidth] = React.useState<ThermalPaperWidth>('58mm');
   const [shopTagline, setShopTagline] = React.useState('Express Automotive Care & Tuning');
-  const [upiVpa, setUpiVpa] = React.useState('motoban@icici');
+  const [upiVpa, setUpiVpa] = React.useState('');
 
   // SaaS Trial & Licensing State
   const [isLicenseModalOpen, setIsLicenseModalOpen] = React.useState(false);
@@ -68,30 +68,33 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleTestPrintSlip = async () => {
+    let brandingData: any = null;
+    try {
+      brandingData = await API.getBranding();
+    } catch {}
     await printOrShareReceipt(
       {
-        workshopName: 'MotoBan Workshop',
-        tagline: shopTagline,
-        phone: '+91 98765 43210',
-        address: 'Drive-In Road, Ahmedabad',
+        workshopName: brandingData?.garageName || 'Test Workshop',
+        tagline: shopTagline || brandingData?.tagline || 'Diagnostics & Servicing',
+        phone: brandingData?.phone || '',
+        address: brandingData?.address || '',
         invoiceNumber: 'TEST-001',
         date: new Date().toLocaleDateString('en-IN'),
-        customerName: 'Test Customer',
-        customerPhone: '9876543210',
-        vehicleNumber: 'GJ-01-AB-1234',
-        rtoOffice: 'Ahmedabad West (GJ-01)',
+        customerName: 'Test Alignment',
+        customerPhone: '',
+        vehicleNumber: 'TEST-VEHICLE',
+        rtoOffice: '',
         items: [
-          { description: 'Engine Oil Flush & Refill', qty: 1, rate: 450, amount: 450 },
-          { description: 'Brake Caliper Servicing', qty: 1, rate: 350, amount: 350 },
+          { description: 'Printer Alignment & Test Slip', qty: 1, rate: 100, amount: 100 },
         ],
-        subtotal: 800,
-        cgst: gstEnabled ? 72 : 0,
-        sgst: gstEnabled ? 72 : 0,
-        total: gstEnabled ? 944 : 800,
-        paid: gstEnabled ? 944 : 800,
+        subtotal: 100,
+        cgst: gstEnabled ? 9 : 0,
+        sgst: gstEnabled ? 9 : 0,
+        total: gstEnabled ? 118 : 100,
+        paid: gstEnabled ? 118 : 100,
         balance: 0,
-        paymentMode: 'UPI',
-        upiVpa,
+        paymentMode: 'CASH',
+        upiVpa: upiVpa || undefined,
       },
       paperWidth
     );
@@ -99,17 +102,17 @@ export default function SettingsScreen({ navigation }: any) {
 
   const sampleSlipText = formatThermalReceipt(
     {
-      workshopName: 'MotoBan Workshop',
+      workshopName: 'Workshop Receipt Preview',
       tagline: shopTagline,
-      phone: '+91 98765 43210',
+      phone: '',
       invoiceNumber: 'TEST-001',
       date: new Date().toLocaleDateString('en-IN'),
-      customerName: 'Test Customer',
-      vehicleNumber: 'GJ-01-AB-1234',
-      rtoOffice: 'Ahmedabad West (GJ-01)',
+      customerName: 'Walk-in Customer',
+      vehicleNumber: 'XX-00-XX-0000',
+      rtoOffice: '',
       items: [
-        { description: 'Engine Oil Flush', amount: 450 },
-        { description: 'Brake Caliper Servicing', amount: 350 },
+        { description: 'General Servicing Labor', amount: 450 },
+        { description: 'Consumables & Parts', amount: 350 },
       ],
       subtotal: 800,
       cgst: gstEnabled ? 72 : 0,
@@ -117,7 +120,8 @@ export default function SettingsScreen({ navigation }: any) {
       total: gstEnabled ? 944 : 800,
       paid: gstEnabled ? 944 : 800,
       balance: 0,
-      upiVpa,
+      paymentMode: 'CASH',
+      upiVpa: upiVpa || undefined,
     },
     paperWidth
   );
@@ -585,7 +589,7 @@ export default function SettingsScreen({ navigation }: any) {
               {/* Contact Founders to Upgrade */}
               <TouchableOpacity
                 style={styles.whatsappUpgradeBtn}
-                onPress={() => Linking.openURL('https://wa.me/919876543210?text=Hi%20MotoBan,%20I%20want%20to%20upgrade%20my%20garage%20subscription.')}
+                onPress={() => Linking.openURL('https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20upgrade%20my%20garage%20subscription.')}
               >
                 <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
                 <Text style={styles.whatsappUpgradeBtnText}>Contact Founder Desk to Upgrade</Text>

@@ -113,10 +113,10 @@ export default function IntakeScreen({ navigation }: any) {
       setIsSaving(true);
       await offlineSyncManager.enqueueJobCard({
         vehicleNumber: vehicleNumber.toUpperCase().trim(),
-        customerName: customerName || 'Walk-in Customer',
-        customerPhone: customerPhone || '9876543210',
+        customerName: customerName.trim() || 'Walk-in Customer',
+        customerPhone: customerPhone ? customerPhone.trim() : '',
         serviceDescription,
-        estimatedCost: parseFloat(estimatedCost) || 500,
+        estimatedCost: parseFloat(estimatedCost) || 0,
         voiceNote: voiceNote || 'Captured via Mobile Express Intake',
         preInspectionShield: {
           front: photos.Front,

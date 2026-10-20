@@ -16,15 +16,18 @@ export async function GET(request: Request) {
         OR: [{ id }, { jobNumber: id }],
       },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            vehicles: true,
+          },
+        },
         vehicle: true,
         tasks: {
           orderBy: { order: 'asc' },
         },
         user: {
-          select: {
-            name: true,
-            phone: true,
+          include: {
+            branding: true,
           },
         },
       },
@@ -33,6 +36,9 @@ export async function GET(request: Request) {
     if (!jobCard) {
       return NextResponse.json({ error: 'Job card not found' }, { status: 404 });
     }
+
+    const branding = jobCard.user?.branding;
+    const effectiveVehicle = jobCard.vehicle || (jobCard.customer as any)?.vehicles?.[0];
 
     const doc = generateJobCardPdf({
       jobNumber: jobCard.jobNumber,
@@ -50,20 +56,21 @@ export async function GET(request: Request) {
         address: jobCard.customer?.address || undefined,
       },
       vehicle: {
-        registrationNo: jobCard.vehicle?.registrationNo || 'General Vehicle',
-        make: jobCard.vehicle?.make || 'Vehicle',
-        model: jobCard.vehicle?.model || '',
-        year: jobCard.vehicle?.year || undefined,
-        mileage: jobCard.vehicle?.mileage || undefined,
-        color: jobCard.vehicle?.color || undefined,
-        vin: jobCard.vehicle?.vin || undefined,
+        registrationNo: effectiveVehicle?.registrationNo || 'General Vehicle',
+        make: effectiveVehicle?.make || 'Vehicle',
+        model: effectiveVehicle?.model || '',
+        year: effectiveVehicle?.year || undefined,
+        mileage: effectiveVehicle?.mileage || undefined,
+        color: effectiveVehicle?.color || undefined,
+        vin: effectiveVehicle?.vin || undefined,
       },
       tasks: (jobCard.tasks || []).map((t) => ({
         description: t.description,
         completed: t.completed,
       })),
-      garageName: jobCard.user?.name || 'MotoBan Workshop',
-      garagePhone: jobCard.user?.phone || '+91 99999 88888',
+      garageName: branding?.garageName || jobCard.user?.name || 'Automotive Service Workshop',
+      garagePhone: (branding as any)?.phone || jobCard.user?.phone || undefined,
+      garageAddress: (branding as any)?.address || undefined,
     });
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));

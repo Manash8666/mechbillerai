@@ -184,9 +184,14 @@ export default function AppointmentsScreen() {
       if (matched) {
         customerId = matched.id;
       } else {
+        if (!custPhone.trim()) {
+          Alert.alert('Phone Required', 'Please enter a customer contact number to book an appointment.');
+          setSaving(false);
+          return;
+        }
         const newCust = await API.createCustomer({
           name: custName.trim() || 'Walk-in Client',
-          phone: custPhone.trim() || '9876543210',
+          phone: custPhone.trim(),
         });
         customerId = newCust.id || existingCustomers[0]?.id;
       }
