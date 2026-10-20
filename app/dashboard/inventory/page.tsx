@@ -74,7 +74,7 @@ export default function InventoryPage() {
     }
   };
 
-  const handleAddItem = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddItem = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!name.trim() || !code.trim()) {
       toast.error('Item name and SKU/Code are required');
@@ -159,7 +159,7 @@ export default function InventoryPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateItem = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateItem = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!editingItem) return;
     if (!editName.trim() || !editCode.trim()) {

@@ -69,7 +69,7 @@ export default function DataSettingsPage() {
     }
   };
 
-  const handleExecuteReset = async (e: React.FormEvent) => {
+  const handleExecuteReset = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!resetModalMode) return;
 

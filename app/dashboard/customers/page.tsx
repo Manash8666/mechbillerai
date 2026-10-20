@@ -80,7 +80,7 @@ export default function CustomersPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateCustomer = async (e: React.FormEvent) => {
+  const handleUpdateCustomer = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!editingCustomer) return;
     if (!editName.trim() || !editPhone.trim()) {
@@ -122,7 +122,7 @@ export default function CustomersPage() {
     }
   };
 
-  const handleCreateCustomer = async (e: React.FormEvent) => {
+  const handleCreateCustomer = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
       toast.error('Name and Phone Number are required');

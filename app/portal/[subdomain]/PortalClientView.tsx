@@ -33,7 +33,7 @@ export default function PortalClientView({ tenant }: { readonly tenant: TenantDa
   const [notes, setNotes] = useState('');
   const [bookingDone, setBookingDone] = useState(false);
 
-  const handleTrackVehicle = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleTrackVehicle = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!trackReg.trim()) {
       toast.error('Please enter vehicle registration plate number');
@@ -58,7 +58,7 @@ export default function PortalClientView({ tenant }: { readonly tenant: TenantDa
     }
   };
 
-  const handleBookAppointment = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleBookAppointment = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!customerName.trim() || !phone.trim() || !vehicleReg.trim()) {
       toast.error('Please fill in your name, phone, and vehicle registration');

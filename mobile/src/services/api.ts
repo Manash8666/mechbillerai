@@ -183,6 +183,22 @@ export const API = {
     return res.json();
   },
 
+  updateJobCard: async (id: string, payload: any) => {
+    const res = await apiFetch(`/jobcards/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteJobCard: async (id: string) => {
+    const res = await apiFetch(`/jobcards/${id}`, {
+      method: 'DELETE',
+    }, 8000);
+    return res.json();
+  },
+
   // Customers & Vehicles
   getCustomers: async (search?: string) => {
     const user = await Storage.getUser();
@@ -206,6 +222,22 @@ export const API = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: payload.userId || user?.id }),
+    }, 8000);
+    return res.json();
+  },
+
+  updateCustomer: async (id: string, payload: any) => {
+    const res = await apiFetch(`/customers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteCustomer: async (id: string, force = true) => {
+    const res = await apiFetch(`/customers/${id}?force=${force}`, {
+      method: 'DELETE',
     }, 8000);
     return res.json();
   },
@@ -247,6 +279,22 @@ export const API = {
     return res.json();
   },
 
+  updateInvoice: async (id: string, payload: any) => {
+    const res = await apiFetch(`/invoices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteInvoice: async (id: string, force = true) => {
+    const res = await apiFetch(`/invoices/${id}?force=${force}`, {
+      method: 'DELETE',
+    }, 8000);
+    return res.json();
+  },
+
   recordPayment: async (invoiceId: string, payload: { amount: number; paymentMode: string; notes?: string }) => {
     const res = await apiFetch(`/invoices/${invoiceId}/payment`, {
       method: 'POST',
@@ -273,6 +321,22 @@ export const API = {
     return res.json();
   },
 
+  updateInventoryItem: async (id: string, payload: any) => {
+    const res = await apiFetch(`/inventory/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteInventoryItem: async (id: string) => {
+    const res = await apiFetch(`/inventory/${id}`, {
+      method: 'DELETE',
+    }, 8000);
+    return res.json();
+  },
+
   // Appointments
   getAppointments: async (status?: string) => {
     const user = await Storage.getUser();
@@ -291,6 +355,22 @@ export const API = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, userId: user?.id }),
+    }, 8000);
+    return res.json();
+  },
+
+  updateAppointment: async (id: string, payload: any) => {
+    const res = await apiFetch(`/appointments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteAppointment: async (id: string) => {
+    const res = await apiFetch(`/appointments/${id}`, {
+      method: 'DELETE',
     }, 8000);
     return res.json();
   },

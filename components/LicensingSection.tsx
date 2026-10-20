@@ -105,7 +105,7 @@ export default function LicensingSection() {
     void fetchLicensingStatus();
   }, []);
 
-  const handleActivateKey = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleActivateKey = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!licenseKeyInput.trim()) {
       toast.error('Please enter a license key or VIP Founder key');

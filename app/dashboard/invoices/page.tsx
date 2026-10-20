@@ -187,7 +187,7 @@ export default function InvoicesPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateInvoice = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateInvoice = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!editingInvoice) return;
     if (editLineItems.length === 0) {
@@ -697,7 +697,7 @@ export default function InvoicesPage() {
   const calculatedTax = Math.round(calculatedSubtotal * 0.18);
   const calculatedTotal = calculatedSubtotal + calculatedTax;
 
-  const handleCreateInvoice = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateInvoice = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!selectedCustomerId) {
       toast.error('Please select a customer');

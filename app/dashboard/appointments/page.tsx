@@ -181,7 +181,7 @@ export default function AppointmentsPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateAppointment = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateAppointment = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!editingAppointment) return;
 

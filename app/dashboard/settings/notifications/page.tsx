@@ -11,7 +11,7 @@ export default function NotificationsSettingsPage() {
   const [readyForPickupAlert, setReadyForPickupAlert] = useState(true);
   const [customFooterNote, setCustomFooterNote] = useState('Thank you for servicing with MotoFit 2 Workshop! Drive safe.');
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = (e: React.SyntheticEvent) => {
     e.preventDefault();
     toast.success('Notification preferences saved!');
   };

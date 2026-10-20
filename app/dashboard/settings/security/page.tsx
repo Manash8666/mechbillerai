@@ -24,7 +24,7 @@ export default function SecuritySettingsPage() {
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!currentPassword) {
       toast.error('Please enter your current password');

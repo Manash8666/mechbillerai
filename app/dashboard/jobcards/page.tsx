@@ -207,7 +207,7 @@ export default function JobCardsPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateJobCard = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateJobCard = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!editingJob) return;
 

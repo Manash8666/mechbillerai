@@ -106,7 +106,7 @@ export default function TeamSettingsPage() {
     void fetchTeam();
   }, []);
 
-  const handleAddMember = async (e: React.FormEvent) => {
+  const handleAddMember = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
       toast.error('Please enter both name and phone number');
@@ -153,7 +153,7 @@ export default function TeamSettingsPage() {
     setNewPin(member.pin || '1234');
   };
 
-  const handleResetPinSubmit = async (e: React.FormEvent) => {
+  const handleResetPinSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!pinResetMember) return;
 

@@ -93,8 +93,16 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
     const raw = buffer.toString('latin1');
     const matches = raw.match(/\(([^()]{2,})\)\s*(?:Tj|TJ|')/g) || [];
     text = matches
-      .map((m) => m.replace(/^[(\s]+|[)\s]+(?:Tj|TJ|')?$/g, ''))
+      .map((m) => {
+        let str = m.trim();
+        if (str.startsWith('(')) str = str.slice(1);
+        const parenIdx = str.lastIndexOf(')');
+        if (parenIdx !== -1) str = str.slice(0, parenIdx);
+        return str.trim();
+      })
+      .filter((s) => s.length > 0)
       .join(' ');
+
     if (!text || text.length < 30) {
       const readable = raw.match(/[a-zA-Z0-9\s/&,().:;₹\-=+]{4,}/g) || [];
       text = readable.join(' ');
@@ -109,64 +117,131 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
  */
 function parseJsonBlockInvoices(text: string): ImportedInvoice[] {
   const jsonInvoiceMap = new Map<string, ImportedInvoice>();
-  const jsonBlockRegex = /\{\s*"id":\s*"(MF2-[^"]+)"[\s\S]*?"items":\s*\[[\s\S]*?\][\s\S]*?\}/g;
-  let jsonMatch: RegExpExecArray | null;
+  const idRegex = /"id"\s*:\s*"(MF2-[^"]+)"/g;
+  let idMatch: RegExpExecArray | null;
 
-  while ((jsonMatch = jsonBlockRegex.exec(text)) !== null) {
-    try {
-      const obj = JSON.parse(jsonMatch[0]);
-      if (obj.id && Array.isArray(obj.items) && obj.items.length > 0) {
-        const invItems: ImportedLineItem[] = obj.items.map((it: any) => {
-          let unitPrice = 0;
-          if (typeof it.rate === 'number') {
-            unitPrice = it.rate;
-          } else if (typeof it.amount === 'number') {
-            unitPrice = it.amount;
-          }
+  while ((idMatch = idRegex.exec(text)) !== null) {
+    const openBrace = text.lastIndexOf('{', idMatch.index);
+    if (openBrace === -1) continue;
 
-          return {
-            description: (it.item || it.description || 'Automotive Part / Service').trim().toUpperCase(),
-            details: it.description || it.item || undefined,
-            quantity: typeof it.quantity === 'number' ? it.quantity : 1,
-            unitPrice,
-            total: typeof it.amount === 'number' ? it.amount : (it.quantity || 1) * (it.rate || 0),
-          };
-        });
-        const subtotal = obj.subtotal || obj.total_amount || invItems.reduce((acc, i) => acc + i.total, 0);
-        const discount = obj.discount || 0;
-        const total = obj.total_amount || (subtotal - discount);
-
-        jsonInvoiceMap.set(obj.id, {
-          invoiceNumber: obj.id,
-          date: obj.date || '2026-10-15',
-          serviceType: obj.service_type || 'General Service & Spares',
-          customer: {
-            name: obj.customer_name || 'Workshop Client',
-            phone: obj.phone || undefined,
-            vehicleModel: obj.vehicle_model || undefined,
-            vehicleReg: obj.registration_no || undefined,
-          },
-          vehicle: {
-            makeModel: obj.vehicle_model || 'Motorcycle',
-            registrationNo: obj.registration_no || undefined,
-          },
-          items: invItems,
-          subtotal,
-          discount,
-          tax: Math.round(total * 0.18),
-          total,
-          paid: total,
-          balance: 0,
-          paymentMode: 'cash',
-          garageName: obj.garage_name || 'Workshop',
-        });
+    let depth = 0;
+    let closeBrace = -1;
+    const maxLen = Math.min(text.length, openBrace + 5000);
+    for (let i = openBrace; i < maxLen; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          closeBrace = i;
+          break;
+        }
       }
-    } catch {
-      // Continue searching
+    }
+
+    if (closeBrace !== -1) {
+      try {
+        const rawJson = text.slice(openBrace, closeBrace + 1);
+        const obj = JSON.parse(rawJson);
+        if (obj.id && Array.isArray(obj.items) && obj.items.length > 0) {
+          const invItems: ImportedLineItem[] = obj.items.map((it: any) => {
+            let unitPrice = 0;
+            if (typeof it.rate === 'number') {
+              unitPrice = it.rate;
+            } else if (typeof it.amount === 'number') {
+              unitPrice = it.amount;
+            }
+
+            return {
+              description: (it.item || it.description || 'Automotive Part / Service').trim().toUpperCase(),
+              details: it.description || it.item || undefined,
+              quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+              unitPrice,
+              total: typeof it.amount === 'number' ? it.amount : (it.quantity || 1) * (it.rate || 0),
+            };
+          });
+
+          const subtotal = obj.subtotal || obj.total_amount || invItems.reduce((acc, i) => acc + i.total, 0);
+          const discount = obj.discount || 0;
+          const total = obj.total_amount || (subtotal - discount);
+
+          jsonInvoiceMap.set(obj.id, {
+            invoiceNumber: obj.id,
+            date: obj.date || '2026-10-15',
+            serviceType: obj.service_type || 'General Service & Spares',
+            customer: {
+              name: obj.customer_name || 'Workshop Client',
+              phone: obj.phone || undefined,
+              vehicleModel: obj.vehicle_model || undefined,
+              vehicleReg: obj.registration_no || undefined,
+            },
+            vehicle: {
+              makeModel: obj.vehicle_model || 'Motorcycle',
+              registrationNo: obj.registration_no || undefined,
+            },
+            items: invItems,
+            subtotal,
+            discount,
+            tax: Math.round(total * 0.18),
+            total,
+            paid: total,
+            balance: 0,
+            paymentMode: 'cash',
+            garageName: obj.garage_name || 'Workshop',
+          });
+        }
+      } catch {
+        // continue searching
+      }
     }
   }
 
   return Array.from(jsonInvoiceMap.values());
+}
+
+function extractAmountFromLine(lines: string[], keyword: string): number {
+  const line = lines.find((l) => l.toLowerCase().includes(keyword.toLowerCase()));
+  if (!line) return 0;
+  const match = /([\d,]+(?:\.\d+)?)/.exec(line.replace(/,/g, ''));
+  return match ? Number.parseFloat(match[1]) || 0 : 0;
+}
+
+function extractSowLineItems(lines: string[]): ImportedLineItem[] {
+  const items: ImportedLineItem[] = [];
+  const singleLineRegex = /^(\d+)[.\s]+([^\d\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/;
+  const twoLineHeadRegex = /^(\d+)[.\s]+([^\d\n]+)$/;
+  const twoLineDataRegex = /^([^\d\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = singleLineRegex.exec(line);
+    if (match) {
+      items.push({
+        description: match[2].trim().toUpperCase(),
+        details: getAutomotiveTechnicalExplanation(match[2].trim()),
+        quantity: Number.parseFloat(match[3]),
+        unitPrice: Number.parseFloat(match[4].replace(/,/g, '')),
+        total: Number.parseFloat(match[5].replace(/,/g, '')),
+      });
+      continue;
+    }
+
+    const twoLineMatch = twoLineHeadRegex.exec(line);
+    if (twoLineMatch && i + 1 < lines.length) {
+      const nextLine = lines[i + 1];
+      const numbersMatch = twoLineDataRegex.exec(nextLine);
+      if (numbersMatch) {
+        items.push({
+          description: twoLineMatch[2].trim().toUpperCase(),
+          details: numbersMatch[1].trim(),
+          quantity: Number.parseFloat(numbersMatch[2]),
+          unitPrice: Number.parseFloat(numbersMatch[3].replace(/,/g, '')),
+          total: Number.parseFloat(numbersMatch[4].replace(/,/g, '')),
+        });
+        i++;
+      }
+    }
+  }
+  return items;
 }
 
 function parseGeminiSowPdf(text: string): ImportParseResult | null {
@@ -179,95 +254,67 @@ function parseGeminiSowPdf(text: string): ImportParseResult | null {
 
   if (!isGeminiSow) return null;
 
-  const invMatch = /INVOICE ID \/ DATE\s*\n\s*([^\n]+)\s*\n\s*([^\n]+)/i.exec(text);
-  const vehMatch = /VEHICLE MAKE & MODEL\s*\n\s*([^\n]+)/i.exec(text) ||
-                   /(?:Vehicle|Model|Bike|Car)[:\s]+([^\n,]+)/i.exec(text);
-  const estMatch = /Ref Estimate:\s*([^\n]+)/i.exec(text);
-  const srvMatch = /JOB CARD \/ SERVICE TYPE\s*\n\s*([^\n]+)/i.exec(text) ||
-                   /(?:Service Type|Service|Job Type)[:\s]+([^\n,]+)/i.exec(text);
-  const regMatch = /Reg:\s*([^\n]+)/i.exec(text);
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
 
-  const subMatch = /(?:Gross\s+)?Subtotal(?:\s*\(Gross\))?:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
-  const discMatch = /Discount(?:\s*\([^)]*\))?:\s*-?\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
-  const totMatch =
-    /(?:Total\s*Payable\s*Amount|Grand\s*Total|Net\s*Amount|Final\s*Total)\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text) ||
-    /\bTotal\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
+  const invIdx = lines.findIndex((l) => l.toUpperCase().includes('INVOICE ID / DATE'));
+  const invoiceNumber = invIdx !== -1 && lines[invIdx + 1] ? lines[invIdx + 1] : `IMP-${Date.now().toString().slice(-6)}`;
+  const invoiceDate = invIdx !== -1 && lines[invIdx + 2] ? lines[invIdx + 2] : new Date().toLocaleDateString('en-GB');
 
-  // Extract items: S.NO. DESCRIPTION \n DETAILS QTY RATE AMOUNT
-  const itemRegex = /^(\d+)\s+([^\n]+)\n([^\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
-  let match: RegExpExecArray | null;
-  const items: ImportedLineItem[] = [];
-  while ((match = itemRegex.exec(text)) !== null) {
-    items.push({
-      description: match[2].trim().toUpperCase(),
-      details: match[3].trim(),
-      quantity: Number.parseFloat(match[4]),
-      unitPrice: Number.parseFloat(match[5].replace(/,/g, '')),
-      total: Number.parseFloat(match[6].replace(/,/g, '')),
-    });
+  const vehIdx = lines.findIndex((l) => l.toUpperCase().includes('VEHICLE MAKE & MODEL'));
+  const vehicleModel = vehIdx !== -1 && lines[vehIdx + 1] ? lines[vehIdx + 1] : 'Royal Enfield Classic 350';
+
+  const srvIdx = lines.findIndex((l) => l.toUpperCase().includes('JOB CARD / SERVICE TYPE'));
+  const serviceType = srvIdx !== -1 && lines[srvIdx + 1] ? lines[srvIdx + 1] : 'Vehicle Maintenance & Service';
+
+  const refEstimate = lines.find((l) => l.includes('Ref Estimate:'))?.split('Ref Estimate:')[1]?.trim();
+  const reg = lines.find((l) => l.includes('Reg:'))?.split('Reg:')[1]?.trim() || 'As Per Estimate';
+
+  const subtotal = extractAmountFromLine(lines, 'subtotal');
+  const discount = extractAmountFromLine(lines, 'discount');
+  let total = extractAmountFromLine(lines, 'total payable') ||
+              extractAmountFromLine(lines, 'grand total') ||
+              extractAmountFromLine(lines, 'net amount');
+
+  const items = extractSowLineItems(lines);
+  if (total === 0) {
+    const calcSubtotal = items.reduce((s, it) => s + it.total, 0);
+    total = Math.max(0, (subtotal || calcSubtotal) - discount);
   }
 
-  if (items.length === 0) {
-    const singleLineRegex = /^(\d+)\s+([^\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
-    while ((match = singleLineRegex.exec(text)) !== null) {
-      items.push({
-        description: match[2].trim().toUpperCase(),
-        details: getAutomotiveTechnicalExplanation(match[2].trim()),
-        quantity: Number.parseFloat(match[3]),
-        unitPrice: Number.parseFloat(match[4].replace(/,/g, '')),
-        total: Number.parseFloat(match[5].replace(/,/g, '')),
-      });
-    }
-  }
-
-  // Extract customer / signatory
-  const signatoryMatch = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\nAuthorized Signatory/m.exec(text) ||
-                         /(?:Customer|Client|Party Name|Billed To)[:\s]+([^\n]+)/i.exec(text);
-  const customerName = signatoryMatch ? signatoryMatch[1].trim() : 'Valued Customer';
-
-  // Extract customer phone
-  const phoneMatch = /(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i.exec(text) ||
-                     /(?:\+91[\s-]?)?[6-9]\d{9}/.exec(text);
+  const phoneMatch = /(?:\+91[\s-]?)?[6-9]\d{9}/.exec(text);
   const customerPhone = phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '';
 
-  // Extract garage name
-  const garageMatch = /(MOTOFIT\s*\d*|MOTOBAN|GARAGE[^\n]*)/i.exec(text);
-  const garageName = garageMatch ? garageMatch[1].trim() : 'Workshop';
+  const signatoryIdx = lines.findIndex((l) => l.toLowerCase().includes('authorized signatory'));
+  const customerName = signatoryIdx > 0 ? lines[signatoryIdx - 1] : 'Valued Customer';
 
-  const subtotal = subMatch ? Number.parseFloat(subMatch[1].replace(/,/g, '')) : items.reduce((s, it) => s + it.total, 0);
-  const discount = discMatch ? Number.parseFloat(discMatch[1].replace(/,/g, '')) : 0;
-  let total = 0;
-  if (totMatch) {
-    total = Number.parseFloat(totMatch[1].replace(/,/g, ''));
-  } else if (subtotal > 0) {
-    total = subtotal - discount;
-  }
+  const garageLine = lines.find((l) => /(?:MOTOFIT|MOTOBAN|GARAGE)/i.test(l));
+  const garageName = garageLine ? garageLine.trim() : 'Workshop';
 
   const invoice: ImportedInvoice = {
-    invoiceNumber: invMatch ? invMatch[1].trim() : `IMP-${Date.now().toString().slice(-6)}`,
-    date: invMatch ? invMatch[2].trim() : new Date().toLocaleDateString('en-GB'),
-    serviceType: srvMatch ? srvMatch[1].trim() : 'Vehicle Maintenance & Service',
+    invoiceNumber,
+    date: invoiceDate,
+    serviceType,
     customer: {
       name: customerName,
       phone: customerPhone,
-      vehicleModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
-      vehicleReg: regMatch ? regMatch[1].trim() : 'As Per Estimate',
+      vehicleModel,
+      vehicleReg: reg,
     },
     vehicle: {
-      makeModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
-      registrationNo: regMatch ? regMatch[1].trim() : undefined,
-      refEstimate: estMatch ? estMatch[1].trim() : undefined,
+      makeModel: vehicleModel,
+      registrationNo: reg,
+      refEstimate,
     },
     items: items.length > 0 ? items : [
       {
-        description: srvMatch ? srvMatch[1].trim().toUpperCase() : 'VEHICLE MAINTENANCE & SERVICE',
+        description: serviceType.toUpperCase(),
         details: 'Certified mechanical inspection and servicing',
         quantity: 1,
         unitPrice: total,
         total,
       },
     ],
-    subtotal,
+    subtotal: subtotal || total,
     discount,
     tax: Math.round(total * 0.18),
     total,
@@ -287,16 +334,25 @@ function parseGeminiSowPdf(text: string): ImportParseResult | null {
 }
 
 function parseGenericInvoicePdf(text: string): ImportParseResult {
-  const invNum = /(?:Invoice|Bill|Inv|Receipt)\s*(?:No|Number|#)?[:\s]+([A-Z0-9\-_]+)/i.exec(text);
-  const dateMatch = /(?:Date|Dated)[:\s]+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i.exec(text);
-  const totalMatch = /(?:Total|Grand Total|Net Amount|Total Amount)[:\s]*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
-  const custMatch = /(?:Customer|Billed To|Client|Party Name)[:\s]+([^\n]+)/i.exec(text);
-  const phoneMatch = /(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i.exec(text) ||
-                     /(?:\+91[\s-]?)?[6-9]\d{9}/.exec(text);
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+
+  const invLine = lines.find((l) => /(?:invoice|bill|receipt)[^:\n]*:/i.test(l));
+  const invNum = invLine ? invLine.split(':')[1]?.trim() : null;
+
+  const dateLine = lines.find((l) => /date[^:\n]*:/i.test(l));
+  const dateStr = dateLine ? dateLine.split(':')[1]?.trim() : new Date().toLocaleDateString('en-GB');
+
+  const custLine = lines.find((l) => /(?:customer|billed to|client|party)[^:\n]*:/i.test(l));
+  const custName = custLine ? custLine.split(':')[1]?.trim() : 'Imported Customer';
+
+  const phoneMatch = /(?:\+91[\s-]?)?[6-9]\d{9}/.exec(text);
+  const customerPhone = phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '';
+
+  const totalLine = lines.find((l) => /total/i.test(l));
+  const totalNum = totalLine ? /([\d,]+(?:\.\d+)?)/.exec(totalLine.replace(/,/g, '')) : null;
 
   const genericItems: ImportedLineItem[] = [];
-  const lines = text.split('\n');
-  const rowRegex = /^([a-zA-Z\s&/()-]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/;
+  const rowRegex = /^([^\d\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/;
 
   for (const line of lines) {
     const rowMatch = rowRegex.exec(line);
@@ -313,13 +369,14 @@ function parseGenericInvoicePdf(text: string): ImportParseResult {
   }
 
   const itemsSubtotal = genericItems.reduce((acc, i) => acc + i.total, 0);
-  const grandTotal = totalMatch ? Number.parseFloat(totalMatch[1].replace(/,/g, '')) : Math.max(0, itemsSubtotal);
+  const grandTotal = totalNum ? Number.parseFloat(totalNum[1]) : Math.max(0, itemsSubtotal);
+
   const invoice: ImportedInvoice = {
-    invoiceNumber: invNum ? invNum[1].trim() : `INV-${Date.now().toString().slice(-6)}`,
-    date: dateMatch ? dateMatch[1].trim() : new Date().toLocaleDateString('en-GB'),
+    invoiceNumber: invNum || `INV-${Date.now().toString().slice(-6)}`,
+    date: dateStr,
     customer: {
-      name: custMatch ? custMatch[1].trim() : 'Imported Customer',
-      phone: phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '',
+      name: custName,
+      phone: customerPhone,
     },
     items: genericItems.length > 0 ? genericItems : [
       {

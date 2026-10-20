@@ -116,7 +116,7 @@ export default function SettingsPage() {
     }
   }, []);
 
-  const handleUpdateIdentity = async (e: React.FormEvent) => {
+  const handleUpdateIdentity = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!profileName.trim()) {
       toast.error('Profile Name cannot be empty');
