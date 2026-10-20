@@ -29,7 +29,11 @@ export async function GET(request: Request) {
         OR: [{ id }, { invoiceNumber: id }, { jobCardId: id }],
       },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            vehicles: true,
+          },
+        },
         items: true,
         jobCard: {
           include: {
@@ -174,20 +178,70 @@ export async function GET(request: Request) {
       }
     }
 
-    // Vehicle and Service Type Resolution
-    const vehicleObj = invoice?.jobCard?.vehicle || jobCard?.vehicle;
-    const vehicleData = vehicleObj
-      ? {
-          makeModel: `${vehicleObj.make || ''} ${vehicleObj.model || ''}`.trim() || 'Hero Xtreme 200 (2019 ABS Variant)',
-          registrationNo: vehicleObj.registrationNo || 'As Per Estimate',
-          refEstimate: invoice?.jobCard?.jobNumber ? `Ref: ${invoice.jobCard.jobNumber}` : undefined,
-        }
-      : {
-          makeModel: 'Hero Xtreme 200 (2019 ABS Variant)',
-          registrationNo: 'As Per Estimate',
-        };
+    // Extract vehicle & service scope metadata from invoice notes
+    let notesVehicleModel: string | null = null;
+    let notesVehicleReg: string | null = null;
+    let notesServiceScope: string | null = null;
 
-    const serviceType = invoice?.jobCard?.description || jobCard?.description || 'Half Engine Rebuild';
+    if (invoice?.notes) {
+      try {
+        const parsed = JSON.parse(invoice.notes);
+        if (typeof parsed === 'object' && parsed !== null) {
+          notesVehicleModel = parsed.vehicleModel || parsed.model || null;
+          notesVehicleReg = parsed.vehicleReg || parsed.registrationNo || null;
+          notesServiceScope = parsed.serviceScope || parsed.serviceType || null;
+        }
+      } catch {
+        const vehMatch = invoice.notes.match(/\[VEHICLE:\s*([^|\]]+)/i);
+        const regMatch = invoice.notes.match(/REG:\s*([^|\]]+)/i);
+        const scopeMatch = invoice.notes.match(/SCOPE:\s*([^|\]]+)/i);
+        if (vehMatch) notesVehicleModel = vehMatch[1].trim();
+        if (regMatch) notesVehicleReg = regMatch[1].trim();
+        if (scopeMatch) notesServiceScope = scopeMatch[1].trim();
+      }
+    }
+
+    // Vehicle and Service Type Resolution
+    const vehicleObj =
+      invoice?.jobCard?.vehicle ||
+      jobCard?.vehicle ||
+      (invoice?.customer as any)?.vehicles?.[0] ||
+      (jobCard?.customer as any)?.vehicles?.[0];
+
+    const customerVehicleMakeModel =
+      vehicleObj && vehicleObj.make && vehicleObj.make !== 'Standard Vehicle'
+        ? `${vehicleObj.make || ''} ${vehicleObj.model || ''}`.trim()
+        : null;
+
+    // Detect if items mention Classic 350 or other motorcycle model
+    const allItemText = items.map((i) => i.description).join(' ');
+    const detectedModel =
+      notesVehicleModel ||
+      customerVehicleMakeModel ||
+      (allItemText.toLowerCase().includes('classic') ? 'Royal Enfield Classic 350' : null) ||
+      (allItemText.toLowerCase().includes('himalayan') ? 'Royal Enfield Himalayan 411' : null) ||
+      'Royal Enfield Classic 350';
+
+    const vehicleRegNo =
+      notesVehicleReg ||
+      vehicleObj?.registrationNo ||
+      'As Per Estimate';
+
+    const vehicleData = {
+      makeModel: detectedModel,
+      registrationNo: vehicleRegNo,
+      refEstimate: invoice?.jobCard?.jobNumber ? `Ref: ${invoice.jobCard.jobNumber}` : undefined,
+    };
+
+    const serviceType =
+      notesServiceScope ||
+      invoice?.jobCard?.description ||
+      jobCard?.description ||
+      (detectedModel.includes('Classic 350')
+        ? 'Classic 350 Overhaul & Service'
+        : detectedModel.includes('Himalayan')
+        ? 'Himalayan 411 Rebuild & Service'
+        : 'Precision Maintenance & Overhaul');
 
     const userBranding = invoice?.user?.branding || jobCard?.user?.branding;
     const paymentQrUrl = userBranding?.paymentQrUrl || null;

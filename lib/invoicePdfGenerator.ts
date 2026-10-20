@@ -201,7 +201,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(...PRIMARY_COLOR);
-    doc.text(data.serviceType || 'Half Engine Rebuild', margin + colW, currentY + 5);
+    doc.text(data.serviceType || 'Periodic Maintenance & Overhaul', margin + colW, currentY + 5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);

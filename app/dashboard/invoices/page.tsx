@@ -42,6 +42,13 @@ interface CustomerOption {
   id: string;
   name: string;
   phone: string;
+  vehicles?: {
+    id: string;
+    registrationNo: string;
+    make: string;
+    model: string;
+    year?: number;
+  }[];
 }
 
 export default function InvoicesPage() {
@@ -55,6 +62,10 @@ export default function InvoicesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehicleReg, setVehicleReg] = useState('');
+  const [serviceScope, setServiceScope] = useState('');
+  const [invoiceNotes, setInvoiceNotes] = useState('');
   const [paymentMode, setPaymentMode] = useState('cash');
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'ESTIMATE'>('INVOICE');
   const [lineItems, setLineItems] = useState<
@@ -98,6 +109,9 @@ export default function InvoicesPage() {
   const [editDiscount, setEditDiscount] = useState('0');
   const [editPaid, setEditPaid] = useState('0');
   const [editNotes, setEditNotes] = useState('');
+  const [editVehicleModel, setEditVehicleModel] = useState('');
+  const [editVehicleReg, setEditVehicleReg] = useState('');
+  const [editServiceScope, setEditServiceScope] = useState('');
   const [editLineItems, setEditLineItems] = useState<
     { description: string; details?: string; quantity: number; unitPrice: number }[]
   >([]);
@@ -129,7 +143,43 @@ export default function InvoicesPage() {
     setEditStatus(inv.status || 'paid');
     setEditDiscount(String((inv as any).discount || 0));
     setEditPaid(String(inv.paid || 0));
-    setEditNotes((inv as any).notes || '');
+
+    let vModel = '';
+    let vReg = '';
+    let vScope = '';
+    let rawNotes = (inv as any).notes || '';
+
+    if (rawNotes) {
+      try {
+        const parsed = JSON.parse(rawNotes);
+        if (typeof parsed === 'object' && parsed !== null) {
+          vModel = parsed.vehicleModel || parsed.model || '';
+          vReg = parsed.vehicleReg || parsed.registrationNo || '';
+          vScope = parsed.serviceScope || parsed.serviceType || '';
+          rawNotes = parsed.userNotes || '';
+        }
+      } catch {
+        const vehMatch = rawNotes.match(/\[VEHICLE:\s*([^|\]]+)/i);
+        const regMatch = rawNotes.match(/REG:\s*([^|\]]+)/i);
+        const scopeMatch = rawNotes.match(/SCOPE:\s*([^|\]]+)/i);
+        if (vehMatch) vModel = vehMatch[1].trim();
+        if (regMatch) vReg = regMatch[1].trim();
+        if (scopeMatch) vScope = scopeMatch[1].trim();
+      }
+    }
+
+    if (!vModel) {
+      const v = (inv as any).jobCard?.vehicle || (inv as any).customer?.vehicles?.[0];
+      if (v) {
+        vModel = `${v.make || ''} ${v.model || ''}`.trim();
+        vReg = v.registrationNo || '';
+      }
+    }
+
+    setEditVehicleModel(vModel);
+    setEditVehicleReg(vReg);
+    setEditServiceScope(vScope);
+    setEditNotes(rawNotes);
     setEditLineItems(
       (inv.items || []).map((it) => ({
         description: it.description,
@@ -161,10 +211,17 @@ export default function InvoicesPage() {
       const paidVal = Number(editPaid) || 0;
       const balanceVal = Math.max(0, totalVal - paidVal);
 
+      const finalNotes = JSON.stringify({
+        vehicleModel: editVehicleModel.trim() || undefined,
+        vehicleReg: editVehicleReg.trim() || undefined,
+        serviceScope: editServiceScope.trim() || undefined,
+        userNotes: editNotes.trim() || undefined,
+      });
+
       const payload = {
         paymentMode: editPaymentMode,
         status: editStatus,
-        notes: editNotes,
+        notes: finalNotes,
         subtotal,
         discount: discountVal,
         tax: taxVal,
@@ -221,6 +278,16 @@ export default function InvoicesPage() {
         setCustomers(list);
         if (list.length > 0) {
           setSelectedCustomerId(list[0].id);
+          if (list[0].vehicles && list[0].vehicles.length > 0) {
+            const v = list[0].vehicles[0];
+            const fullModel = `${v.make || ''} ${v.model || ''}`.trim();
+            if (fullModel && !fullModel.toLowerCase().includes('standard')) {
+              setVehicleModel(fullModel);
+            }
+            if (v.registrationNo) {
+              setVehicleReg(v.registrationNo);
+            }
+          }
         }
       }
     } catch (err) {
@@ -453,6 +520,8 @@ export default function InvoicesPage() {
 
   const handleApplyQuickTemplate = (templateType: 'himalayan' | 'classic' | 'service') => {
     if (templateType === 'himalayan') {
+      setVehicleModel('Royal Enfield Himalayan 411');
+      setServiceScope('Himalayan 411 Rebuild & Service');
       setLineItems([
         {
           description: 'CYLINDER BLOCK & PISTON KIT (OEM)',
@@ -505,6 +574,8 @@ export default function InvoicesPage() {
       ]);
       toast.success('Loaded Himalayan 411 Rebuild SOW Package with Gemini details!');
     } else if (templateType === 'classic') {
+      setVehicleModel('Royal Enfield Classic 350');
+      setServiceScope('Classic 350 Overhaul & Service');
       setLineItems([
         {
           description: 'CYLINDER BORE & PISTON OVERSIZE KIT',
@@ -642,6 +713,14 @@ export default function InvoicesPage() {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.id || localStorage.getItem('userId') || 'cmv4zl4620001d96sd1e0qto2';
 
+      const finalNotes = JSON.stringify({
+        vehicleModel: vehicleModel.trim() || undefined,
+        vehicleReg: vehicleReg.trim() || undefined,
+        serviceScope: serviceScope.trim() || undefined,
+        userNotes: invoiceNotes.trim() || undefined,
+        isEstimate: invoiceType === 'ESTIMATE',
+      });
+
       const payload = {
         userId,
         customerId: selectedCustomerId,
@@ -652,7 +731,7 @@ export default function InvoicesPage() {
         total: calculatedTotal,
         docType: invoiceType,
         isEstimate: invoiceType === 'ESTIMATE',
-        notes: invoiceType === 'ESTIMATE' ? '[ESTIMATE] Workshop Quotation' : undefined,
+        notes: finalNotes,
         items: lineItems.map((item) => {
           let det = item.details;
           if (!det || !det.trim()) {
@@ -1122,7 +1201,21 @@ export default function InvoicesPage() {
                 </label>
                 <select
                   value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  onChange={(e) => {
+                    const cId = e.target.value;
+                    setSelectedCustomerId(cId);
+                    const cust = customers.find((c) => c.id === cId);
+                    if (cust?.vehicles && cust.vehicles.length > 0) {
+                      const v = cust.vehicles[0];
+                      const fullModel = `${v.make || ''} ${v.model || ''}`.trim();
+                      if (fullModel && !fullModel.toLowerCase().includes('standard')) {
+                        setVehicleModel(fullModel);
+                      }
+                      if (v.registrationNo) {
+                        setVehicleReg(v.registrationNo);
+                      }
+                    }
+                  }}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                   required
                 >
@@ -1132,6 +1225,46 @@ export default function InvoicesPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Vehicle & Service Scope Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-muted/40 border border-border">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Vehicle Make & Model
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Royal Enfield Classic 350"
+                    value={vehicleModel}
+                    onChange={(e) => setVehicleModel(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Registration No.
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. GJ01PU7510"
+                    value={vehicleReg}
+                    onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Service Scope / Title
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Classic 350 Overhaul & Service"
+                    value={serviceScope}
+                    onChange={(e) => setServiceScope(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                  />
+                </div>
               </div>
 
               {/* Payment Mode */}
@@ -1419,6 +1552,46 @@ export default function InvoicesPage() {
                     <option value="bank_transfer">Bank Transfer</option>
                     <option value="cheque">Cheque</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Vehicle & Service Scope Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-black/20 dark:bg-black/40 border border-border/60">
+                <div>
+                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                    Vehicle Make & Model
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Royal Enfield Classic 350"
+                    value={editVehicleModel}
+                    onChange={(e) => setEditVehicleModel(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                    Registration No.
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. GJ01PU7510"
+                    value={editVehicleReg}
+                    onChange={(e) => setEditVehicleReg(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold uppercase focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                    Service Scope / Title
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Classic 350 Overhaul & Service"
+                    value={editServiceScope}
+                    onChange={(e) => setEditServiceScope(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-1 focus:ring-amber-500"
+                  />
                 </div>
               </div>
 
