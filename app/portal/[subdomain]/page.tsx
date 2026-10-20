@@ -1,12 +1,11 @@
-import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import PortalClientView from './PortalClientView';
 
 interface PortalPageProps {
-  params: Promise<{ subdomain: string }>;
+  readonly params: Promise<{ readonly subdomain: string }>;
 }
 
-export default async function TenantPortalPage({ params }: PortalPageProps) {
+export default async function TenantPortalPage({ params }: Readonly<PortalPageProps>) {
   const { subdomain } = await params;
   const cleanSubdomain = (subdomain || '').toLowerCase().trim();
 

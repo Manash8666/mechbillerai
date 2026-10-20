@@ -58,12 +58,12 @@ export default function CustomersScreen() {
   };
 
   useEffect(() => {
-    fetchCustomers();
+    void fetchCustomers();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchCustomers();
+    void fetchCustomers();
   };
 
   const handleCreateCustomer = async () => {

@@ -31,7 +31,7 @@ export default function CheckoutScreen() {
     phone?: string | null;
     tagline?: string | null;
   }>({});
-  const [selectedQrJob, setSelectedQrJob] = useState<any | null>(null);
+  const [selectedQrJob, setSelectedQrJob] = useState<any>(null);
   const [qrModalVisible, setQrModalVisible] = useState(false);
 
   const fetchBrandingData = async () => {
@@ -117,92 +117,87 @@ export default function CheckoutScreen() {
       });
     }
 
-    // 2. Direct Android UPI Intent Chooser
-    actions.push({
-      text: '📱 Pay via UPI Intent',
-      onPress: async () => {
-        if (!workshopBranding.upiId) {
-          Alert.alert('UPI ID Missing', 'Please configure your UPI VPA in Settings > Branding.');
-          return;
-        }
-        const { launchMobileUpiPayment } = await import('../services/payments');
-        await launchMobileUpiPayment({
-          vpa: workshopBranding.upiId,
-          payeeName: workshopBranding.garageName || 'Workshop',
-          amount,
-          invoiceNumber: jobNumber || id,
-        });
-        try {
-          await API.updateJobCardStatus(id, 'completed');
+    // Append remaining payment and sharing actions
+    actions.push(
+      {
+        text: '📱 Pay via UPI Intent',
+        onPress: async () => {
+          if (!workshopBranding.upiId) {
+            Alert.alert('UPI ID Missing', 'Please configure your UPI VPA in Settings > Branding.');
+            return;
+          }
+          const { launchMobileUpiPayment } = await import('../services/payments');
+          await launchMobileUpiPayment({
+            vpa: workshopBranding.upiId,
+            payeeName: workshopBranding.garageName || 'Workshop',
+            amount,
+            invoiceNumber: jobNumber || id,
+          });
+          try {
+            await API.updateJobCardStatus(id, 'completed');
+            setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
+          } catch (e) {
+            console.warn('Local completion update:', e);
+          }
+        },
+      },
+      {
+        text: '💬 Share Bill on WhatsApp',
+        onPress: async () => {
+          const { launchWhatsAppBill } = await import('../services/payments');
+          const pdfUrl = API.getInvoicePdfUrl(jobNumber || id, 'INVOICE');
+          await launchWhatsAppBill({
+            phone: customerPhone || '',
+            customerName: customerName || 'Valued Customer',
+            vehicleNumber: vehicle,
+            invoiceNumber: jobNumber || id,
+            totalAmount: amount,
+            paidAmount: 0,
+            balanceAmount: amount,
+            garageName: workshopBranding.garageName || 'Workshop',
+            invoiceUrl: pdfUrl,
+          });
+        },
+      },
+      {
+        text: '🖨️ Print Thermal Slip',
+        onPress: async () => {
+          const { printOrShareReceipt } = await import('../services/thermalPrinter');
+          const { decodeIndianLicensePlate } = await import('../services/rtoLookup');
+          const rto = decodeIndianLicensePlate(vehicle);
+          await printOrShareReceipt({
+            workshopName: workshopBranding.garageName || 'Workshop',
+            tagline: workshopBranding.tagline || 'Express Garage & Diagnostics',
+            phone: workshopBranding.phone || '',
+            invoiceNumber: jobNumber || id,
+            date: new Date().toLocaleDateString('en-IN'),
+            customerName: customerName || 'Valued Customer',
+            vehicleNumber: vehicle,
+            rtoOffice: rto.rtoOffice,
+            items: [{ description: 'Vehicle Maintenance & Repairs', qty: 1, amount }],
+            subtotal: amount,
+            total: amount,
+            paid: amount,
+            balance: 0,
+            paymentMode: 'UPI / Cash',
+            upiVpa: workshopBranding.upiId || undefined,
+          });
+        },
+      },
+      {
+        text: '💵 Cash Received',
+        onPress: async () => {
+          try {
+            await API.updateJobCardStatus(id, 'completed');
+          } catch (e) {
+            console.warn('Silent local completion fallback:', e);
+          }
           setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
-        } catch (e) {
-          console.warn('Local completion update:', e);
-        }
+          Alert.alert('Payment Recorded', `Collected ₹${amount.toLocaleString('en-IN')} cash for ${vehicle}.`);
+        },
       },
-    });
-
-    // 3. Share Bill on WhatsApp
-    actions.push({
-      text: '💬 Share Bill on WhatsApp',
-      onPress: async () => {
-        const { launchWhatsAppBill } = await import('../services/payments');
-        const pdfUrl = API.getInvoicePdfUrl(jobNumber || id, 'INVOICE');
-        await launchWhatsAppBill({
-          phone: customerPhone || '',
-          customerName: customerName || 'Valued Customer',
-          vehicleNumber: vehicle,
-          invoiceNumber: jobNumber || id,
-          totalAmount: amount,
-          paidAmount: 0,
-          balanceAmount: amount,
-          garageName: workshopBranding.garageName || 'Workshop',
-          invoiceUrl: pdfUrl,
-        });
-      },
-    });
-
-    // 4. Print Thermal Slip
-    actions.push({
-      text: '🖨️ Print Thermal Slip',
-      onPress: async () => {
-        const { printOrShareReceipt } = await import('../services/thermalPrinter');
-        const { decodeIndianLicensePlate } = await import('../services/rtoLookup');
-        const rto = decodeIndianLicensePlate(vehicle);
-        await printOrShareReceipt({
-          workshopName: workshopBranding.garageName || 'Workshop',
-          tagline: workshopBranding.tagline || 'Express Garage & Diagnostics',
-          phone: workshopBranding.phone || '',
-          invoiceNumber: jobNumber || id,
-          date: new Date().toLocaleDateString('en-IN'),
-          customerName: customerName || 'Valued Customer',
-          vehicleNumber: vehicle,
-          rtoOffice: rto.rtoOffice,
-          items: [{ description: 'Vehicle Maintenance & Repairs', qty: 1, amount }],
-          subtotal: amount,
-          total: amount,
-          paid: amount,
-          balance: 0,
-          paymentMode: 'UPI / Cash',
-          upiVpa: workshopBranding.upiId || undefined,
-        });
-      },
-    });
-
-    // 5. Cash Received
-    actions.push({
-      text: '💵 Cash Received',
-      onPress: async () => {
-        try {
-          await API.updateJobCardStatus(id, 'completed');
-        } catch (e) {
-          console.warn('Silent local completion fallback:', e);
-        }
-        setQuickPayJobs((prev) => prev.filter((j) => j.id !== id));
-        Alert.alert('Payment Recorded', `Collected ₹${amount.toLocaleString('en-IN')} cash for ${vehicle}.`);
-      },
-    });
-
-    actions.push({ text: 'Cancel', style: 'cancel' });
+      { text: 'Cancel', style: 'cancel' }
+    );
 
     Alert.alert(
       `Collect ₹${amount.toLocaleString('en-IN')}`,
@@ -230,6 +225,8 @@ export default function CheckoutScreen() {
         });
       }
     } catch (e: any) {
+      // Fallback: If device has no direct PDF intent, display the shareable direct link modal
+      console.warn('Direct PDF open failed, falling back to manual share dialog:', e);
       Alert.alert(
         `${label} Ready`,
         `PDF Link: ${url}`,

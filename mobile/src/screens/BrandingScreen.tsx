@@ -35,7 +35,7 @@ export default function BrandingScreen() {
   const [primaryColor, setPrimaryColor] = useState('#C9A84C');
 
   useEffect(() => {
-    fetchBranding();
+    void fetchBranding();
   }, []);
 
   const fetchBranding = async () => {

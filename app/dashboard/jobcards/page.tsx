@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert, Zap, Download, X, Camera, Mic, Edit3, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Clock, ShieldAlert, Zap, Download, X, Camera, Mic, Edit3, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ExpressIntakeModal from '@/components/ExpressIntakeModal';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
-import { generateJobCardPdf } from '@/lib/jobCardPdfGenerator';
-import { generateInvoiceOrEstimatePdf } from '@/lib/invoicePdfGenerator';
 
 interface JobCard {
   id: string;
@@ -72,7 +70,7 @@ export default function JobCardsPage() {
       const response = await fetch(`/api/jobcards?userId=${userId}`);
       if (response.ok) {
         const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        if (contentType?.includes('application/json')) {
           const result = await response.json();
           setJobCards(Array.isArray(result) ? result : result.data || []);
         }
@@ -103,7 +101,7 @@ export default function JobCardsPage() {
       link.download = defaultFilename;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       toast.success(`${defaultFilename} downloaded!`, { id: toastId });
     } catch (err: any) {
@@ -209,7 +207,7 @@ export default function JobCardsPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateJobCard = async (e: React.FormEvent) => {
+  const handleUpdateJobCard = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingJob) return;
 
@@ -272,21 +270,6 @@ export default function JobCardsPage() {
         return 'text-slate-400';
       default:
         return 'text-slate-400';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="w-4 h-4" />;
-      case 'in-progress':
-        return <AlertCircle className="w-4 h-4" />;
-      case 'completed':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'cancelled':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
     }
   };
 
@@ -655,7 +638,7 @@ export default function JobCardsPage() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteJobCard(job.id, job.jobNumber);
+                          void handleDeleteJobCard(job.id, job.jobNumber);
                         }}
                         className="px-2.5 py-1.5 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 font-bold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 shadow-sm"
                         title="Delete Job Card"
@@ -716,7 +699,7 @@ export default function JobCardsPage() {
         try {
           shieldData = typeof selectedShieldJob.preInspectionShield === 'string'
             ? JSON.parse(selectedShieldJob.preInspectionShield)
-            : (selectedShieldJob.preInspectionShield || {});
+            : (selectedShieldJob.preInspectionShield ?? {});
         } catch {
           shieldData = {};
         }
@@ -735,7 +718,7 @@ export default function JobCardsPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                      Pre-Inspection Liability Proof Shield
+                      <span>Pre-Inspection Liability Proof Shield</span>
                       <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
                         VERIFIED INTAKE
                       </span>
@@ -789,13 +772,18 @@ export default function JobCardsPage() {
                           </div>
                           <div className="aspect-4/3 rounded-xl border border-border bg-black/40 overflow-hidden flex items-center justify-center relative">
                             {photoUrl ? (
-                              <img
-                                src={photoUrl}
-                                alt={`${angle} vehicle condition`}
-                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              <button
+                                type="button"
                                 onClick={() => window.open(photoUrl, '_blank')}
+                                className="w-full h-full p-0 border-0 bg-transparent block cursor-pointer"
                                 title="Click to view full resolution in new tab"
-                              />
+                              >
+                                <img
+                                  src={photoUrl}
+                                  alt={`${angle} vehicle condition`}
+                                  className="w-full h-full object-cover hover:scale-105 transition-transform"
+                                />
+                              </button>
                             ) : (
                               <div className="text-center p-3">
                                 <Camera className="w-6 h-6 text-muted-foreground mx-auto mb-1 opacity-50" />
@@ -872,8 +860,9 @@ export default function JobCardsPage() {
             <form onSubmit={handleUpdateJobCard} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Status</label>
+                  <label htmlFor="edit-jobcard-status" className="text-xs font-semibold text-muted-foreground">Status</label>
                   <select
+                    id="edit-jobcard-status"
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
@@ -885,8 +874,9 @@ export default function JobCardsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Priority</label>
+                  <label htmlFor="edit-jobcard-priority" className="text-xs font-semibold text-muted-foreground">Priority</label>
                   <select
+                    id="edit-jobcard-priority"
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value)}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
@@ -900,8 +890,9 @@ export default function JobCardsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Work Description</label>
+                <label htmlFor="edit-jobcard-description" className="text-xs font-semibold text-muted-foreground">Work Description</label>
                 <textarea
+                  id="edit-jobcard-description"
                   rows={3}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
@@ -912,8 +903,9 @@ export default function JobCardsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Estimated Cost (₹)</label>
+                  <label htmlFor="edit-jobcard-estimated-cost" className="text-xs font-semibold text-muted-foreground">Estimated Cost (₹)</label>
                   <input
+                    id="edit-jobcard-estimated-cost"
                     type="number"
                     min="0"
                     value={editEstimatedCost}
@@ -923,8 +915,9 @@ export default function JobCardsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Actual Cost (₹) (Optional)</label>
+                  <label htmlFor="edit-jobcard-actual-cost" className="text-xs font-semibold text-muted-foreground">Actual Cost (₹) (Optional)</label>
                   <input
+                    id="edit-jobcard-actual-cost"
                     type="number"
                     min="0"
                     placeholder="Leave blank if pending"
@@ -936,8 +929,9 @@ export default function JobCardsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Notes / Technician Remarks</label>
+                <label htmlFor="edit-jobcard-notes" className="text-xs font-semibold text-muted-foreground">Notes / Technician Remarks</label>
                 <textarea
+                  id="edit-jobcard-notes"
                   rows={2}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}

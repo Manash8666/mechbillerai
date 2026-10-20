@@ -157,7 +157,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       setActivatingKey(true);
       const res = await API.activateLicense(licenseKeyInput.trim().toUpperCase());
-      if (res && res.error) {
+      if (res?.error) {
         Alert.alert('Activation Failed', res.error);
       } else {
         Alert.alert(
@@ -215,6 +215,40 @@ export default function SettingsScreen({ navigation }: any) {
       onPress: () => setIsPrinterModalOpen(true),
     },
   ];
+
+  const getLicenseBadgeStyle = (lic: any) => {
+    if (lic?.isVip) return styles.badgeVip;
+    if (lic?.isPro) return styles.badgePro;
+    if (lic?.isExpired) return styles.badgeExpired;
+    return styles.badgeTrial;
+  };
+
+  const getLicenseBadgeIcon = (lic: any): any => {
+    if (lic?.isVip) return 'crown';
+    if (lic?.isPro) return 'check-decagram';
+    if (lic?.isExpired) return 'alert-circle';
+    return 'clock-outline';
+  };
+
+  const getLicenseBadgeColor = (lic: any): string => {
+    if (lic?.isVip) return '#D97706';
+    if (lic?.isPro) return '#10B981';
+    if (lic?.isExpired) return '#EF4444';
+    return COLORS.primary;
+  };
+
+  const getLicenseBadgeTitle = (lic: any): string => {
+    if (lic?.isVip) return 'VIP Founding Partner Garage';
+    if (lic?.isPro) return 'MotoBan Pro Licensed';
+    if (lic?.isExpired) return '15-Day Trial Expired';
+    return `15-Day Free Trial (${lic?.daysRemaining ?? 15} Days Left)`;
+  };
+
+  const getLicenseBadgeSub = (lic: any): string => {
+    if (lic?.isVip) return '100% Free Lifetime Full Access to all ecosystem modules.';
+    if (lic?.isPro) return 'Commercial license active. Unlimited bills, job cards, and sync.';
+    return 'Max 2 Bills, 2 Estimates, and 2 Job Cards per day.';
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -438,31 +472,18 @@ export default function SettingsScreen({ navigation }: any) {
 
             <ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 24 }}>
               {/* Status Header Badge */}
-              <View style={[
-                styles.licenseBadgeBox,
-                licensingData?.isVip ? styles.badgeVip : licensingData?.isPro ? styles.badgePro : licensingData?.isExpired ? styles.badgeExpired : styles.badgeTrial
-              ]}>
+              <View style={[styles.licenseBadgeBox, getLicenseBadgeStyle(licensingData)]}>
                 <MaterialCommunityIcons
-                  name={licensingData?.isVip ? 'crown' : licensingData?.isPro ? 'check-decagram' : licensingData?.isExpired ? 'alert-circle' : 'clock-outline'}
+                  name={getLicenseBadgeIcon(licensingData)}
                   size={20}
-                  color={licensingData?.isVip ? '#D97706' : licensingData?.isPro ? '#10B981' : licensingData?.isExpired ? '#EF4444' : COLORS.primary}
+                  color={getLicenseBadgeColor(licensingData)}
                 />
                 <View style={{ marginLeft: 10, flex: 1 }}>
                   <Text style={styles.licenseBadgeTitle}>
-                    {licensingData?.isVip
-                      ? 'VIP Founding Partner Garage'
-                      : licensingData?.isPro
-                      ? 'MotoBan Pro Licensed'
-                      : licensingData?.isExpired
-                      ? '15-Day Trial Expired'
-                      : `15-Day Free Trial (${licensingData?.daysRemaining ?? 15} Days Left)`}
+                    {getLicenseBadgeTitle(licensingData)}
                   </Text>
                   <Text style={styles.licenseBadgeSub}>
-                    {licensingData?.isVip
-                      ? '100% Free Lifetime Full Access to all ecosystem modules.'
-                      : licensingData?.isPro
-                      ? 'Commercial license active. Unlimited bills, job cards, and sync.'
-                      : 'Max 2 Bills, 2 Estimates, and 2 Job Cards per day.'}
+                    {getLicenseBadgeSub(licensingData)}
                   </Text>
                 </View>
               </View>

@@ -315,16 +315,18 @@ Return strictly a JSON object formatted as:
 
   // If user provided bullet points or line-by-line items
   const lines = cleanPrompt
-    .split(/\n|,|;/)
+    .split(/[\n,;]/)
     .map((l) => l.replace(/^[\d\s.\-*•]+/, '').trim())
     .filter((l) => l.length > 2);
 
   if (lines.length >= 2) {
-    const items: DraftedBillItem[] = lines.map((line) => {
+    const priceRegex = /(?:rs\.?|inr|₹)?\s*(\d{2,6})$/i;
+    const items: DraftedBillItem[] = lines.map((rawLine) => {
+      const line = rawLine.trim();
       // Check if price is at the end (e.g. "Cylinder block 4500" or "Lathe work Rs 1200")
-      const priceMatch = line.match(/(?:rs\.?|inr|₹)?\s*(\d{2,6})\s*$/i);
+      const priceMatch = priceRegex.exec(line);
       const unitPrice = priceMatch ? Number(priceMatch[1]) : 850;
-      const cleanDesc = line.replace(/(?:rs\.?|inr|₹)?\s*\d{2,6}\s*$/i, '').trim() || line;
+      const cleanDesc = line.replace(priceRegex, '').trim() || line;
       return {
         description: cleanDesc.toUpperCase(),
         details: getAutomotiveTechnicalExplanation(cleanDesc),

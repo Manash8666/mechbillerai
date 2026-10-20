@@ -8,11 +8,9 @@ import {
   Check,
   X,
   ShieldAlert,
-  Sparkles,
   RotateCcw,
   Trash2,
   Video,
-  Volume2,
 } from 'lucide-react';
 import PearlButton from '@/components/PearlButton';
 
@@ -210,8 +208,8 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
 
       recognition.onresult = (event: any) => {
         let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript + ' ';
+        for (const res of event.results) {
+          transcript += res[0].transcript + ' ';
         }
         setVoiceNote(transcript.trim());
       };
@@ -515,9 +513,10 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
                       </div>
                     ) : (
                       /* Empty Camera Snap Card */
-                      <div
+                      <button
+                        type="button"
                         onClick={() => triggerCamera(side)}
-                        className="aspect-4/3 rounded-xl border-2 border-dashed border-luxury-gold/40 bg-luxury-canvas-light/60 dark:bg-luxury-canvas-dark/60 text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 hover:border-luxury-gold hover:bg-luxury-gold/10 transition-all p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center"
+                        className="w-full aspect-4/3 rounded-xl border-2 border-dashed border-luxury-gold/40 bg-luxury-canvas-light/60 dark:bg-luxury-canvas-dark/60 text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 hover:border-luxury-gold hover:bg-luxury-gold/10 transition-all p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center"
                       >
                         <div className="w-9 h-9 rounded-full bg-luxury-gold/20 flex items-center justify-center text-luxury-gold">
                           <Camera className="w-5 h-5" />
@@ -528,7 +527,7 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
                         <span className="text-[10px] text-luxury-gold font-medium">
                           Tap to Snap
                         </span>
-                      </div>
+                      </button>
                     )}
                   </div>
                 );

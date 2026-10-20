@@ -90,7 +90,6 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
 
   const PRIMARY_COLOR: [number, number, number] = isEstimate ? [217, 119, 6] : [220, 38, 38]; // Amber for Estimate, Crimson Red for Invoice
   const SLATE_DARK: [number, number, number] = [11, 15, 25]; // #0B0F19 Midnight Titanium
-  const ACCENT_RED: [number, number, number] = [220, 38, 38];
 
   // Clean background
   doc.setFillColor(255, 255, 255);
@@ -136,11 +135,10 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(255, 255, 255);
-  const badgeLabel = isSow
-    ? isEstimate
-      ? 'SOW ESTIMATE'
-      : 'SOW BILL'
-    : data.documentType;
+  let badgeLabel = data.documentType;
+  if (isSow) {
+    badgeLabel = isEstimate ? 'SOW ESTIMATE' : 'SOW BILL';
+  }
   doc.text(badgeLabel, rightX - 29, 16.5, { align: 'center' });
 
   doc.setFontSize(8.5);
@@ -608,9 +606,9 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(75, 85, 99);
-  const contactsLine =
-    data.garage.contacts ||
-    `${data.garage.name}${data.garage.phone ? `: ${data.garage.phone}` : ''} | Authorized Service & Technical Team`;
+  const phonePart = data.garage.phone ? `: ${data.garage.phone}` : '';
+  const defaultContacts = `${data.garage.name}${phonePart} | Authorized Service & Technical Team`;
+  const contactsLine = data.garage.contacts || defaultContacts;
   doc.text(contactsLine, margin, footerY + 4.5);
 
   // Tagline

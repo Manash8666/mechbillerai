@@ -181,7 +181,7 @@ export default function AppointmentsPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateAppointment = async (e: React.FormEvent) => {
+  const handleUpdateAppointment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingAppointment) return;
 
@@ -639,10 +639,11 @@ export default function AppointmentsPage() {
 
             <form onSubmit={handleUpdateAppointment} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-apt-service-type" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Service Type *
                 </label>
                 <select
+                  id="edit-apt-service-type"
                   value={editServiceType}
                   onChange={(e) => setEditServiceType(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -660,10 +661,11 @@ export default function AppointmentsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-apt-date" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Date *
                   </label>
                   <input
+                    id="edit-apt-date"
                     type="date"
                     value={editDate}
                     onChange={(e) => setEditDate(e.target.value)}
@@ -672,10 +674,11 @@ export default function AppointmentsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-apt-status" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Status
                   </label>
                   <select
+                    id="edit-apt-status"
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -691,10 +694,11 @@ export default function AppointmentsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-apt-start-time" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Start Time
                   </label>
                   <input
+                    id="edit-apt-start-time"
                     type="text"
                     value={editStartTime}
                     onChange={(e) => setEditStartTime(e.target.value)}
@@ -703,10 +707,11 @@ export default function AppointmentsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-apt-end-time" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     End Time
                   </label>
                   <input
+                    id="edit-apt-end-time"
                     type="text"
                     value={editEndTime}
                     onChange={(e) => setEditEndTime(e.target.value)}
@@ -717,10 +722,11 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-apt-bay" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Assigned Bay
                 </label>
                 <select
+                  id="edit-apt-bay"
                   value={editBay}
                   onChange={(e) => setEditBay(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -733,10 +739,11 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-apt-description" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Customer Notes / Symptoms
                 </label>
                 <textarea
+                  id="edit-apt-description"
                   rows={2}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}

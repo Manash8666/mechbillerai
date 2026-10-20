@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Filter, FileText, Download, Eye, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3 } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
-import { generateInvoiceOrEstimatePdf } from '@/lib/invoicePdfGenerator';
 import { getAutomotiveTechnicalExplanation } from '@/lib/aiExplainer';
 
 interface Invoice {
@@ -65,7 +64,6 @@ export default function InvoicesPage() {
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleReg, setVehicleReg] = useState('');
   const [serviceScope, setServiceScope] = useState('');
-  const [invoiceNotes, setInvoiceNotes] = useState('');
   const [paymentMode, setPaymentMode] = useState('cash');
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'ESTIMATE'>('INVOICE');
   const [lineItems, setLineItems] = useState<
@@ -103,7 +101,6 @@ export default function InvoicesPage() {
   // Edit Invoice State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-  const [editCustomerId, setEditCustomerId] = useState('');
   const [editPaymentMode, setEditPaymentMode] = useState('cash');
   const [editStatus, setEditStatus] = useState('paid');
   const [editDiscount, setEditDiscount] = useState('0');
@@ -138,7 +135,6 @@ export default function InvoicesPage() {
 
   const handleOpenEditModal = (inv: Invoice) => {
     setEditingInvoice(inv);
-    setEditCustomerId((inv as any).customerId || '');
     setEditPaymentMode(inv.paymentMode || 'cash');
     setEditStatus(inv.status || 'paid');
     setEditDiscount(String((inv as any).discount || 0));
@@ -191,7 +187,7 @@ export default function InvoicesPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateInvoice = async (e: React.FormEvent) => {
+  const handleUpdateInvoice = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingInvoice) return;
     if (editLineItems.length === 0) {
@@ -319,7 +315,7 @@ export default function InvoicesPage() {
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       toast.success(`${fileName} downloaded!`, { id: toastId });
     } catch (err: any) {
@@ -491,7 +487,7 @@ export default function InvoicesPage() {
   };
 
   const handleDraftWithAi = async () => {
-    if (!aiPromptInput || !aiPromptInput.trim()) {
+    if (!aiPromptInput?.trim()) {
       toast.error('Enter a repair job or paste items (e.g. Himalayan 411 engine rebuild)');
       return;
     }
@@ -651,7 +647,7 @@ export default function InvoicesPage() {
   };
 
   const handleAiAutoExplainAll = async () => {
-    const itemsToExplain = lineItems.filter((it) => it.description && it.description.trim());
+    const itemsToExplain = lineItems.filter((it) => it.description?.trim());
     if (itemsToExplain.length === 0) {
       toast.error('Add at least one service or spare title first');
       return;
@@ -701,7 +697,7 @@ export default function InvoicesPage() {
   const calculatedTax = Math.round(calculatedSubtotal * 0.18);
   const calculatedTotal = calculatedSubtotal + calculatedTax;
 
-  const handleCreateInvoice = async (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedCustomerId) {
       toast.error('Please select a customer');
@@ -725,7 +721,7 @@ export default function InvoicesPage() {
         vehicleModel: vehicleModel.trim() || undefined,
         vehicleReg: vehicleReg.trim() || undefined,
         serviceScope: serviceScope.trim() || undefined,
-        userNotes: invoiceNotes.trim() || undefined,
+        userNotes: undefined,
         isEstimate: invoiceType === 'ESTIMATE',
       });
 
@@ -742,11 +738,8 @@ export default function InvoicesPage() {
         notes: finalNotes,
         items: lineItems.map((item) => {
           let det = item.details;
-          if (!det || !det.trim()) {
-            try {
-              const { getAutomotiveTechnicalExplanation } = require('@/lib/aiExplainer');
-              det = getAutomotiveTechnicalExplanation(item.description);
-            } catch (e) {}
+          if (!det?.trim()) {
+            det = getAutomotiveTechnicalExplanation(item.description);
           }
           return {
             description: item.description || 'Workshop Service',
@@ -778,7 +771,7 @@ export default function InvoicesPage() {
       await fetchInvoices();
 
       // Trigger automatic PDF download
-      handleDownloadBillPdf(created, invoiceType);
+      void handleDownloadBillPdf(created, invoiceType);
     } catch (err: any) {
       console.error('Error creating invoice:', err);
       toast.error(err.message || 'Failed to create invoice');
@@ -1135,7 +1128,7 @@ export default function InvoicesPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
-                        handleDraftWithAi();
+                        void handleDraftWithAi();
                       }
                     }}
                   />
@@ -1204,10 +1197,11 @@ export default function InvoicesPage() {
 
               {/* Customer Selector */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <label htmlFor="create-invoice-customer" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Select Customer *
                 </label>
                 <select
+                  id="create-invoice-customer"
                   value={selectedCustomerId}
                   onChange={(e) => {
                     const cId = e.target.value;
@@ -1238,10 +1232,11 @@ export default function InvoicesPage() {
               {/* Vehicle & Service Scope Details */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-muted/40 border border-border">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="create-invoice-vehicle-model" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Vehicle Make & Model
                   </label>
                   <input
+                    id="create-invoice-vehicle-model"
                     type="text"
                     placeholder="e.g. Royal Enfield Classic 350"
                     value={vehicleModel}
@@ -1250,10 +1245,11 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="create-invoice-vehicle-reg" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Registration No.
                   </label>
                   <input
+                    id="create-invoice-vehicle-reg"
                     type="text"
                     placeholder="e.g. GJ01PU7510"
                     value={vehicleReg}
@@ -1262,10 +1258,11 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="create-invoice-service-scope" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Service Scope / Title
                   </label>
                   <input
+                    id="create-invoice-service-scope"
                     type="text"
                     placeholder="e.g. Classic 350 Overhaul & Service"
                     value={serviceScope}
@@ -1277,10 +1274,11 @@ export default function InvoicesPage() {
 
               {/* Payment Mode */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <label htmlFor="create-invoice-payment-mode" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Payment Mode
                 </label>
                 <select
+                  id="create-invoice-payment-mode"
                   value={paymentMode}
                   onChange={(e) => setPaymentMode(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
@@ -1295,9 +1293,9 @@ export default function InvoicesPage() {
               {/* Line Items */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Items & Labor Charges *
-                  </label>
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -1321,7 +1319,7 @@ export default function InvoicesPage() {
 
                 <div className="space-y-3">
                   {lineItems.map((item, index) => (
-                    <div key={index} className="p-3 rounded-xl border border-border bg-muted/20 space-y-2">
+                    <div key={`line-item-${index}`} className="p-3 rounded-xl border border-border bg-muted/20 space-y-2">
                       <div className="flex gap-2 items-center">
                         <input
                           type="text"
@@ -1534,8 +1532,9 @@ export default function InvoicesPage() {
             <form onSubmit={handleUpdateInvoice} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Status</label>
+                  <label htmlFor="edit-invoice-status" className="text-xs font-semibold text-muted-foreground">Status</label>
                   <select
+                    id="edit-invoice-status"
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
@@ -1548,8 +1547,9 @@ export default function InvoicesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Payment Mode</label>
+                  <label htmlFor="edit-invoice-payment-mode" className="text-xs font-semibold text-muted-foreground">Payment Mode</label>
                   <select
+                    id="edit-invoice-payment-mode"
                     value={editPaymentMode}
                     onChange={(e) => setEditPaymentMode(e.target.value)}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
@@ -1566,10 +1566,11 @@ export default function InvoicesPage() {
               {/* Vehicle & Service Scope Details */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-black/20 dark:bg-black/40 border border-border/60">
                 <div>
-                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  <label htmlFor="edit-invoice-vehicle-model" className="block text-[11px] font-bold text-muted-foreground mb-1">
                     Vehicle Make & Model
                   </label>
                   <input
+                    id="edit-invoice-vehicle-model"
                     type="text"
                     placeholder="e.g. Royal Enfield Classic 350"
                     value={editVehicleModel}
@@ -1578,10 +1579,11 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  <label htmlFor="edit-invoice-vehicle-reg" className="block text-[11px] font-bold text-muted-foreground mb-1">
                     Registration No.
                   </label>
                   <input
+                    id="edit-invoice-vehicle-reg"
                     type="text"
                     placeholder="e.g. GJ01PU7510"
                     value={editVehicleReg}
@@ -1590,10 +1592,11 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  <label htmlFor="edit-invoice-service-scope" className="block text-[11px] font-bold text-muted-foreground mb-1">
                     Service Scope / Title
                   </label>
                   <input
+                    id="edit-invoice-service-scope"
                     type="text"
                     placeholder="e.g. Classic 350 Overhaul & Service"
                     value={editServiceScope}
@@ -1625,7 +1628,7 @@ export default function InvoicesPage() {
 
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {editLineItems.map((item, idx) => (
-                    <div key={idx} className="flex gap-2 items-center bg-card/60 p-2 rounded-lg border border-border/40">
+                    <div key={`edit-item-${idx}`} className="flex gap-2 items-center bg-card/60 p-2 rounded-lg border border-border/40">
                       <div className="flex-1">
                         <input
                           type="text"
@@ -1692,8 +1695,9 @@ export default function InvoicesPage() {
               {/* Financials & Discount */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Discount (₹)</label>
+                  <label htmlFor="edit-invoice-discount" className="text-xs font-semibold text-muted-foreground">Discount (₹)</label>
                   <input
+                    id="edit-invoice-discount"
                     type="number"
                     min="0"
                     value={editDiscount}
@@ -1702,8 +1706,9 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Amount Paid (₹)</label>
+                  <label htmlFor="edit-invoice-paid" className="text-xs font-semibold text-muted-foreground">Amount Paid (₹)</label>
                   <input
+                    id="edit-invoice-paid"
                     type="number"
                     min="0"
                     value={editPaid}
@@ -1714,8 +1719,9 @@ export default function InvoicesPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Notes / Remarks</label>
+                <label htmlFor="edit-invoice-notes" className="text-xs font-semibold text-muted-foreground">Notes / Remarks</label>
                 <textarea
+                  id="edit-invoice-notes"
                   rows={2}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}

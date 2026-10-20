@@ -67,12 +67,12 @@ export default function JobCardsScreen({ navigation }: any) {
   };
 
   useEffect(() => {
-    fetchJobs();
+    void fetchJobs();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchJobs();
+    void fetchJobs();
   };
 
   const getStatusColor = (status: string) => {

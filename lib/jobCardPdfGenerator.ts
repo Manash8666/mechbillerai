@@ -181,7 +181,8 @@ export function generateJobCardPdf(data: JobCardPdfData): any {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(80, 80, 95);
-  doc.text(`Odometer / Mileage: ${data.vehicle.mileage ? `${data.vehicle.mileage} km` : 'Inspected on Bay'}`, rightCardX + 4, currentY + 21);
+  const mileageText = data.vehicle.mileage ? `${data.vehicle.mileage} km` : 'Inspected on Bay';
+  doc.text(`Odometer / Mileage: ${mileageText}`, rightCardX + 4, currentY + 21);
   doc.text(`Color / Trim: ${data.vehicle.color || 'Standard Factory'}`, rightCardX + 4, currentY + 26);
   doc.text(`Priority Level: ${(data.status || 'NORMAL').toUpperCase()}`, rightCardX + 4, currentY + 31);
 

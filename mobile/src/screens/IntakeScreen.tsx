@@ -17,8 +17,8 @@ export default function IntakeScreen({ navigation }: any) {
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [serviceDescription, setServiceDescription] = useState('Full Maintenance Inspection');
-  const [estimatedCost, setEstimatedCost] = useState('650');
+  const serviceDescription = 'Full Maintenance Inspection';
+  const estimatedCost = '650';
 
   const rtoInfo = decodeIndianLicensePlate(vehicleNumber);
 
@@ -68,8 +68,8 @@ export default function IntakeScreen({ navigation }: any) {
 
           recognition.onresult = (event: any) => {
             let transcript = '';
-            for (let i = 0; i < event.results.length; i++) {
-              transcript += event.results[i][0].transcript + ' ';
+            for (const result of event.results) {
+              transcript += result[0].transcript + ' ';
             }
             setVoiceNote(transcript.trim());
           };
@@ -116,7 +116,7 @@ export default function IntakeScreen({ navigation }: any) {
         customerName: customerName.trim() || 'Walk-in Customer',
         customerPhone: customerPhone ? customerPhone.trim() : '',
         serviceDescription,
-        estimatedCost: parseFloat(estimatedCost) || 0,
+        estimatedCost: Number.parseFloat(estimatedCost) || 0,
         voiceNote: voiceNote || 'Captured via Mobile Express Intake',
         preInspectionShield: {
           front: photos.Front,
@@ -138,14 +138,13 @@ export default function IntakeScreen({ navigation }: any) {
               setCustomerName('');
               setVoiceNote('');
               setPhotos({ Front: false, Back: false, 'Left Side': false, 'Right Side': false });
-              if (navigation && navigation.navigate) {
-                navigation.navigate('Job Cards');
-              }
+              navigation?.navigate?.('Job Cards');
             },
           },
         ]
       );
     } catch (e) {
+      console.error('Failed to save offline intake card:', e);
       Alert.alert('Error', 'Failed to save offline intake card.');
     } finally {
       setIsSaving(false);

@@ -9,14 +9,11 @@ import {
   Sparkles,
   KeyRound,
   Store,
-  Users,
   AlertTriangle,
   Award,
-  ArrowRight,
   RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PearlButton from './PearlButton';
 
 interface DailyQuotaItem {
   used: number;
@@ -108,7 +105,7 @@ export default function LicensingSection() {
     void fetchLicensingStatus();
   }, []);
 
-  const handleActivateKey = async (e: React.FormEvent) => {
+  const handleActivateKey = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!licenseKeyInput.trim()) {
       toast.error('Please enter a license key or VIP Founder key');
@@ -160,6 +157,45 @@ export default function LicensingSection() {
     return franchiseCost + extraUsersCost;
   };
 
+  const renderLicenseBadge = () => {
+    if (data?.isVip) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40">
+          <Award className="h-3.5 w-3.5" /> VIP Founding Garage (100% Free Lifetime)
+        </span>
+      );
+    }
+    if (data?.isPro) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40">
+          <CheckCircle2 className="h-3.5 w-3.5" /> MotoBan Pro Licensed
+        </span>
+      );
+    }
+    if (data?.isExpired) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/40">
+          <AlertTriangle className="h-3.5 w-3.5" /> 15-Day Trial Expired
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/40">
+        <Clock className="h-3.5 w-3.5" /> 15-Day Free Trial Active ({data?.daysRemaining || 15} Days Left)
+      </span>
+    );
+  };
+
+  const getLicenseDescription = () => {
+    if (data?.isVip) {
+      return 'Your workshop is designated as an Official Founding Partner Garage. You receive 100% Free Lifetime Full Access to all ecosystem modules, updates, and cloud sync.';
+    }
+    if (data?.isPro) {
+      return 'Your Pro commercial subscription is active. Enjoy unlimited daily bills, estimates, job cards, counter UPI QR, and WhatsApp dispatch.';
+    }
+    return 'Free Trial Blueprint: You can generate up to 2 Bills, 2 Estimates, and 2 Job Cards per day. The trial automatically concludes in 15 days.';
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* 1. Trial Status & Daily Quota Dashboard Card */}
@@ -171,30 +207,10 @@ export default function LicensingSection() {
                 <ShieldCheck className="h-7 w-7 text-luxury-gold" />
                 SaaS Subscription & Licensing
               </h2>
-              {data?.isVip ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40">
-                  <Award className="h-3.5 w-3.5" /> VIP Founding Garage (100% Free Lifetime)
-                </span>
-              ) : data?.isPro ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> MotoBan Pro Licensed
-                </span>
-              ) : data?.isExpired ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/40">
-                  <AlertTriangle className="h-3.5 w-3.5" /> 15-Day Trial Expired
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/40">
-                  <Clock className="h-3.5 w-3.5" /> 15-Day Free Trial Active ({data?.daysRemaining || 15} Days Left)
-                </span>
-              )}
+              {renderLicenseBadge()}
             </div>
             <p className="text-sm text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mt-2 max-w-2xl">
-              {data?.isVip
-                ? 'Your workshop is designated as an Official Founding Partner Garage. You receive 100% Free Lifetime Full Access to all ecosystem modules, updates, and cloud sync.'
-                : data?.isPro
-                ? 'Your Pro commercial subscription is active. Enjoy unlimited daily bills, estimates, job cards, counter UPI QR, and WhatsApp dispatch.'
-                : 'Free Trial Blueprint: You can generate up to 2 Bills, 2 Estimates, and 2 Job Cards per day. The trial automatically concludes in 15 days.'}
+              {getLicenseDescription()}
             </p>
           </div>
 

@@ -64,12 +64,12 @@ export default function AppointmentsScreen() {
   };
 
   useEffect(() => {
-    fetchAppointments();
+    void fetchAppointments();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAppointments();
+    void fetchAppointments();
   };
 
   const getStatusColor = (status: string) => {
@@ -89,7 +89,7 @@ export default function AppointmentsScreen() {
 
   const handleCallCustomer = (phone: string) => {
     if (phone) {
-      Linking.openURL(`tel:${phone}`);
+      void Linking.openURL(`tel:${phone}`);
     }
   };
 
@@ -209,7 +209,7 @@ export default function AppointmentsScreen() {
       setIsModalOpen(false);
       setCustName('');
       setCustPhone('');
-      fetchAppointments();
+      await fetchAppointments();
     } catch {
       Alert.alert('Error', 'Failed to book appointment. Please check connection.');
     } finally {

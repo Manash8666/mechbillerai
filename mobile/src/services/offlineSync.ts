@@ -44,9 +44,14 @@ export const offlineSyncManager = {
 
   // Save Job Card locally into offline sync queue
   async enqueueJobCard(card: Omit<OfflineJobCard, 'id' | 'createdAt' | 'synced'>): Promise<OfflineJobCard> {
+    const timestamp = Date.now();
+    const safeRand = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${timestamp.toString(36)}_${Math.sin(timestamp).toString(36).slice(2, 6)}`;
+
     const newEntry: OfflineJobCard = {
       ...card,
-      id: `offline_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `offline_${timestamp}_${safeRand}`,
       createdAt: new Date().toISOString(),
       synced: false,
     };
@@ -88,7 +93,7 @@ export const offlineSyncManager = {
       return { synced: 0, failed: unsynced.length };
     }
 
-    for (const item of unsynced) {
+    const syncPromises = unsynced.map(async (item) => {
       try {
         const response = await fetch(`${base}/jobcards`, {
           method: 'POST',
@@ -107,11 +112,19 @@ export const offlineSyncManager = {
 
         if (response.ok) {
           item.synced = true;
-          syncedCount++;
-        } else {
-          failedCount++;
+          return true;
         }
+        return false;
       } catch {
+        return false;
+      }
+    });
+
+    const results = await Promise.allSettled(syncPromises);
+    for (const res of results) {
+      if (res.status === 'fulfilled' && res.value) {
+        syncedCount++;
+      } else {
         failedCount++;
       }
     }

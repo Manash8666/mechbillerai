@@ -200,9 +200,9 @@ export async function GET(request: Request) {
           notesServiceScope = parsed.serviceScope || parsed.serviceType || null;
         }
       } catch {
-        const vehMatch = invoice.notes.match(/\[VEHICLE:\s*([^|\]]+)/i);
-        const regMatch = invoice.notes.match(/REG:\s*([^|\]]+)/i);
-        const scopeMatch = invoice.notes.match(/SCOPE:\s*([^|\]]+)/i);
+        const vehMatch = /\[VEHICLE:\s*([^|\]]+)/i.exec(invoice.notes);
+        const regMatch = /REG:\s*([^|\]]+)/i.exec(invoice.notes);
+        const scopeMatch = /SCOPE:\s*([^|\]]+)/i.exec(invoice.notes);
         if (vehMatch) notesVehicleModel = vehMatch[1].trim();
         if (regMatch) notesVehicleReg = regMatch[1].trim();
         if (scopeMatch) notesServiceScope = scopeMatch[1].trim();
@@ -217,7 +217,7 @@ export async function GET(request: Request) {
       (jobCard?.customer as any)?.vehicles?.[0];
 
     const customerVehicleMakeModel =
-      vehicleObj && vehicleObj.make && vehicleObj.make !== 'Standard Vehicle'
+      vehicleObj?.make && vehicleObj.make !== 'Standard Vehicle'
         ? `${vehicleObj.make || ''} ${vehicleObj.model || ''}`.trim()
         : null;
 
@@ -241,15 +241,18 @@ export async function GET(request: Request) {
       refEstimate: invoice?.jobCard?.jobNumber ? `Ref: ${invoice.jobCard.jobNumber}` : undefined,
     };
 
+    let defaultServiceScope = 'Precision Maintenance & Overhaul';
+    if (detectedModel.includes('Classic 350')) {
+      defaultServiceScope = 'Classic 350 Overhaul & Service';
+    } else if (detectedModel.includes('Himalayan')) {
+      defaultServiceScope = 'Himalayan 411 Rebuild & Service';
+    }
+
     const serviceType =
       notesServiceScope ||
       invoice?.jobCard?.description ||
       jobCard?.description ||
-      (detectedModel.includes('Classic 350')
-        ? 'Classic 350 Overhaul & Service'
-        : detectedModel.includes('Himalayan')
-        ? 'Himalayan 411 Rebuild & Service'
-        : 'Precision Maintenance & Overhaul');
+      defaultServiceScope;
 
     const userBranding = invoice?.user?.branding || jobCard?.user?.branding;
     const paymentQrUrl = userBranding?.paymentQrUrl || null;
@@ -271,6 +274,14 @@ export async function GET(request: Request) {
       }
     }
 
+    let contactsStr = `${garageName} | Authorized Workshop Service & Technical Team`;
+    if (userBranding?.tagline) {
+      const phoneSuffix = garagePhone ? `: ${garagePhone}` : '';
+      contactsStr = `${garageName}${phoneSuffix} | ${userBranding.tagline}`;
+    } else if (garagePhone) {
+      contactsStr = `${garageName}: ${garagePhone} | Workshop Service & Technical Team`;
+    }
+
     const doc = generateInvoiceOrEstimatePdf({
       documentType: docType,
       documentNumber: docNumber,
@@ -290,11 +301,7 @@ export async function GET(request: Request) {
         address: garageAddress,
         gstNumber: garageGstNumber,
         website: garageWebsite,
-        contacts: userBranding?.tagline
-          ? `${garageName}${garagePhone ? `: ${garagePhone}` : ''} | ${userBranding.tagline}`
-          : garagePhone
-          ? `${garageName}: ${garagePhone} | Workshop Service & Technical Team`
-          : `${garageName} | Authorized Workshop Service & Technical Team`,
+        contacts: contactsStr,
       },
       items,
       subtotal,

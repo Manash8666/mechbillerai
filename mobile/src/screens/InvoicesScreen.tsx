@@ -72,12 +72,12 @@ export default function InvoicesScreen() {
   };
 
   useEffect(() => {
-    fetchInvoices();
+    void fetchInvoices();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchInvoices();
+    void fetchInvoices();
   };
 
   const getStatusColor = (status: string) => {
@@ -219,7 +219,7 @@ export default function InvoicesScreen() {
                 notes: 'Collected via Mobile Counter',
               });
               Alert.alert('Payment Recorded', `₹${item.balance} collected via Cash`);
-              fetchInvoices();
+              await fetchInvoices();
             } catch {
               Alert.alert('Error', 'Failed to record payment');
             }
@@ -246,7 +246,7 @@ export default function InvoicesScreen() {
                 notes: 'Collected via UPI Payment',
               });
               Alert.alert('Payment Recorded', `₹${item.balance} collected via UPI`);
-              fetchInvoices();
+              await fetchInvoices();
             } catch {
               Alert.alert('Error', 'Failed to record payment');
             }

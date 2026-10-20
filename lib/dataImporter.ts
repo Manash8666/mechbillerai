@@ -91,9 +91,9 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
   } catch (pdfErr) {
     console.warn('unpdf extractText failed, trying raw binary fallback:', pdfErr);
     const raw = buffer.toString('latin1');
-    const matches = raw.match(/\(([^()]{2,})\)\s*(?:Tj|TJ|\')/g) || [];
+    const matches = raw.match(/\(([^()]{2,})\)\s*(?:Tj|TJ|')/g) || [];
     text = matches
-      .map((m) => m.replace(/^[(\s]+|[)\s]+(?:Tj|TJ|\')?$/g, ''))
+      .map((m) => m.replace(/^[(\s]+|[)\s]+(?:Tj|TJ|')?$/g, ''))
       .join(' ');
     if (!text || text.length < 30) {
       const readable = raw.match(/[a-zA-Z0-9\s/&,().:;₹\-=+]{4,}/g) || [];
@@ -107,31 +107,31 @@ export async function parsePdfInvoice(buffer: Buffer): Promise<ImportParseResult
 /**
  * Parses raw text extracted from PDF or pasted transcript
  */
-export function parseTextInvoice(text: string): ImportParseResult {
-  if (!text || text.trim().length < 10) {
-    return {
-      success: false,
-      sourceType: 'UNKNOWN',
-      summary: 'Unable to extract text from PDF (it may be a flat image scan). Please upload an Excel/CSV file or text-based invoice PDF.',
-      invoices: [],
-    };
-  }
-
-  // 1. Check if document contains MULTIPLE JSON-formatted bills (e.g. Gemini SOW chat transcript)
+function parseJsonBlockInvoices(text: string): ImportedInvoice[] {
   const jsonInvoiceMap = new Map<string, ImportedInvoice>();
   const jsonBlockRegex = /\{\s*"id":\s*"(MF2-[^"]+)"[\s\S]*?"items":\s*\[[\s\S]*?\][\s\S]*?\}/g;
-  let jsonMatch;
+  let jsonMatch: RegExpExecArray | null;
+
   while ((jsonMatch = jsonBlockRegex.exec(text)) !== null) {
     try {
       const obj = JSON.parse(jsonMatch[0]);
       if (obj.id && Array.isArray(obj.items) && obj.items.length > 0) {
-        const invItems: ImportedLineItem[] = obj.items.map((it: any) => ({
-          description: (it.item || it.description || 'Automotive Part / Service').trim().toUpperCase(),
-          details: it.description || it.item || undefined,
-          quantity: typeof it.quantity === 'number' ? it.quantity : 1,
-          unitPrice: typeof it.rate === 'number' ? it.rate : typeof it.amount === 'number' ? it.amount : 0,
-          total: typeof it.amount === 'number' ? it.amount : (it.quantity || 1) * (it.rate || 0),
-        }));
+        const invItems: ImportedLineItem[] = obj.items.map((it: any) => {
+          let unitPrice = 0;
+          if (typeof it.rate === 'number') {
+            unitPrice = it.rate;
+          } else if (typeof it.amount === 'number') {
+            unitPrice = it.amount;
+          }
+
+          return {
+            description: (it.item || it.description || 'Automotive Part / Service').trim().toUpperCase(),
+            details: it.description || it.item || undefined,
+            quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+            unitPrice,
+            total: typeof it.amount === 'number' ? it.amount : (it.quantity || 1) * (it.rate || 0),
+          };
+        });
         const subtotal = obj.subtotal || obj.total_amount || invItems.reduce((acc, i) => acc + i.total, 0);
         const discount = obj.discount || 0;
         const total = obj.total_amount || (subtotal - discount);
@@ -166,19 +166,10 @@ export function parseTextInvoice(text: string): ImportParseResult {
     }
   }
 
-  if (jsonInvoiceMap.size > 0) {
-    const multiInvoices = Array.from(jsonInvoiceMap.values());
-    const totalRev = multiInvoices.reduce((s, i) => s + i.total, 0);
-    return {
-      success: true,
-      sourceType: 'GEMINI_SOW_PDF',
-      summary: `Successfully parsed ${multiInvoices.length} invoices and estimates (Total Value: ₹${totalRev.toLocaleString('en-IN')})!`,
-      invoices: multiInvoices,
-      rawTextPreview: text.slice(0, 1000),
-    };
-  }
+  return Array.from(jsonInvoiceMap.values());
+}
 
-  // 2. Check for single Gemini / MotoFit SOW Bill format
+function parseGeminiSowPdf(text: string): ImportParseResult | null {
   const isGeminiSow =
     text.includes('SCOPE OF WORK') ||
     text.includes('SOW BILL') ||
@@ -186,136 +177,143 @@ export function parseTextInvoice(text: string): ImportParseResult {
     text.includes('Top End Core:') ||
     text.includes('VEHICLE MAKE & MODEL');
 
-  if (isGeminiSow) {
-    const invMatch = text.match(/INVOICE ID \/ DATE\s*\n\s*([^\n]+)\s*\n\s*([^\n]+)/i);
-    const vehMatch = text.match(/VEHICLE MAKE & MODEL\s*\n\s*([^\n]+)/i) ||
-                     text.match(/(?:Vehicle|Model|Bike|Car)[:\s]+([^\n,]+)/i);
-    const estMatch = text.match(/Ref Estimate:\s*([^\n]+)/i);
-    const srvMatch = text.match(/JOB CARD \/ SERVICE TYPE\s*\n\s*([^\n]+)/i) ||
-                     text.match(/(?:Service Type|Service|Job Type)[:\s]+([^\n,]+)/i);
-    const regMatch = text.match(/Reg:\s*([^\n]+)/i);
+  if (!isGeminiSow) return null;
 
-    const subMatch = text.match(/(?:Gross\s+)?Subtotal(?:\s*\(Gross\))?:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
-    const discMatch = text.match(/Discount(?:\s*\([^)]*\))?:\s*-?\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
-    const totMatch =
-      text.match(/(?:Total\s*Payable\s*Amount|Grand\s*Total|Net\s*Amount|Final\s*Total)\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i) ||
-      text.match(/\bTotal\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
+  const invMatch = /INVOICE ID \/ DATE\s*\n\s*([^\n]+)\s*\n\s*([^\n]+)/i.exec(text);
+  const vehMatch = /VEHICLE MAKE & MODEL\s*\n\s*([^\n]+)/i.exec(text) ||
+                   /(?:Vehicle|Model|Bike|Car)[:\s]+([^\n,]+)/i.exec(text);
+  const estMatch = /Ref Estimate:\s*([^\n]+)/i.exec(text);
+  const srvMatch = /JOB CARD \/ SERVICE TYPE\s*\n\s*([^\n]+)/i.exec(text) ||
+                   /(?:Service Type|Service|Job Type)[:\s]+([^\n,]+)/i.exec(text);
+  const regMatch = /Reg:\s*([^\n]+)/i.exec(text);
 
-    // Extract items: S.NO. DESCRIPTION \n DETAILS (space or tab) QTY (space or tab) RATE (space or tab) AMOUNT
-    const itemRegex = /^(\d+)\s+([A-Z0-9\s/&,().-]+)\n([^\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
-    let match;
-    const items: ImportedLineItem[] = [];
-    while ((match = itemRegex.exec(text)) !== null) {
-      items.push({
-        description: match[2].trim().toUpperCase(),
-        details: match[3].trim(),
-        quantity: parseFloat(match[4]),
-        unitPrice: parseFloat(match[5].replace(/,/g, '')),
-        total: parseFloat(match[6].replace(/,/g, '')),
-      });
-    }
+  const subMatch = /(?:Gross\s+)?Subtotal(?:\s*\(Gross\))?:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
+  const discMatch = /Discount(?:\s*\([^)]*\))?:\s*-?\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
+  const totMatch =
+    /(?:Total\s*Payable\s*Amount|Grand\s*Total|Net\s*Amount|Final\s*Total)\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text) ||
+    /\bTotal\s*:\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
 
-    if (items.length === 0) {
-      const singleLineRegex = /^(\d+)\s+([A-Z0-9\s/&,().-]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
-      while ((match = singleLineRegex.exec(text)) !== null) {
-        items.push({
-          description: match[2].trim().toUpperCase(),
-          details: getAutomotiveTechnicalExplanation(match[2].trim()),
-          quantity: parseFloat(match[3]),
-          unitPrice: parseFloat(match[4].replace(/,/g, '')),
-          total: parseFloat(match[5].replace(/,/g, '')),
-        });
-      }
-    }
-
-    // Extract customer / signatory
-    const signatoryMatch = text.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\nAuthorized Signatory/m) ||
-                           text.match(/(?:Customer|Client|Party Name|Billed To)[:\s]+([^\n]+)/i);
-    const customerName = signatoryMatch ? signatoryMatch[1].trim() : 'Valued Customer';
-
-    // Extract customer phone
-    const phoneMatch = text.match(/(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i) ||
-                       text.match(/(?:\+91[\s-]?)?[6-9]\d{9}/);
-    const customerPhone = phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '';
-
-    // Extract garage name
-    const garageMatch = text.match(/(MOTOFIT\s*\d*|MOTOBAN|GARAGE[^\n]*)/i);
-    const garageName = garageMatch ? garageMatch[1].trim() : 'Workshop';
-
-    const subtotal = subMatch ? parseFloat(subMatch[1].replace(/,/g, '')) : items.reduce((s, it) => s + it.total, 0);
-    const discount = discMatch ? parseFloat(discMatch[1].replace(/,/g, '')) : 0;
-    const total = totMatch ? parseFloat(totMatch[1].replace(/,/g, '')) : (subtotal > 0 ? subtotal - discount : 0);
-
-    const invoice: ImportedInvoice = {
-      invoiceNumber: invMatch ? invMatch[1].trim() : `IMP-${Date.now().toString().slice(-6)}`,
-      date: invMatch ? invMatch[2].trim() : new Date().toLocaleDateString('en-GB'),
-      serviceType: srvMatch ? srvMatch[1].trim() : 'Vehicle Maintenance & Service',
-      customer: {
-        name: customerName,
-        phone: customerPhone,
-        vehicleModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
-        vehicleReg: regMatch ? regMatch[1].trim() : 'As Per Estimate',
-      },
-      vehicle: {
-        makeModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
-        registrationNo: regMatch ? regMatch[1].trim() : undefined,
-        refEstimate: estMatch ? estMatch[1].trim() : undefined,
-      },
-      items: items.length > 0 ? items : [
-        {
-          description: srvMatch ? srvMatch[1].trim().toUpperCase() : 'VEHICLE MAINTENANCE & SERVICE',
-          details: 'Certified mechanical inspection and servicing',
-          quantity: 1,
-          unitPrice: total,
-          total: total,
-        },
-      ],
-      subtotal,
-      discount,
-      tax: Math.round(total * 0.18),
-      total,
-      paid: total,
-      balance: 0,
-      paymentMode: 'upi',
-      garageName,
-    };
-
-    return {
-      success: true,
-      sourceType: 'GEMINI_SOW_PDF',
-      summary: `Parsed invoice #${invoice.invoiceNumber} (${invoice.vehicle?.makeModel || 'Vehicle'}) with ${invoice.items.length} line items`,
-      invoices: [invoice],
-      rawTextPreview: text.slice(0, 800),
-    };
+  // Extract items: S.NO. DESCRIPTION \n DETAILS QTY RATE AMOUNT
+  const itemRegex = /^(\d+)\s+([^\n]+)\n([^\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
+  let match: RegExpExecArray | null;
+  const items: ImportedLineItem[] = [];
+  while ((match = itemRegex.exec(text)) !== null) {
+    items.push({
+      description: match[2].trim().toUpperCase(),
+      details: match[3].trim(),
+      quantity: Number.parseFloat(match[4]),
+      unitPrice: Number.parseFloat(match[5].replace(/,/g, '')),
+      total: Number.parseFloat(match[6].replace(/,/g, '')),
+    });
   }
 
-  // 2. Generic Invoice PDF Extractor
-  const invNum = text.match(/(?:Invoice|Bill|Inv|Receipt)\s*(?:No|Number|#)?[:\s]+([A-Z0-9\-_]+)/i);
-  const dateMatch = text.match(/(?:Date|Dated)[:\s]+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i);
-  const totalMatch = text.match(/(?:Total|Grand Total|Net Amount|Total Amount)[:\s]*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
-  const custMatch = text.match(/(?:Customer|Billed To|Client|Party Name)[:\s]+([^\n]+)/i);
-  const phoneMatch = text.match(/(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i) ||
-                     text.match(/(?:\+91[\s-]?)?[6-9]\d{9}/);
+  if (items.length === 0) {
+    const singleLineRegex = /^(\d+)\s+([^\n]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/gm;
+    while ((match = singleLineRegex.exec(text)) !== null) {
+      items.push({
+        description: match[2].trim().toUpperCase(),
+        details: getAutomotiveTechnicalExplanation(match[2].trim()),
+        quantity: Number.parseFloat(match[3]),
+        unitPrice: Number.parseFloat(match[4].replace(/,/g, '')),
+        total: Number.parseFloat(match[5].replace(/,/g, '')),
+      });
+    }
+  }
 
-  // Extract lines with numbers as items
+  // Extract customer / signatory
+  const signatoryMatch = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*\nAuthorized Signatory/m.exec(text) ||
+                         /(?:Customer|Client|Party Name|Billed To)[:\s]+([^\n]+)/i.exec(text);
+  const customerName = signatoryMatch ? signatoryMatch[1].trim() : 'Valued Customer';
+
+  // Extract customer phone
+  const phoneMatch = /(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i.exec(text) ||
+                     /(?:\+91[\s-]?)?[6-9]\d{9}/.exec(text);
+  const customerPhone = phoneMatch ? phoneMatch[0].replace(/[^0-9+]/g, '') : '';
+
+  // Extract garage name
+  const garageMatch = /(MOTOFIT\s*\d*|MOTOBAN|GARAGE[^\n]*)/i.exec(text);
+  const garageName = garageMatch ? garageMatch[1].trim() : 'Workshop';
+
+  const subtotal = subMatch ? Number.parseFloat(subMatch[1].replace(/,/g, '')) : items.reduce((s, it) => s + it.total, 0);
+  const discount = discMatch ? Number.parseFloat(discMatch[1].replace(/,/g, '')) : 0;
+  let total = 0;
+  if (totMatch) {
+    total = Number.parseFloat(totMatch[1].replace(/,/g, ''));
+  } else if (subtotal > 0) {
+    total = subtotal - discount;
+  }
+
+  const invoice: ImportedInvoice = {
+    invoiceNumber: invMatch ? invMatch[1].trim() : `IMP-${Date.now().toString().slice(-6)}`,
+    date: invMatch ? invMatch[2].trim() : new Date().toLocaleDateString('en-GB'),
+    serviceType: srvMatch ? srvMatch[1].trim() : 'Vehicle Maintenance & Service',
+    customer: {
+      name: customerName,
+      phone: customerPhone,
+      vehicleModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
+      vehicleReg: regMatch ? regMatch[1].trim() : 'As Per Estimate',
+    },
+    vehicle: {
+      makeModel: vehMatch ? vehMatch[1].trim() : 'Vehicle',
+      registrationNo: regMatch ? regMatch[1].trim() : undefined,
+      refEstimate: estMatch ? estMatch[1].trim() : undefined,
+    },
+    items: items.length > 0 ? items : [
+      {
+        description: srvMatch ? srvMatch[1].trim().toUpperCase() : 'VEHICLE MAINTENANCE & SERVICE',
+        details: 'Certified mechanical inspection and servicing',
+        quantity: 1,
+        unitPrice: total,
+        total,
+      },
+    ],
+    subtotal,
+    discount,
+    tax: Math.round(total * 0.18),
+    total,
+    paid: total,
+    balance: 0,
+    paymentMode: 'upi',
+    garageName,
+  };
+
+  return {
+    success: true,
+    sourceType: 'GEMINI_SOW_PDF',
+    summary: `Parsed invoice #${invoice.invoiceNumber} (${invoice.vehicle?.makeModel || 'Vehicle'}) with ${invoice.items.length} line items`,
+    invoices: [invoice],
+    rawTextPreview: text.slice(0, 800),
+  };
+}
+
+function parseGenericInvoicePdf(text: string): ImportParseResult {
+  const invNum = /(?:Invoice|Bill|Inv|Receipt)\s*(?:No|Number|#)?[:\s]+([A-Z0-9\-_]+)/i.exec(text);
+  const dateMatch = /(?:Date|Dated)[:\s]+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i.exec(text);
+  const totalMatch = /(?:Total|Grand Total|Net Amount|Total Amount)[:\s]*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
+  const custMatch = /(?:Customer|Billed To|Client|Party Name)[:\s]+([^\n]+)/i.exec(text);
+  const phoneMatch = /(?:Phone|Mobile|Contact|Tel)[:\s]*([+0-9\s-]{10,15})/i.exec(text) ||
+                     /(?:\+91[\s-]?)?[6-9]\d{9}/.exec(text);
+
   const genericItems: ImportedLineItem[] = [];
   const lines = text.split('\n');
+  const rowRegex = /^([a-zA-Z\s&/()-]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/;
+
   for (const line of lines) {
-    const rowMatch = line.match(/^([a-zA-Z\s&/()-]+?)\s+(\d+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)\s+([\d,]+(?:\.\d+)?)$/);
+    const rowMatch = rowRegex.exec(line);
     if (rowMatch && !rowMatch[1].toLowerCase().includes('total') && !rowMatch[1].toLowerCase().includes('description')) {
       const desc = rowMatch[1].trim().toUpperCase();
       genericItems.push({
         description: desc,
         details: getAutomotiveTechnicalExplanation(desc),
-        quantity: parseFloat(rowMatch[2]),
-        unitPrice: parseFloat(rowMatch[3].replace(/,/g, '')),
-        total: parseFloat(rowMatch[4].replace(/,/g, '')),
+        quantity: Number.parseFloat(rowMatch[2]),
+        unitPrice: Number.parseFloat(rowMatch[3].replace(/,/g, '')),
+        total: Number.parseFloat(rowMatch[4].replace(/,/g, '')),
       });
     }
   }
 
   const itemsSubtotal = genericItems.reduce((acc, i) => acc + i.total, 0);
-  const grandTotal = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : (itemsSubtotal > 0 ? itemsSubtotal : 0);
+  const grandTotal = totalMatch ? Number.parseFloat(totalMatch[1].replace(/,/g, '')) : Math.max(0, itemsSubtotal);
   const invoice: ImportedInvoice = {
     invoiceNumber: invNum ? invNum[1].trim() : `INV-${Date.now().toString().slice(-6)}`,
     date: dateMatch ? dateMatch[1].trim() : new Date().toLocaleDateString('en-GB'),
@@ -348,6 +346,39 @@ export function parseTextInvoice(text: string): ImportParseResult {
     invoices: [invoice],
     rawTextPreview: text.slice(0, 800),
   };
+}
+
+export function parseTextInvoice(text: string): ImportParseResult {
+  if (!text || text.trim().length < 10) {
+    return {
+      success: false,
+      sourceType: 'UNKNOWN',
+      summary: 'Unable to extract text from PDF (it may be a flat image scan). Please upload an Excel/CSV file or text-based invoice PDF.',
+      invoices: [],
+    };
+  }
+
+  // 1. Check if document contains MULTIPLE JSON-formatted bills (e.g. Gemini SOW chat transcript)
+  const multiInvoices = parseJsonBlockInvoices(text);
+  if (multiInvoices.length > 0) {
+    const totalRev = multiInvoices.reduce((s, i) => s + i.total, 0);
+    return {
+      success: true,
+      sourceType: 'GEMINI_SOW_PDF',
+      summary: `Successfully parsed ${multiInvoices.length} invoices and estimates (Total Value: ₹${totalRev.toLocaleString('en-IN')})!`,
+      invoices: multiInvoices,
+      rawTextPreview: text.slice(0, 1000),
+    };
+  }
+
+  // 2. Check for single Gemini / MotoFit SOW Bill format
+  const geminiResult = parseGeminiSowPdf(text);
+  if (geminiResult) {
+    return geminiResult;
+  }
+
+  // 3. Generic Invoice PDF Extractor
+  return parseGenericInvoicePdf(text);
 }
 
 /**
@@ -393,11 +424,11 @@ export async function parseExcelOrCsv(buffer: Buffer, filename: string): Promise
 
         const code = row['Item Code'] || row['item code'] || row['HSN'] || row['Barcode'] || row['Code'] || '';
         const category = row['Category'] || row['Item Category'] || row['Group'] || 'Automotive Spares';
-        const qty = parseFloat(row['Current Stock'] || row['Stock'] || row['Quantity'] || row['Qty'] || 0) || 0;
+        const qty = Number.parseFloat(row['Current Stock'] || row['Stock'] || row['Quantity'] || row['Qty'] || 0) || 0;
         const unit = String(row['Unit'] || row['Base Unit'] || 'pcs').toLowerCase();
-        const salePrice = parseFloat(row['Sale Price'] || row['Selling Price'] || row['Rate'] || row['MRP'] || 0) || 0;
-        const costPrice = parseFloat(row['Purchase Price'] || row['Cost Price'] || row['Buying Price'] || salePrice * 0.8) || 0;
-        const gstRate = parseFloat(row['Tax Rate'] || row['GST'] || row['Tax'] || 18) || 18;
+        const salePrice = Number.parseFloat(row['Sale Price'] || row['Selling Price'] || row['Rate'] || row['MRP'] || 0) || 0;
+        const costPrice = Number.parseFloat(row['Purchase Price'] || row['Cost Price'] || row['Buying Price'] || salePrice * 0.8) || 0;
+        const gstRate = Number.parseFloat(row['Tax Rate'] || row['GST'] || row['Tax'] || 18) || 18;
 
         return {
           name: String(name).trim().toUpperCase(),
@@ -438,9 +469,9 @@ export async function parseExcelOrCsv(buffer: Buffer, filename: string): Promise
       const party = String(row['Party Name'] || row['Customer Name'] || row['Customer'] || 'Walk-in Customer').trim();
       const phone = String(row['Phone No'] || row['Mobile'] || row['Contact'] || '').trim();
       const itemName = String(row['Item Name'] || row['Description'] || row['Service'] || 'Service Labor & Spares').trim();
-      const qty = parseFloat(row['Quantity'] || row['Qty'] || 1) || 1;
-      const rate = parseFloat(row['Price/Unit'] || row['Rate'] || row['Unit Price'] || row['Amount'] || 0) || 0;
-      const totalAmount = parseFloat(row['Total'] || row['Total Amount'] || row['Amount'] || qty * rate) || qty * rate;
+      const qty = Number.parseFloat(row['Quantity'] || row['Qty'] || 1) || 1;
+      const rate = Number.parseFloat(row['Price/Unit'] || row['Rate'] || row['Unit Price'] || row['Amount'] || 0) || 0;
+      const totalAmount = Number.parseFloat(row['Total'] || row['Total Amount'] || row['Amount'] || qty * rate) || qty * rate;
       const paymentMode = String(row['Payment Type'] || row['Payment Mode'] || 'cash').toLowerCase();
 
       if (!invoiceMap.has(invNo)) {

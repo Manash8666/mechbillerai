@@ -74,7 +74,7 @@ export default function InventoryPage() {
     }
   };
 
-  const handleAddItem = async (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim() || !code.trim()) {
       toast.error('Item name and SKU/Code are required');
@@ -159,7 +159,7 @@ export default function InventoryPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateItem = async (e: React.FormEvent) => {
+  const handleUpdateItem = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingItem) return;
     if (!editName.trim() || !editCode.trim()) {
@@ -417,6 +417,20 @@ export default function InventoryPage() {
                   const stockStatus = getStockStatus(item);
                   const margin = (((item.sellingPrice - item.costPrice) / item.sellingPrice) * 100).toFixed(1);
 
+                  let quantityColor = 'text-foreground';
+                  if (item.quantity === 0) {
+                    quantityColor = 'text-red-600 dark:text-red-400';
+                  } else if (item.quantity < item.minQuantity) {
+                    quantityColor = 'text-yellow-600 dark:text-yellow-400';
+                  }
+
+                  let stockBadgeText = 'IN STOCK';
+                  if (stockStatus === 'out-of-stock') {
+                    stockBadgeText = 'OUT OF STOCK';
+                  } else if (stockStatus === 'low-stock') {
+                    stockBadgeText = 'LOW STOCK';
+                  }
+
                   return (
                     <tr key={item.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
@@ -430,15 +444,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div>
-                          <p
-                            className={`text-sm font-medium ${
-                              item.quantity === 0
-                                ? 'text-red-600 dark:text-red-400'
-                                : item.quantity < item.minQuantity
-                                ? 'text-yellow-600 dark:text-yellow-400'
-                                : 'text-foreground'
-                            }`}
-                          >
+                          <p className={`text-sm font-medium ${quantityColor}`}>
                             {item.quantity} {item.unit}
                           </p>
                           <p className="text-xs text-muted-foreground">Min: {item.minQuantity}</p>
@@ -471,11 +477,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStockColor(stockStatus)}`}>
-                          {stockStatus === 'out-of-stock'
-                            ? 'OUT OF STOCK'
-                            : stockStatus === 'low-stock'
-                            ? 'LOW STOCK'
-                            : 'IN STOCK'}
+                          {stockBadgeText}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -527,10 +529,11 @@ export default function InventoryPage() {
 
             <form onSubmit={handleAddItem} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="add-inv-name" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Item Name *
                 </label>
                 <input
+                  id="add-inv-name"
                   type="text"
                   placeholder="e.g. Synthetic Engine Oil 5W-40"
                   value={name}
@@ -542,10 +545,11 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-code" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     SKU / Item Code *
                   </label>
                   <input
+                    id="add-inv-code"
                     type="text"
                     placeholder="e.g. OIL-5W40-01"
                     value={code}
@@ -555,10 +559,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-category" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Category
                   </label>
                   <select
+                    id="add-inv-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
@@ -574,10 +579,11 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-quantity" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Stock Quantity
                   </label>
                   <input
+                    id="add-inv-quantity"
                     type="number"
                     min="0"
                     value={quantity}
@@ -587,10 +593,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-unit" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Unit
                   </label>
                   <select
+                    id="add-inv-unit"
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
@@ -605,10 +612,11 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-cost-price" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Cost (₹)
                   </label>
                   <input
+                    id="add-inv-cost-price"
                     type="number"
                     min="0"
                     value={costPrice}
@@ -618,10 +626,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-selling-price" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Selling (₹)
                   </label>
                   <input
+                    id="add-inv-selling-price"
                     type="number"
                     min="0"
                     value={sellingPrice}
@@ -631,10 +640,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="add-inv-gst-rate" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     GST (%)
                   </label>
                   <input
+                    id="add-inv-gst-rate"
                     type="number"
                     value={gstRate}
                     onChange={(e) => setGstRate(e.target.value)}
@@ -686,10 +696,11 @@ export default function InventoryPage() {
 
             <form onSubmit={handleUpdateItem} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-inv-name" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Item Name *
                 </label>
                 <input
+                  id="edit-inv-name"
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -700,10 +711,11 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-code" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     SKU / Item Code *
                   </label>
                   <input
+                    id="edit-inv-code"
                     type="text"
                     value={editCode}
                     onChange={(e) => setEditCode(e.target.value.toUpperCase())}
@@ -712,10 +724,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-category" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Category
                   </label>
                   <select
+                    id="edit-inv-category"
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -736,10 +749,11 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-quantity" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Current Stock *
                   </label>
                   <input
+                    id="edit-inv-quantity"
                     type="number"
                     min="0"
                     step="any"
@@ -750,10 +764,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-unit" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Unit
                   </label>
                   <select
+                    id="edit-inv-unit"
                     value={editUnit}
                     onChange={(e) => setEditUnit(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -771,10 +786,11 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-cost-price" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Cost Price (₹) *
                   </label>
                   <input
+                    id="edit-inv-cost-price"
                     type="number"
                     min="0"
                     step="any"
@@ -785,10 +801,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-selling-price" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     Selling Price (₹) *
                   </label>
                   <input
+                    id="edit-inv-selling-price"
                     type="number"
                     min="0"
                     step="any"
@@ -799,10 +816,11 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="edit-inv-gst-rate" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     GST (%)
                   </label>
                   <input
+                    id="edit-inv-gst-rate"
                     type="number"
                     value={editGstRate}
                     onChange={(e) => setEditGstRate(e.target.value)}

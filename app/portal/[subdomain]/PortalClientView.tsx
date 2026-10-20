@@ -15,7 +15,7 @@ interface TenantData {
   garageType: string;
 }
 
-export default function PortalClientView({ tenant }: { tenant: TenantData }) {
+export default function PortalClientView({ tenant }: { readonly tenant: TenantData }) {
   const [activeTab, setActiveTab] = useState<'track' | 'book'>('track');
 
   // Tracking state
@@ -33,7 +33,7 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
   const [notes, setNotes] = useState('');
   const [bookingDone, setBookingDone] = useState(false);
 
-  const handleTrackVehicle = async (e: React.FormEvent) => {
+  const handleTrackVehicle = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!trackReg.trim()) {
       toast.error('Please enter vehicle registration plate number');
@@ -58,7 +58,7 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
     }
   };
 
-  const handleBookAppointment = async (e: React.FormEvent) => {
+  const handleBookAppointment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!customerName.trim() || !phone.trim() || !vehicleReg.trim()) {
       toast.error('Please fill in your name, phone, and vehicle registration');
@@ -95,9 +95,16 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
   };
 
   const cleanPhone = (tenant.phone || '').replace(/\D/g, '');
+  const inquiryText = `Hello ${tenant.garageName}, I am visiting your web portal at ${tenant.subdomain}.motoban.in and would like to inquire about vehicle servicing.`;
   const waUrl = cleanPhone
-    ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${tenant.garageName}, I am visiting your web portal at ${tenant.subdomain}.motoban.in and would like to inquire about vehicle servicing.`)}`
+    ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(inquiryText)}`
     : '#';
+
+  const getJobStatusBadgeColor = (status: string) => {
+    if (status === 'completed') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+    if (status === 'in-progress') return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+    return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans selection:bg-amber-400 selection:text-black">
@@ -226,13 +233,7 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
                     <p className="text-xs text-slate-400">{trackedJob.vehicle.make} {trackedJob.vehicle.model}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                      trackedJob.status === 'completed'
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : trackedJob.status === 'in-progress'
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                        : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getJobStatusBadgeColor(trackedJob.status)}`}>
                       {trackedJob.status.replace('-', ' ')}
                     </span>
                   </div>
@@ -270,7 +271,7 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
                     <h5 className="text-xs font-bold text-slate-300 mb-2">Service Checklist Items</h5>
                     <div className="space-y-1.5">
                       {trackedJob.tasks.map((task: any, i: number) => (
-                        <div key={i} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-black/30 border border-slate-800/60">
+                        <div key={task.id || `task-${i}`} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-black/30 border border-slate-800/60">
                           {task.completed ? (
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                           ) : (
@@ -335,8 +336,9 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
               <form onSubmit={handleBookAppointment} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">YOUR NAME *</label>
+                    <label htmlFor="portal-cust-name" className="block text-xs font-semibold text-slate-300 mb-1">YOUR NAME *</label>
                     <input
+                      id="portal-cust-name"
                       type="text"
                       required
                       placeholder="e.g. Sunil Sharma"
@@ -346,8 +348,9 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">PHONE NUMBER *</label>
+                    <label htmlFor="portal-phone" className="block text-xs font-semibold text-slate-300 mb-1">PHONE NUMBER *</label>
                     <input
+                      id="portal-phone"
                       type="tel"
                       required
                       placeholder="e.g. 9822012345"
@@ -360,8 +363,9 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">VEHICLE PLATE / REGISTRATION *</label>
+                    <label htmlFor="portal-vehicle-reg" className="block text-xs font-semibold text-slate-300 mb-1">VEHICLE PLATE / REGISTRATION *</label>
                     <input
+                      id="portal-vehicle-reg"
                       type="text"
                       required
                       placeholder="e.g. MH-12-DE-5566"
@@ -371,8 +375,9 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">PREFERRED DATE</label>
+                    <label htmlFor="portal-appointment-date" className="block text-xs font-semibold text-slate-300 mb-1">PREFERRED DATE</label>
                     <input
+                      id="portal-appointment-date"
                       type="date"
                       value={appointmentDate}
                       onChange={(e) => setAppointmentDate(e.target.value)}
@@ -382,8 +387,9 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">SERVICE TYPE</label>
+                  <label htmlFor="portal-service-type" className="block text-xs font-semibold text-slate-300 mb-1">SERVICE TYPE</label>
                   <select
+                    id="portal-service-type"
                     value={serviceType}
                     onChange={(e) => setServiceType(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-slate-700 text-white text-xs focus:outline-none focus:border-amber-400"
@@ -398,8 +404,9 @@ export default function PortalClientView({ tenant }: { tenant: TenantData }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">COMPLAINTS OR NOTES (OPTIONAL)</label>
+                  <label htmlFor="portal-notes" className="block text-xs font-semibold text-slate-300 mb-1">COMPLAINTS OR NOTES (OPTIONAL)</label>
                   <textarea
+                    id="portal-notes"
                     rows={3}
                     placeholder="Describe any rattling sound, vibration, or specific work required..."
                     value={notes}

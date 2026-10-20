@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, Phone, Mail, X, Edit3, Trash2, MapPin, FileText } from 'lucide-react';
+import { Plus, Search, Phone, Mail, X, Edit3, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import PearlButton from '@/components/PearlButton';
@@ -23,7 +23,7 @@ export default function CustomersPage() {
 
   // Edit Customer Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -321,10 +321,11 @@ export default function CustomersPage() {
 
             <form onSubmit={handleCreateCustomer} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                <label htmlFor="cust-name-input" className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
                   Full Name *
                 </label>
                 <input
+                  id="cust-name-input"
                   type="text"
                   required
                   placeholder="e.g. Vikram Sharma"
@@ -335,10 +336,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                <label htmlFor="cust-phone-input" className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
                   Mobile Number *
                 </label>
                 <input
+                  id="cust-phone-input"
                   type="tel"
                   required
                   placeholder="e.g. 9876543210"
@@ -349,10 +351,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                <label htmlFor="cust-email-input" className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
                   Email (Optional)
                 </label>
                 <input
+                  id="cust-email-input"
                   type="email"
                   placeholder="customer@example.com"
                   value={email}
@@ -362,10 +365,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                <label htmlFor="cust-veh-reg-input" className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
                   Vehicle Registration Number (Optional)
                 </label>
                 <input
+                  id="cust-veh-reg-input"
                   type="text"
                   placeholder="e.g. GJ01PU7510"
                   value={vehicleReg}
@@ -376,10 +380,11 @@ export default function CustomersPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                  <label htmlFor="cust-veh-make-input" className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
                     Vehicle Make
                   </label>
                   <input
+                    id="cust-veh-make-input"
                     type="text"
                     placeholder="e.g. Royal Enfield"
                     value={vehicleMake}
@@ -388,10 +393,11 @@ export default function CustomersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
+                  <label htmlFor="cust-veh-model-input" className="block text-xs font-semibold uppercase tracking-wider text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1">
                     Vehicle Model
                   </label>
                   <input
+                    id="cust-veh-model-input"
                     type="text"
                     placeholder="e.g. Classic 350"
                     value={vehicleModel}
@@ -435,10 +441,11 @@ export default function CustomersPage() {
 
             <form onSubmit={handleUpdateCustomer} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-cust-name-input" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Full Name *
                 </label>
                 <input
+                  id="edit-cust-name-input"
                   type="text"
                   required
                   value={editName}
@@ -448,10 +455,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-cust-phone-input" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Mobile Number *
                 </label>
                 <input
+                  id="edit-cust-phone-input"
                   type="tel"
                   required
                   value={editPhone}
@@ -461,10 +469,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-cust-email-input" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Email
                 </label>
                 <input
+                  id="edit-cust-email-input"
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
@@ -474,10 +483,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-cust-address-input" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Address
                 </label>
                 <input
+                  id="edit-cust-address-input"
                   type="text"
                   value={editAddress}
                   onChange={(e) => setEditAddress(e.target.value)}
@@ -487,10 +497,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-cust-gst-input" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   GST Number (GSTIN)
                 </label>
                 <input
+                  id="edit-cust-gst-input"
                   type="text"
                   value={editGstNumber}
                   onChange={(e) => setEditGstNumber(e.target.value.toUpperCase())}
@@ -500,10 +511,11 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <label htmlFor="edit-cust-notes-input" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Notes
                 </label>
                 <textarea
+                  id="edit-cust-notes-input"
                   rows={2}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
