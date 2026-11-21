@@ -126,6 +126,8 @@ export const VIP_FOUNDING_GARAGES: string[] = [
   'garage2motofit@gmail.com', // Primary Laboratory: MotoFit 2 Workshop, Ahmedabad
   'motofit2@garagesaas.com', // Legacy Alias
   'vipgarage@motoban.in',     // Second Founding Garage
+  'manashdash@aol.com',       // Manash Dash / Samael Morningstar (Super Admin)
+  'samael@motoban.in',
   ...(process.env.VIP_FREE_GARAGES ? process.env.VIP_FREE_GARAGES.split(',').map((e) => e.trim().toLowerCase()) : []),
 ];
 
