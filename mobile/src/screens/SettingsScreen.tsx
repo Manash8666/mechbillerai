@@ -22,6 +22,175 @@ export default function SettingsScreen({ navigation }: any) {
   const [licenseKeyInput, setLicenseKeyInput] = React.useState('');
   const [activatingKey, setActivatingKey] = React.useState(false);
 
+  // Team & User Roles State
+  const [isTeamModalOpen, setIsTeamModalOpen] = React.useState(false);
+  const [teamList, setTeamList] = React.useState<any[]>([]);
+  const [loadingTeam, setLoadingTeam] = React.useState(false);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = React.useState(false);
+  const [newMemberName, setNewMemberName] = React.useState('');
+  const [newMemberPhone, setNewMemberPhone] = React.useState('');
+  const [newMemberRole, setNewMemberRole] = React.useState<'owner' | 'manager' | 'senior_mechanic' | 'technician' | 'auditor'>('senior_mechanic');
+  const [newMemberPin, setNewMemberPin] = React.useState('1234');
+  const [savingMember, setSavingMember] = React.useState(false);
+  const [pinResetMember, setPinResetMember] = React.useState<any>(null);
+  const [newPinInput, setNewPinInput] = React.useState('');
+  const [updatingPin, setUpdatingPin] = React.useState(false);
+
+  // Workshop Data & System Reset State
+  const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
+  const [resetMode, setResetMode] = React.useState<'DATA_RESET' | 'SYSTEM_RESET'>('DATA_RESET');
+  const [resetConfirmPhrase, setResetConfirmPhrase] = React.useState('');
+  const [resetPassword, setResetPassword] = React.useState('');
+  const [resetting, setResetting] = React.useState(false);
+
+  const loadTeam = async () => {
+    try {
+      setLoadingTeam(true);
+      const res = await API.getTeam();
+      if (res?.team) {
+        setTeamList(res.team);
+      }
+    } catch (e) {
+      console.warn('Failed to load team on mobile:', e);
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
+
+  const handleAddTeamMember = async () => {
+    if (!newMemberName.trim() || !newMemberPhone.trim()) {
+      Alert.alert('Required', 'Please enter staff name and mobile number.');
+      return;
+    }
+    try {
+      setSavingMember(true);
+      const res = await API.addTeamMember({
+        name: newMemberName.trim(),
+        phone: newMemberPhone.trim(),
+        role: newMemberRole,
+        pin: newMemberPin.trim() || '1234',
+      });
+      if (res?.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        Alert.alert('Staff Member Added', `"${newMemberName}" has been granted access.`);
+        setNewMemberName('');
+        setNewMemberPhone('');
+        setNewMemberPin('1234');
+        setIsAddMemberModalOpen(false);
+        await loadTeam();
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to connect to team server.');
+    } finally {
+      setSavingMember(false);
+    }
+  };
+
+  const handlePatchPin = async () => {
+    if (!pinResetMember) return;
+    if (!/^\d{4,6}$/.test(newPinInput.trim())) {
+      Alert.alert('Invalid PIN', 'Security PIN must be 4 to 6 numeric digits.');
+      return;
+    }
+    try {
+      setUpdatingPin(true);
+      const res = await API.patchTeamMember({
+        memberId: pinResetMember.id,
+        newPin: newPinInput.trim(),
+      });
+      if (res?.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        Alert.alert('PIN Updated', `Security PIN for ${pinResetMember.name} has been reset.`);
+        setPinResetMember(null);
+        setNewPinInput('');
+        await loadTeam();
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to update PIN.');
+    } finally {
+      setUpdatingPin(false);
+    }
+  };
+
+  const handleDeleteMember = (member: any) => {
+    Alert.alert(
+      'Remove Staff Member',
+      `Remove ${member.name} (${member.role}) from workshop team?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await API.deleteTeamMember(member.id);
+              if (res?.error) {
+                Alert.alert('Error', res.error);
+              } else {
+                Alert.alert('Removed', `${member.name} was removed.`);
+                await loadTeam();
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to remove staff member.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleExecuteReset = async () => {
+    const requiredPhrase = resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM';
+    if (resetConfirmPhrase.trim().toUpperCase() !== requiredPhrase && !resetPassword.trim()) {
+      Alert.alert(
+        'Confirmation Required',
+        `Please type "${requiredPhrase}" in uppercase or enter your workshop password to proceed.`
+      );
+      return;
+    }
+
+    Alert.alert(
+      'FINAL DESTRUCTION WARNING',
+      resetMode === 'DATA_RESET'
+        ? 'This will immediately erase all transactional test data (job cards, invoices, daily ledger, appointments, customers). Your garage profile, staff accounts, and license remain intact.'
+        : 'This will completely wipe your workshop database: all inventory, suppliers, transaction history, and reset branding to factory defaults.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'CONFIRM & EXECUTE RESET',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setResetting(true);
+              const res = await API.resetWorkshopData(
+                resetMode,
+                resetConfirmPhrase.trim(),
+                resetPassword.trim()
+              );
+              if (res?.error) {
+                Alert.alert('Reset Failed', res.error);
+              } else {
+                Alert.alert(
+                  'Reset Completed! ✨',
+                  res.message || 'Workshop transactional records cleared.'
+                );
+                setIsResetModalOpen(false);
+                setResetConfirmPhrase('');
+                setResetPassword('');
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to execute reset.');
+            } finally {
+              setResetting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const loadLicensing = async () => {
     try {
       const data = await API.getLicensingStatus();
@@ -201,6 +370,21 @@ export default function SettingsScreen({ navigation }: any) {
       title: 'Service Appointments',
       subtitle: 'View bookings & work bay schedule',
       onPress: () => navigation?.navigate('Appointments'),
+    },
+    {
+      icon: 'account-supervisor-circle',
+      title: 'Team & Staff Roles',
+      subtitle: 'Manage mechanics, service managers & PINs',
+      onPress: () => {
+        setIsTeamModalOpen(true);
+        void loadTeam();
+      },
+    },
+    {
+      icon: 'database-refresh-outline',
+      title: 'Workshop Data & System Reset',
+      subtitle: 'Clean test transactions or factory system reset',
+      onPress: () => setIsResetModalOpen(true),
     },
     {
       icon: 'shield-key-outline',
@@ -620,6 +804,346 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
                 <Text style={styles.whatsappUpgradeBtnText}>Contact Founder Desk to Upgrade</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Workshop Team & User Roles Management Modal */}
+      <Modal visible={isTeamModalOpen} animationType="slide" transparent onRequestClose={() => setIsTeamModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '92%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="account-supervisor-circle" size={24} color={COLORS.primary} />
+                <View>
+                  <Text style={styles.modalTitle}>Team & User Roles</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted }}>Role-based access & mechanic PINs</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsTeamModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 24 }}>
+              {/* Add Staff Member Action Button */}
+              <TouchableOpacity
+                style={styles.addMemberBtn}
+                onPress={() => setIsAddMemberModalOpen(true)}
+              >
+                <MaterialCommunityIcons name="account-plus" size={18} color={COLORS.background} />
+                <Text style={styles.addMemberBtnText}>+ Add New Staff Member</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.modalSectionLabel, { marginTop: 16, marginBottom: 10 }]}>ACTIVE WORKSHOP STAFF ({teamList.length})</Text>
+
+              {loadingTeam ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Loading staff roster...</Text>
+                </View>
+              ) : teamList.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>No staff members registered yet.</Text>
+                </View>
+              ) : (
+                teamList.map((member) => {
+                  const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
+                    owner: { label: 'Owner', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
+                    super_admin: { label: 'Super Admin', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.12)' },
+                    manager: { label: 'Service Manager', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
+                    senior_mechanic: { label: 'Sr. Mechanic', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
+                    technician: { label: 'Technician', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
+                    auditor: { label: 'Auditor', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' },
+                  };
+                  const r = roleConfig[member.role] || { label: member.role, color: COLORS.primary, bg: 'rgba(201, 243, 29, 0.1)' };
+
+                  return (
+                    <View key={member.id} style={styles.teamMemberCard}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
+                          <View style={[styles.staffAvatar, { backgroundColor: r.bg }]}>
+                            <Text style={[styles.staffAvatarText, { color: r.color }]}>
+                              {member.name.slice(0, 2).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.staffName} numberOfLines={1}>{member.name}</Text>
+                            <Text style={styles.staffPhone}>📞 {member.phone || 'No phone'}</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.roleBadge, { backgroundColor: r.bg, borderColor: r.color }]}>
+                          <Text style={[styles.roleBadgeText, { color: r.color }]}>{r.label}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.staffFooterRow}>
+                        <View style={styles.pinChip}>
+                          <MaterialCommunityIcons name="lock" size={13} color={COLORS.textMuted} />
+                          <Text style={styles.pinChipText}>PIN: {member.pin || '••••'}</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity
+                            style={styles.staffActionBtn}
+                            onPress={() => {
+                              setPinResetMember(member);
+                              setNewPinInput(member.pin || '');
+                            }}
+                          >
+                            <MaterialCommunityIcons name="key-variant" size={14} color={COLORS.primary} />
+                            <Text style={styles.staffActionBtnText}>Reset PIN</Text>
+                          </TouchableOpacity>
+
+                          {member.role !== 'owner' && (
+                            <TouchableOpacity
+                              style={[styles.staffActionBtn, { borderColor: 'rgba(239, 68, 68, 0.4)' }]}
+                              onPress={() => handleDeleteMember(member)}
+                            >
+                              <MaterialCommunityIcons name="trash-can-outline" size={14} color="#EF4444" />
+                              <Text style={[styles.staffActionBtnText, { color: '#EF4444' }]}>Remove</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Staff Member Sub-Modal */}
+      <Modal visible={isAddMemberModalOpen} animationType="slide" transparent onRequestClose={() => setIsAddMemberModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Staff Member</Text>
+              <TouchableOpacity onPress={() => setIsAddMemberModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 24 }}>
+              <Text style={styles.inputFieldLabel}>FULL NAME *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Ramesh Mechanic"
+                placeholderTextColor={COLORS.textMuted}
+                value={newMemberName}
+                onChangeText={setNewMemberName}
+              />
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>MOBILE PHONE NUMBER *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 9876543210"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="phone-pad"
+                value={newMemberPhone}
+                onChangeText={setNewMemberPhone}
+              />
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>ASSIGN WORKSHOP ROLE</Text>
+              <View style={styles.rolePickerRow}>
+                {(['owner', 'manager', 'senior_mechanic', 'technician', 'auditor'] as const).map((r) => {
+                  const labels: Record<string, string> = {
+                    owner: 'Owner',
+                    manager: 'Manager',
+                    senior_mechanic: 'Sr. Mechanic',
+                    technician: 'Technician',
+                    auditor: 'Auditor',
+                  };
+                  const active = newMemberRole === r;
+                  return (
+                    <TouchableOpacity
+                      key={r}
+                      style={[styles.roleChoicePill, active && styles.roleChoicePillActive]}
+                      onPress={() => setNewMemberRole(r)}
+                    >
+                      <Text style={[styles.roleChoicePillText, active && styles.roleChoicePillTextActive]}>
+                        {labels[r]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>SECURITY ACCESS PIN (4 DIGITS)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="1234"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+                maxLength={6}
+                value={newMemberPin}
+                onChangeText={setNewMemberPin}
+              />
+
+              <TouchableOpacity
+                style={[styles.activateBtn, { marginTop: 18 }]}
+                onPress={handleAddTeamMember}
+                disabled={savingMember}
+              >
+                <MaterialCommunityIcons name="check" size={18} color={COLORS.background} />
+                <Text style={styles.activateBtnText}>
+                  {savingMember ? 'Saving Staff...' : 'Save Staff Member'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PIN Reset Sub-Modal */}
+      <Modal visible={Boolean(pinResetMember)} animationType="slide" transparent onRequestClose={() => setPinResetMember(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reset Staff PIN</Text>
+              <TouchableOpacity onPress={() => setPinResetMember(null)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: COLORS.text, fontSize: 13, marginBottom: 12 }}>
+                Enter new security access PIN for <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>{pinResetMember?.name}</Text>:
+              </Text>
+
+              <TextInput
+                style={styles.licenseInput}
+                placeholder="1234"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+                maxLength={6}
+                value={newPinInput}
+                onChangeText={setNewPinInput}
+              />
+
+              <TouchableOpacity
+                style={[styles.activateBtn, { marginTop: 16 }]}
+                onPress={handlePatchPin}
+                disabled={updatingPin}
+              >
+                <MaterialCommunityIcons name="lock-reset" size={18} color={COLORS.background} />
+                <Text style={styles.activateBtnText}>
+                  {updatingPin ? 'Updating PIN...' : 'Confirm PIN Reset'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Workshop Data Management & Factory Reset Modal */}
+      <Modal visible={isResetModalOpen} animationType="slide" transparent onRequestClose={() => setIsResetModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '92%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="database-alert" size={24} color="#EF4444" />
+                <View>
+                  <Text style={[styles.modalTitle, { color: '#EF4444' }]}>Data Reset & Maintenance</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted }}>Clean test records or factory wipe</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsResetModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 24 }}>
+              {/* Mode Selection Tabs */}
+              <View style={styles.resetToggleRow}>
+                <TouchableOpacity
+                  style={[styles.resetToggleTab, resetMode === 'DATA_RESET' && styles.resetToggleTabActive]}
+                  onPress={() => setResetMode('DATA_RESET')}
+                >
+                  <MaterialCommunityIcons
+                    name="broom"
+                    size={16}
+                    color={resetMode === 'DATA_RESET' ? '#F59E0B' : COLORS.textMuted}
+                  />
+                  <Text style={[styles.resetToggleTabText, resetMode === 'DATA_RESET' && { color: '#F59E0B' }]}>
+                    Data Reset (Safe)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.resetToggleTab, resetMode === 'SYSTEM_RESET' && styles.resetToggleTabActiveDanger]}
+                  onPress={() => setResetMode('SYSTEM_RESET')}
+                >
+                  <MaterialCommunityIcons
+                    name="skull-outline"
+                    size={16}
+                    color={resetMode === 'SYSTEM_RESET' ? '#EF4444' : COLORS.textMuted}
+                  />
+                  <Text style={[styles.resetToggleTabText, resetMode === 'SYSTEM_RESET' && { color: '#EF4444' }]}>
+                    System Reset (Factory)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Mode Description Box */}
+              <View style={[styles.resetNoticeBox, resetMode === 'SYSTEM_RESET' && styles.resetNoticeBoxDanger]}>
+                <Text style={styles.resetNoticeTitle}>
+                  {resetMode === 'DATA_RESET'
+                    ? '🧹 DATA RESET: Clear Test Transactions'
+                    : '🚨 SYSTEM RESET: Full Factory Wipe'}
+                </Text>
+                <Text style={styles.resetNoticeText}>
+                  {resetMode === 'DATA_RESET'
+                    ? '• Deletes all test Job Cards & Inspections\n• Deletes all Invoices & Payment Records\n• Deletes Daily Ledger & Balance Sheet items\n• Deletes Customer & Vehicle test entries\n\n✅ PRESERVES: Garage Branding, Staff Accounts, and Subscription License.'
+                    : '• Erases ALL workshop database tables\n• Clears parts inventory and suppliers\n• Resets workshop branding to MotoFit defaults\n• Restores default team roster\n\n⚠️ HIGH-RISK: Cannot be undone!'}
+                </Text>
+              </View>
+
+              {/* Confirmation Phrase Prompt */}
+              <Text style={styles.inputFieldLabel}>
+                TYPE &quot;{resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}&quot; TO CONFIRM *
+              </Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: resetMode === 'SYSTEM_RESET' ? '#EF4444' : '#F59E0B' }]}
+                placeholder={resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}
+                placeholderTextColor={COLORS.textMuted}
+                value={resetConfirmPhrase}
+                onChangeText={setResetConfirmPhrase}
+                autoCapitalize="characters"
+              />
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>
+                OR WORKSHOP ACCOUNT PASSWORD (OPTIONAL)
+              </Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter password if not typing phrase"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                value={resetPassword}
+                onChangeText={setResetPassword}
+              />
+
+              {/* Execute Danger Button */}
+              <TouchableOpacity
+                style={[
+                  styles.executeResetBtn,
+                  { backgroundColor: resetMode === 'SYSTEM_RESET' ? '#EF4444' : '#D97706' },
+                ]}
+                onPress={handleExecuteReset}
+                disabled={resetting}
+              >
+                <MaterialCommunityIcons name="alert-octagon" size={20} color="#FFF" />
+                <Text style={styles.executeResetBtnText}>
+                  {resetting
+                    ? 'Executing Database Cleanup...'
+                    : resetMode === 'DATA_RESET'
+                    ? 'Execute Data Reset'
+                    : 'Execute Factory System Reset'}
+                </Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -1064,5 +1588,198 @@ const styles = StyleSheet.create({
     color: '#25D366',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  addMemberBtn: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  addMemberBtnText: {
+    color: COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  teamMemberCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    marginBottom: 10,
+  },
+  staffAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  staffAvatarText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  staffName: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  staffPhone: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  staffFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  pinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  pinChipText: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    fontFamily: 'monospace',
+  },
+  staffActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  staffActionBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  inputFieldLabel: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+    color: COLORS.primary,
+    marginBottom: 6,
+  },
+  rolePickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
+  roleChoicePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+  },
+  roleChoicePillActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(201, 243, 29, 0.12)',
+  },
+  roleChoicePillText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  roleChoicePillTextActive: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  resetToggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  resetToggleTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+  },
+  resetToggleTabActive: {
+    borderColor: '#F59E0B',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  resetToggleTabActiveDanger: {
+    borderColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  resetToggleTabText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: COLORS.textMuted,
+  },
+  resetNoticeBox: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  resetNoticeBoxDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  resetNoticeTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  resetNoticeText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    lineHeight: 16,
+  },
+  executeResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 10,
+    gap: 8,
+    marginTop: 18,
+  },
+  executeResetBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });

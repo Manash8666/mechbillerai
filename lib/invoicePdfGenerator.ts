@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAutomotiveTechnicalExplanation } from '@/lib/aiExplainer';
+import { drawSamaelCursiveSignature } from '@/lib/signature';
 
 // Universal constructor that works seamlessly across all ESM/CJS bundlers, Next.js, and Node runtimes
 function createPdfDoc(options: any): any {
@@ -291,8 +292,8 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     const title = (item.description || 'Service Work').toUpperCase();
     let details = item.details ? item.details.trim() : '';
 
-    // If details are empty, automatically generate technical explanation for SOW
-    if (!details && isSow) {
+    // Automatically generate technical real-world explanation for EVERY item so customer understands its purpose
+    if (!details) {
       details = getAutomotiveTechnicalExplanation(item.description);
     }
 
@@ -357,7 +358,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
           const startX = hookData.cell.x + 3;
           const title = (item.description || '').toUpperCase();
           let details = item.details ? item.details.trim() : '';
-          if (!details && isSow) {
+          if (!details) {
             details = getAutomotiveTechnicalExplanation(item.description);
           }
 
@@ -370,7 +371,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
           // 2. Subtext: Clean, Muted Explanation of what the work or spare part does
           if (details) {
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(6.6);
+            doc.setFontSize(6.4);
             doc.setTextColor(100, 116, 139);
             const detailLines = doc.splitTextToSize(details, hookData.cell.width - 6);
             doc.text(detailLines, startX, hookData.cell.y + 7.8);
@@ -622,23 +623,12 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     footerY + 20.5
   );
 
-  // Authorized Signatory — Samael Morningstar in Running Cursive
-  const signWidth = 62;
+  // Authorized Signatory — Samael Morningstar in Authentic Running Cursive
+  const signWidth = 64;
   const signX = rightX - signWidth;
 
-  // Running Cursive Signature for Samael Morningstar
-  doc.setFont('times', 'italic');
-  doc.setFontSize(14.5);
-  doc.setTextColor(15, 23, 42); // Deep premium ink tone
-  doc.text('Samael Morningstar', signX + signWidth / 2, footerY + 5.5, { align: 'center' });
-
-  // Calligraphic flourish underline
-  doc.setDrawColor(30, 41, 59);
-  doc.setLineWidth(0.4);
-  doc.line(signX + 2, footerY + 8, signX + signWidth - 2, footerY + 8);
-  // Elegant signature terminal flick
-  doc.setLineWidth(0.25);
-  doc.line(signX + signWidth - 6, footerY + 8, signX + signWidth + 1, footerY + 6.5);
+  // Draw authentic cursive signature matching reference calligraphy
+  drawSamaelCursiveSignature(doc, signX + 2, footerY - 14, 0.28);
 
   // Designation Subtext
   doc.setFont('helvetica', 'bold');

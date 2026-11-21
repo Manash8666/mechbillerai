@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
+import { getAutomotiveTechnicalExplanation } from '../services/aiExplainer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileLoader from '../components/MobileLoader';
 import MobilePearlButton from '../components/MobilePearlButton';
@@ -23,6 +24,7 @@ import MobilePearlButton from '../components/MobilePearlButton';
 interface LineItem {
   id: string;
   description: string;
+  details?: string;
   category: 'part' | 'labor';
   quantity: number;
   unitPrice: number;
@@ -187,6 +189,7 @@ export default function InvoicesScreen() {
     const newItem: LineItem = {
       id: Date.now().toString() + Math.random().toString().slice(2, 6),
       description: name,
+      details: getAutomotiveTechnicalExplanation(name),
       category,
       quantity: 1,
       unitPrice: rate,
@@ -202,9 +205,11 @@ export default function InvoicesScreen() {
     }
     const rate = Number.parseFloat(customRate) || 0;
     const qty = Number.parseFloat(customQty) || 1;
+    const desc = customDesc.trim();
     const newItem: LineItem = {
       id: Date.now().toString(),
-      description: customDesc.trim(),
+      description: desc,
+      details: getAutomotiveTechnicalExplanation(desc),
       category: customCategory,
       quantity: qty,
       unitPrice: rate,
@@ -288,6 +293,7 @@ export default function InvoicesScreen() {
         docType: isEstimate ? 'ESTIMATE' : 'INVOICE',
         items: lineItems.map((it) => ({
           description: it.description,
+          details: it.details || getAutomotiveTechnicalExplanation(it.description),
           category: it.category,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
@@ -799,6 +805,9 @@ export default function InvoicesScreen() {
                       <Text style={styles.lineItemTitle}>{item.description}</Text>
                       <Text style={styles.lineItemSub}>
                         {item.quantity} × ₹{item.unitPrice.toLocaleString('en-IN')}
+                      </Text>
+                      <Text style={styles.lineItemExpl} numberOfLines={2}>
+                        {item.details || getAutomotiveTechnicalExplanation(item.description)}
                       </Text>
                     </View>
                     <Text style={styles.lineItemTotal}>₹{item.total.toLocaleString('en-IN')}</Text>
@@ -1772,6 +1781,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
     marginTop: 1,
+  },
+  lineItemExpl: {
+    fontSize: 9.5,
+    color: '#94A3B8',
+    marginTop: 2,
+    lineHeight: 12.5,
   },
   lineItemTotal: {
     fontSize: 12,

@@ -472,6 +472,59 @@ export const API = {
     return res.json();
   },
 
+  // Team & User Roles Management
+  getTeam: async () => {
+    const user = await Storage.getUser();
+    const query = user?.id ? `?userId=${user.id}` : '';
+    const res = await apiFetch(`/team${query}`, {}, 7000);
+    return res.json();
+  },
+
+  addTeamMember: async (payload: { name: string; phone: string; role: string; pin?: string; id?: string }) => {
+    const user = await Storage.getUser();
+    const res = await apiFetch('/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    }, 8000);
+    return res.json();
+  },
+
+  patchTeamMember: async (payload: { memberId: string; newPin?: string; role?: string; name?: string; phone?: string }) => {
+    const user = await Storage.getUser();
+    const res = await apiFetch('/team', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteTeamMember: async (memberId: string) => {
+    const user = await Storage.getUser();
+    const query = user?.id ? `?userId=${user.id}&id=${memberId}` : `?id=${memberId}`;
+    const res = await apiFetch(`/team${query}`, {
+      method: 'DELETE',
+    }, 8000);
+    return res.json();
+  },
+
+  // Workshop Data Management & Reset
+  resetWorkshopData: async (mode: 'DATA_RESET' | 'SYSTEM_RESET', confirmPhrase: string, password?: string) => {
+    const user = await Storage.getUser();
+    const res = await apiFetch('/settings/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user?.id,
+        mode,
+        confirmPhrase,
+        password,
+      }),
+    }, 12000);
+    return res.json();
+  },
+
   // PDF URLs
   getJobCardPdfUrl: (jobCardId: string) => {
     return `${currentResolvedUrl}/pdf/jobcard?id=${jobCardId}`;
