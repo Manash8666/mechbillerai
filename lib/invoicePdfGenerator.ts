@@ -594,48 +594,62 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   }
 
   // 6. Workshop Contacts & Authorized Signatory Line
-  const footerY = Math.max(bottomCardsY, pageHeight - 34);
+  const footerY = Math.max(bottomCardsY, pageHeight - 36);
 
   // Workshop Contacts
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(6.8);
   doc.setTextColor(17, 24, 39);
-  const contactHead = `WORKSHOP CONTACTS (${(data.garage.address || 'HQ').toUpperCase()})`;
-  doc.text(contactHead, margin, footerY);
+  doc.text('OFFICIAL WORKSHOP CONTACTS & AVAILABILITY:', margin, footerY);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(75, 85, 99);
-  const phonePart = data.garage.phone ? `: ${data.garage.phone}` : '';
-  const defaultContacts = `${data.garage.name}${phonePart} | Authorized Service & Technical Team`;
-  const contactsLine = data.garage.contacts || defaultContacts;
-  doc.text(contactsLine, margin, footerY + 4.5);
+  doc.setFontSize(6.2);
+  doc.setTextColor(55, 65, 81);
+  doc.text('1. Akshat Mohanty (Owner): 7259625881   |   Availability: 10 AM-7PM', margin, footerY + 4.2);
+  doc.text('2. Samael Morningstar: 6359635416   |   Availability: 10 AM-2AM', margin, footerY + 8.2);
+  doc.text('3. Munna (Sr. Mechanic): 9123293450   |   Availability: 10 AM-7PM', margin, footerY + 12.2);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(220, 38, 38); // Crimson accent for Emergency
+  doc.text('4. Emergency Contact: +91-6359635416   |   Availability: 10 AM-2AM', margin, footerY + 16.2);
 
-  // Tagline
-  doc.setFontSize(5.8);
+  // Electronic verification tagline
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
   doc.setTextColor(156, 163, 175);
   doc.text(
-    `${data.garage.name} | High-Performance Precision Engine Rebuilds & Tuning | Electronically generated document.`,
+    `${data.garage.name || 'MotoFit Workshop'} | High-Performance Precision Engine Rebuilds & Tuning | Electronically generated & verified document.`,
     margin,
-    footerY + 8.5
+    footerY + 20.5
   );
 
-  // Authorized Signatory
-  const signWidth = 46;
+  // Authorized Signatory — Samael Morningstar in Running Cursive
+  const signWidth = 62;
   const signX = rightX - signWidth;
+
+  // Running Cursive Signature for Samael Morningstar
   doc.setFont('times', 'italic');
-  doc.setFontSize(11);
-  doc.setTextColor(17, 24, 39);
-  doc.text('Authorized Signatory', signX + signWidth / 2, footerY + 2, { align: 'center' });
+  doc.setFontSize(14.5);
+  doc.setTextColor(15, 23, 42); // Deep premium ink tone
+  doc.text('Samael Morningstar', signX + signWidth / 2, footerY + 5.5, { align: 'center' });
 
-  doc.setDrawColor(75, 85, 99);
-  doc.setLineWidth(0.3);
-  doc.line(signX, footerY + 4, rightX, footerY + 4);
+  // Calligraphic flourish underline
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.4);
+  doc.line(signX + 2, footerY + 8, signX + signWidth - 2, footerY + 8);
+  // Elegant signature terminal flick
+  doc.setLineWidth(0.25);
+  doc.line(signX + signWidth - 6, footerY + 8, signX + signWidth + 1, footerY + 6.5);
 
+  // Designation Subtext
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(55, 65, 81);
-  doc.text('Authorized Signatory', signX + signWidth / 2, footerY + 7.5, { align: 'center' });
+  doc.setFontSize(6.8);
+  doc.setTextColor(51, 65, 85);
+  doc.text('Authorised Signatory — Samael Morningstar', signX + signWidth / 2, footerY + 12.5, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('MotoFit Workshop • Digitally Verified Authority', signX + signWidth / 2, footerY + 16, { align: 'center' });
 
   return doc;
 }

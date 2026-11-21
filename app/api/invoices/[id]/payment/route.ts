@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 // Add payment to invoice
 export async function POST(
@@ -8,55 +8,68 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
-
+    const session = await getSessionUser(request);
     const { id } = await params;
     const body = await request.json();
-    const { amount, paymentMode, notes } = body;
+    const { amount, paymentMode, notes, paymentDate } = body;
 
-    if (!amount || !paymentMode) {
+    const parsedAmount = Number(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
       return NextResponse.json(
-        { error: 'Amount and payment mode are required' },
+        { error: 'Valid payment amount is required' },
         { status: 400 }
       );
     }
 
     // Get current invoice verifying ownership
     const invoice = await prisma.invoice.findFirst({
-      where: { id, userId },
+      where: {
+        OR: [{ id }, { invoiceNumber: id }],
+      },
+      include: {
+        customer: true,
+      },
     });
 
     if (!invoice) {
       return NextResponse.json(
-        { error: 'Invoice not found or unauthorized' },
+        { error: 'Invoice not found' },
         { status: 404 }
       );
     }
 
-    // Create payment
+    if (session && session.userId !== invoice.userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized to modify this invoice' },
+        { status: 403 }
+      );
+    }
+
+    const effectiveDate = paymentDate ? new Date(paymentDate) : new Date();
+
+    // 1. Create payment record
     const payment = await prisma.payment.create({
       data: {
-        invoiceId: id,
-        amount,
-        paymentMode,
-        notes,
+        invoiceId: invoice.id,
+        amount: parsedAmount,
+        paymentMode: paymentMode || 'UPI',
+        notes: notes || undefined,
+        createdAt: effectiveDate,
       },
     });
 
-    // Update invoice
-    const newPaid = invoice.paid + amount;
-    const newBalance = invoice.total - newPaid;
-    const newStatus = newBalance <= 0 ? 'paid' : newBalance < invoice.total ? 'partial' : 'unpaid';
+    // 2. Update invoice balance and status
+    const newPaid = Number(invoice.paid || 0) + parsedAmount;
+    const newBalance = Math.max(0, Number(invoice.total || 0) - newPaid);
+    const newStatus = newBalance <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
 
     const updatedInvoice = await prisma.invoice.update({
-      where: { id },
+      where: { id: invoice.id },
       data: {
         paid: newPaid,
         balance: newBalance,
         status: newStatus,
-        paymentMode,
+        paymentMode: paymentMode || invoice.paymentMode,
       },
       include: {
         customer: true,
@@ -65,14 +78,33 @@ export async function POST(
       },
     });
 
+    // 3. Automatically record entry in Daily Ledger so P&L and Balance Sheet update live
+    try {
+      await prisma.ledgerEntry.create({
+        data: {
+          userId: invoice.userId,
+          type: 'INCOME',
+          category: 'Direct Service',
+          paymentMode: (paymentMode || 'UPI').toLowerCase(),
+          amount: parsedAmount,
+          description: `Payment received for Invoice #${invoice.invoiceNumber} (${invoice.customer?.name || 'Customer'})${notes ? ` - ${notes}` : ''}`,
+          reference: invoice.invoiceNumber,
+          date: effectiveDate,
+        },
+      });
+    } catch (ledgerErr) {
+      console.warn('Daily ledger entry skipped during invoice payment recording:', ledgerErr);
+    }
+
     return NextResponse.json({
+      success: true,
       payment,
       invoice: updatedInvoice,
     });
   } catch (error) {
     console.error('Error processing payment:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error processing payment' },
       { status: 500 }
     );
   }

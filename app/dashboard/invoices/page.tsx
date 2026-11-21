@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Filter, FileText, Download, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3 } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3, CreditCard, Package, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -97,6 +97,18 @@ export default function InvoicesPage() {
   const [aiPromptInput, setAiPromptInput] = useState('');
   const [draftingWithAi, setDraftingWithAi] = useState(false);
   const [editingDetailIndex, setEditingDetailIndex] = useState<number | null>(null);
+
+  // Inventory parts for quick-adding
+  const [inventory, setInventory] = useState<any[]>([]);
+
+  // Collect Payment Modal State (for Unpaid / Partial bills later)
+  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [collectAmount, setCollectAmount] = useState('');
+  const [collectMode, setCollectMode] = useState('upi');
+  const [collectDate, setCollectDate] = useState('');
+  const [collectNotes, setCollectNotes] = useState('');
+  const [collecting, setCollecting] = useState(false);
 
   // Edit Invoice State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -261,7 +273,79 @@ export default function InvoicesPage() {
   useEffect(() => {
     void fetchInvoices();
     void fetchCustomerOptions();
+    void fetchInventory();
   }, []);
+
+  const fetchInventory = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = user.id || localStorage.getItem('userId');
+      const res = await fetch(`/api/inventory?userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInventory(Array.isArray(data) ? data : data.data || []);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch inventory:', err);
+    }
+  };
+
+  const handleOpenRecordPayment = (inv: Invoice) => {
+    setPaymentInvoice(inv);
+    setCollectAmount(String(inv.balance || ''));
+    setCollectMode('upi');
+    setCollectDate(new Date().toISOString().split('T')[0]);
+    setCollectNotes('');
+    setIsRecordPaymentOpen(true);
+  };
+
+  const handleConfirmRecordPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentInvoice) return;
+    const amt = Number(collectAmount);
+    if (!amt || amt <= 0) {
+      toast.error('Please enter a valid payment amount');
+      return;
+    }
+
+    try {
+      setCollecting(true);
+      const res = await fetch(`/api/invoices/${paymentInvoice.id}/payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amt,
+          paymentMode: collectMode.toUpperCase(),
+          notes: collectNotes || `Settled via ${collectMode.toUpperCase()}`,
+          paymentDate: collectDate || new Date().toISOString(),
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to record payment');
+      }
+
+      toast.success(`Payment of ₹${amt.toLocaleString('en-IN')} recorded successfully!`);
+      setIsRecordPaymentOpen(false);
+      setPaymentInvoice(null);
+      await fetchInvoices();
+    } catch (err: any) {
+      toast.error(err?.message || 'Error recording payment');
+    } finally {
+      setCollecting(false);
+    }
+  };
+
+  const handleAddInventoryPartToInvoice = (part: any) => {
+    const desc = part.name || part.partName || 'Spare Part';
+    const rate = Number(part.price || part.sellingPrice || part.unitPrice || 0);
+    const details = part.category
+      ? `Spare Part (${part.category}): SKU ${part.sku || 'N/A'}`
+      : 'High-grade replacement spare part';
+    setLineItems([...lineItems, { description: desc, details, quantity: 1, unitPrice: rate }]);
+    toast.success(`Added ${desc} to bill!`);
+  };
 
   const fetchCustomerOptions = async () => {
     try {
@@ -1005,6 +1089,17 @@ export default function InvoicesPage() {
 
                   {/* Right Section - Actions */}
                   <div className="flex lg:flex-col gap-2">
+                    {invoice.balance > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenRecordPayment(invoice)}
+                        className="w-full px-3 py-2 bg-[#C9F31D] text-[#0B0F19] font-extrabold rounded-lg hover:bg-[#d8ff33] transition-all text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                        title="Record payment collected on a later date (Partial / Full / Delayed)"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        Collect Payment (₹{invoice.balance.toLocaleString('en-IN')} Due)
+                      </button>
+                    )}
                     <div className="flex gap-1.5 w-full">
                       <button
                         type="button"
@@ -1296,7 +1391,30 @@ export default function InvoicesPage() {
                   <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Items & Labor Charges *
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {inventory.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          const partId = e.target.value;
+                          if (!partId) return;
+                          const found = inventory.find((p) => p.id === partId);
+                          if (found) handleAddInventoryPartToInvoice(found);
+                          e.target.value = '';
+                        }}
+                        defaultValue=""
+                        className="text-xs bg-[#C9F31D]/10 text-[#C9F31D] border border-[#C9F31D]/30 rounded-lg px-2.5 py-1 font-semibold focus:outline-none cursor-pointer"
+                        title="Pick genuine spare part from workshop inventory stock"
+                      >
+                        <option value="" disabled className="bg-slate-900 text-slate-300">
+                          📦 Pick from Parts Stock ({inventory.length})...
+                        </option>
+                        {inventory.map((invItem) => (
+                          <option key={invItem.id} value={invItem.id} className="bg-slate-900 text-slate-100">
+                            {invItem.name || invItem.partName} — ₹{Number(invItem.price || invItem.sellingPrice || invItem.unitPrice || 0)} (Stock: {invItem.quantity ?? invItem.stock ?? 0})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       type="button"
                       onClick={handleAiAutoExplainAll}
@@ -1420,6 +1538,148 @@ export default function InvoicesPage() {
                 <PearlButton type="submit" disabled={submitting}>
                   {submitting ? 'Creating...' : `Save & Generate ${invoiceType === 'INVOICE' ? 'Invoice' : 'Estimate'} PDF`}
                 </PearlButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Payment Modal for Unpaid / Partial Invoices */}
+      {isRecordPaymentOpen && paymentInvoice && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#151D2F] border border-[#C9F31D]/40 rounded-2xl max-w-md w-full p-6 text-foreground relative shadow-2xl">
+            <button
+              onClick={() => {
+                setIsRecordPaymentOpen(false);
+                setPaymentInvoice(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="w-5 h-5 text-[#C9F31D]" />
+              <h3 className="text-lg font-bold text-foreground">Record Bill Payment</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Invoice #{paymentInvoice.invoiceNumber} • {paymentInvoice.customer?.name}
+            </p>
+
+            <form onSubmit={handleConfirmRecordPayment} className="space-y-4">
+              {/* Balance Summary Box */}
+              <div className="grid grid-cols-3 gap-2 p-3 bg-black/30 rounded-xl border border-border text-center">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Total Bill</p>
+                  <p className="text-sm font-bold text-foreground">₹{paymentInvoice.total.toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Paid So Far</p>
+                  <p className="text-sm font-bold text-emerald-400">₹{paymentInvoice.paid.toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Balance Due</p>
+                  <p className="text-sm font-bold text-rose-400">₹{paymentInvoice.balance.toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+
+              {/* Amount to Collect */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Payment Amount to Collect (₹) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={paymentInvoice.balance}
+                  value={collectAmount}
+                  onChange={(e) => setCollectAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-lg font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                  required
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCollectAmount(String(paymentInvoice.balance))}
+                    className="flex-1 py-1 text-xs font-semibold bg-[#C9F31D]/15 text-[#C9F31D] hover:bg-[#C9F31D]/25 rounded-lg border border-[#C9F31D]/30 transition-colors"
+                  >
+                    Full Balance (₹{paymentInvoice.balance.toLocaleString('en-IN')})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCollectAmount(String(Math.round(paymentInvoice.balance / 2)))}
+                    className="flex-1 py-1 text-xs font-semibold bg-white/5 text-slate-300 hover:bg-white/10 rounded-lg border border-border transition-colors"
+                  >
+                    50% Split (₹{Math.round(paymentInvoice.balance / 2).toLocaleString('en-IN')})
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment Mode & Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Payment Mode
+                  </label>
+                  <select
+                    value={collectMode}
+                    onChange={(e) => setCollectMode(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                  >
+                    <option value="upi">UPI / GPay / PhonePe</option>
+                    <option value="cash">Cash Counter</option>
+                    <option value="card">Card / POS</option>
+                    <option value="bank">Bank Transfer / NEFT</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Payment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={collectDate}
+                    onChange={(e) => setCollectDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                  />
+                </div>
+              </div>
+
+              {/* Reference / Notes */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Payment Reference / Remarks
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. UPI Ref #49102 / Settled after 2 months"
+                  value={collectNotes}
+                  onChange={(e) => setCollectNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRecordPaymentOpen(false);
+                    setPaymentInvoice(null);
+                  }}
+                  className="w-1/3 py-2.5 bg-muted text-foreground font-semibold rounded-lg hover:bg-muted/80 text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={collecting}
+                  className="w-2/3 py-2.5 bg-[#C9F31D] hover:bg-[#d8ff33] text-[#0B0F19] font-bold rounded-lg text-xs transition-colors shadow-lg flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {collecting
+                    ? 'Saving Payment...'
+                    : `Record ₹${Number(collectAmount || 0).toLocaleString('en-IN')} & Update Bill`}
+                </button>
               </div>
             </form>
           </div>

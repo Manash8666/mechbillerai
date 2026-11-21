@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 24,
+    bottom: 78,
     backgroundColor: COLORS.primary,
     width: 56,
     height: 56,
