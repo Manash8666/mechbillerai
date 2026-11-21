@@ -58,10 +58,13 @@ export default function DashboardPage() {
               <div className="text-xs text-cool-slate">Monthly Net Cashflow & Settled Invoices</div>
             </div>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-sync/15 border border-emerald-sync/30 text-emerald-sync text-xs font-bold w-fit">
+          <a
+            href="/dashboard/ledger"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-sync/15 border border-emerald-sync/30 text-emerald-sync text-xs font-bold w-fit hover:bg-emerald-sync/25 transition-colors cursor-pointer"
+          >
             <span className="w-2 h-2 rounded-full bg-emerald-sync animate-pulse" />
-            <span>LIVE LEDGER (EMERALD SYNC)</span>
-          </div>
+            <span>OPEN DAILY LEDGER &rarr;</span>
+          </a>
         </div>
 
         <div className="mb-6 relative z-10">
@@ -104,7 +107,7 @@ export default function DashboardPage() {
         <h3 className="text-sm font-bold uppercase tracking-wider text-cool-slate mb-4">
           Reactive Garage Shortcuts (v3.0 Telemetry)
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <QuickAction
             title="🛡️ Express Intake"
             href="/dashboard/jobcards"
@@ -119,6 +122,11 @@ export default function DashboardPage() {
             title="📄 Create Invoice"
             href="/dashboard/invoices"
             variant="emerald"
+          />
+          <QuickAction
+            title="📒 Daily Ledger"
+            href="/dashboard/ledger"
+            variant="lime"
           />
           <QuickAction
             title="👥 Add Customer"

@@ -435,6 +435,43 @@ export const API = {
     return res.json();
   },
 
+  // Daily Ledger & Cash Flow
+  getLedger: async (period = 'this_month') => {
+    const user = await Storage.getUser();
+    const params = new URLSearchParams();
+    if (user?.id) params.append('userId', user.id);
+    if (period) params.append('period', period);
+    const res = await apiFetch(`/ledger?${params.toString()}`, {}, 7000);
+    return res.json();
+  },
+
+  createLedgerEntry: async (payload: {
+    type: 'INCOME' | 'EXPENSE';
+    category: string;
+    amount: number;
+    paymentMode: string;
+    description: string;
+    reference?: string;
+    notes?: string;
+  }) => {
+    const user = await Storage.getUser();
+    const res = await apiFetch('/ledger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, userId: user?.id }),
+    }, 8000);
+    return res.json();
+  },
+
+  deleteLedgerEntry: async (id: string) => {
+    const user = await Storage.getUser();
+    const query = user?.id ? `?userId=${user.id}` : '';
+    const res = await apiFetch(`/ledger/${id}${query}`, {
+      method: 'DELETE',
+    }, 8000);
+    return res.json();
+  },
+
   // PDF URLs
   getJobCardPdfUrl: (jobCardId: string) => {
     return `${currentResolvedUrl}/pdf/jobcard?id=${jobCardId}`;

@@ -14,15 +14,18 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileLoader from '../components/MobileLoader';
 import MobilePearlButton from '../components/MobilePearlButton';
 
+type UserRole = 'owner' | 'manager' | 'mechanic';
+
 export default function LoginScreen({ navigation, onLoginSuccess }: any) {
-  const [email, setEmail] = useState('demo@garagesaas.com');
-  const [password, setPassword] = useState('test123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('owner');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Required', 'Please enter email and password.');
+      Alert.alert('Required', 'Please enter your email address and password.');
       return;
     }
 
@@ -30,66 +33,27 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
       setLoading(true);
       const res = await API.login(email.trim(), password.trim());
       if (res.user) {
-        await Storage.setUser(res.user);
+        const userWithRole = {
+          ...res.user,
+          activeRole: selectedRole || res.user.role || 'owner',
+        };
+        await Storage.setUser(userWithRole);
         if (onLoginSuccess) {
-          onLoginSuccess(res.user);
+          onLoginSuccess(userWithRole);
         } else {
           navigation.replace('MainTabs');
         }
       } else {
-        Alert.alert('Login Failed', res.error || 'Invalid credentials');
+        Alert.alert('Sign In Failed', res.error || 'Invalid email or password.');
       }
     } catch (err: any) {
       console.warn('Login network exception:', err);
-      let fallbackName = 'MotoBan Workshop';
-      if (email.includes('demo')) {
-        fallbackName = 'Royal Motors (Two-Wheeler)';
-      } else if (email.includes('test')) {
-        fallbackName = 'Apex Auto Care (Four-Wheeler)';
-      }
-
-      const fallbackUser = {
-        id: 'cmv4zl4620001d96sd1e0qto2',
-        name: fallbackName,
-        email: email.trim(),
-        role: 'owner',
-        garageType: email.includes('two') ? 'two_wheeler' : 'four_wheeler',
-        licenseStatus: 'active',
-      };
-
       Alert.alert(
-        'Server Unreachable',
-        'Could not connect to the MotoBan cloud server (https://app.motoban.in).\n\nWould you like to enter in Offline Demo Mode with all garage features enabled?',
-        [
-          {
-            text: 'Enter Offline Demo',
-            onPress: async () => {
-              await Storage.setUser(fallbackUser);
-              if (onLoginSuccess) {
-                onLoginSuccess(fallbackUser);
-              } else {
-                navigation.replace('MainTabs');
-              }
-            },
-          },
-          {
-            text: 'Retry',
-            style: 'cancel',
-          },
-        ]
+        'Connection Error',
+        'Could not communicate with the MotoBan Production Server (https://app.motoban.in). Please check your internet connection and try again.'
       );
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFillDemo = (type: 'two_wheeler' | 'four_wheeler') => {
-    if (type === 'two_wheeler') {
-      setEmail('demo@garagesaas.com');
-      setPassword('test123');
-    } else {
-      setEmail('test@garagesaas.com');
-      setPassword('test123');
     }
   };
 
@@ -98,27 +62,97 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
       {/* Brand Header */}
       <View style={styles.brandHeader}>
         <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name="shield-car" size={38} color={COLORS.primary} />
+          <MaterialCommunityIcons name="shield-check" size={38} color={COLORS.primary} />
         </View>
         <Text style={styles.brandTitle}>MotoBan</Text>
         <Text style={styles.brandSubtitle}>
-          Automotive SaaS · Powered by Hybrid StudioZ
+          Automotive Production Engine · Powered by Hybrid StudioZ
         </Text>
       </View>
 
       {/* Login Card */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Garage Sign In</Text>
+        <Text style={styles.cardTitle}>Workshop Sign In</Text>
         <Text style={styles.cardSubtitle}>
-          Synced with your WebApp cloud account
+          Synced live with your MotoBan cloud account
         </Text>
+
+        {/* Role Selector */}
+        <Text style={styles.label}>Select Workshop Role</Text>
+        <View style={styles.roleRow}>
+          <TouchableOpacity
+            style={[
+              styles.roleBtn,
+              selectedRole === 'owner' && styles.roleBtnActiveOwner,
+            ]}
+            onPress={() => setSelectedRole('owner')}
+          >
+            <MaterialCommunityIcons
+              name="crown"
+              size={16}
+              color={selectedRole === 'owner' ? COLORS.background : COLORS.primary}
+            />
+            <Text
+              style={[
+                styles.roleBtnText,
+                selectedRole === 'owner' && styles.roleBtnTextActive,
+              ]}
+            >
+              Owner
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.roleBtn,
+              selectedRole === 'manager' && styles.roleBtnActiveManager,
+            ]}
+            onPress={() => setSelectedRole('manager')}
+          >
+            <MaterialCommunityIcons
+              name="account-tie"
+              size={16}
+              color={selectedRole === 'manager' ? COLORS.background : '#38BDF8'}
+            />
+            <Text
+              style={[
+                styles.roleBtnText,
+                selectedRole === 'manager' && styles.roleBtnTextActive,
+              ]}
+            >
+              Manager
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.roleBtn,
+              selectedRole === 'mechanic' && styles.roleBtnActiveMechanic,
+            ]}
+            onPress={() => setSelectedRole('mechanic')}
+          >
+            <MaterialCommunityIcons
+              name="wrench"
+              size={16}
+              color={selectedRole === 'mechanic' ? COLORS.background : '#FF5E14'}
+            />
+            <Text
+              style={[
+                styles.roleBtnText,
+                selectedRole === 'mechanic' && styles.roleBtnTextActive,
+              ]}
+            >
+              Technician
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.label}>Email Address</Text>
         <View style={styles.inputWrapper}>
           <MaterialCommunityIcons name="email-outline" size={20} color={COLORS.textMuted} />
           <TextInput
             style={styles.input}
-            placeholder="garage@example.com"
+            placeholder="garage@motoban.in"
             placeholderTextColor={COLORS.textMuted}
             value={email}
             onChangeText={setEmail}
@@ -162,67 +196,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
           </MobilePearlButton>
         )}
 
-        {/* Quick Demo Logins */}
-        <View style={styles.demoSection}>
-          <Text style={styles.demoTitle}>QUICK DEMO ACCOUNTS</Text>
-          <View style={styles.demoButtonsRow}>
-            <TouchableOpacity
-              style={styles.demoPill}
-              onPress={() => {
-                handleFillDemo('two_wheeler');
-                // Instant one-tap demo entry
-                const demoUser = {
-                  id: 'cmv4zl4620001d96sd1e0qto2',
-                  name: 'Royal Motors (Two-Wheeler)',
-                  email: 'demo@garagesaas.com',
-                  role: 'owner',
-                  garageType: 'two_wheeler',
-                  licenseStatus: 'active',
-                };
-                void Storage.setUser(demoUser);
-                if (onLoginSuccess) {
-                  onLoginSuccess(demoUser);
-                } else {
-                  navigation.replace('MainTabs');
-                }
-              }}
-            >
-              <MaterialCommunityIcons name="motorbike" size={16} color={COLORS.primary} />
-              <Text style={styles.demoPillText}>Two-Wheeler</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.demoPill}
-              onPress={() => {
-                handleFillDemo('four_wheeler');
-                // Instant one-tap demo entry
-                const demoUser = {
-                  id: 'cmv4zl4620001d96sd1e0qto2',
-                  name: 'Apex Auto Care (Four-Wheeler)',
-                  email: 'test@garagesaas.com',
-                  role: 'owner',
-                  garageType: 'four_wheeler',
-                  licenseStatus: 'active',
-                };
-                void Storage.setUser(demoUser);
-                if (onLoginSuccess) {
-                  onLoginSuccess(demoUser);
-                } else {
-                  navigation.replace('MainTabs');
-                }
-              }}
-            >
-              <MaterialCommunityIcons name="car" size={16} color={COLORS.primary} />
-              <Text style={styles.demoPillText}>Four-Wheeler</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Cloud Server Status */}
         <View style={styles.serverInfoBox}>
-          <MaterialCommunityIcons name="cloud-check" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
+          <MaterialCommunityIcons name="cloud-check" size={14} color="#10B981" style={{ marginRight: 6 }} />
           <Text style={styles.serverInfoText}>
-            Cloud Server: https://app.motoban.in/
+            Production Engine · https://app.motoban.in/
           </Text>
         </View>
       </View>
@@ -266,6 +244,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginTop: 4,
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   card: {
     width: '100%',
@@ -286,6 +265,43 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 18,
   },
+  roleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  roleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  roleBtnActiveOwner: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  roleBtnActiveManager: {
+    backgroundColor: '#38BDF8',
+    borderColor: '#38BDF8',
+  },
+  roleBtnActiveMechanic: {
+    backgroundColor: '#FF5E14',
+    borderColor: '#FF5E14',
+  },
+  roleBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  roleBtnTextActive: {
+    color: COLORS.background,
+  },
   label: {
     fontSize: 12,
     fontWeight: '600',
@@ -301,66 +317,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 12,
-    height: 46,
+    marginBottom: 8,
   },
   input: {
     flex: 1,
+    height: 46,
     color: COLORS.text,
-    fontSize: 14,
     marginLeft: 8,
+    fontSize: 14,
   },
   btnText: {
     color: COLORS.background,
-    fontSize: 14,
     fontWeight: 'bold',
-  },
-  demoSection: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    alignItems: 'center',
-  },
-  demoTitle: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  demoButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  demoPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(201, 168, 76, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.3)',
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
-  },
-  demoPillText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 15,
   },
   serverInfoBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
-    paddingTop: 12,
+    marginTop: 22,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
   serverInfoText: {
     fontSize: 11,
     color: COLORS.textMuted,
+    fontWeight: '500',
   },
 });

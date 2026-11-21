@@ -44,30 +44,27 @@ export default function Home() {
         <div className="text-center mb-16 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-steel border border-deep-glass text-xs font-semibold text-geek-lime mb-6 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-geek-lime animate-pulse" />
-            <span>MotoBan v3.0 Production Engine • Ahmedabad Lab</span>
+            <span>MotoBan Production Engine • Official Software for MotoFit</span>
           </div>
 
           <h2 className="text-5xl sm:text-6xl font-extrabold text-pure-white mb-4 tracking-tight">
-            AI Garage POS & Billing Platform
+            Automotive Garage POS & Smart Billing
           </h2>
-          <p className="text-xl text-cool-slate mb-4 max-w-2xl mx-auto">
-            Engineered for greasy garage bays and executive digital precision. Fast GST invoices, job cards & telemetry.
-          </p>
-          <p className="text-base text-royal-gold mb-8 font-medium">
-            ગેરેજ માલિકો માટે સંપૂર્ણ સોલ્યુશન (Complete Solution for Garage Owners)
+          <p className="text-xl text-cool-slate mb-8 max-w-2xl mx-auto">
+            High-velocity workshop management, instant UPI invoices, digital job cards & real-time daily ledger. Trusted by MotoFit.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/register"
               className="inline-block px-8 py-4 bg-geek-lime text-void-black text-lg font-bold rounded-xl hover:bg-geek-lime-hover hover:shadow-lime-glow shadow-lg transition-all duration-300"
             >
-              Start Free Trial (Geek Lime CTA)
+              Start Free Trial
             </Link>
             <Link
               href="/login"
               className="inline-block px-8 py-4 bg-navy-steel border border-deep-glass text-pure-white text-lg font-semibold rounded-xl hover:border-geek-lime/40 transition-all duration-300"
             >
-              Launch Terminal
+              Launch Live Terminal
             </Link>
           </div>
         </div>

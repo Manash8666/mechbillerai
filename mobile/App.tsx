@@ -15,6 +15,7 @@ import InvoicesScreen from './src/screens/InvoicesScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import AppointmentsScreen from './src/screens/AppointmentsScreen';
 import BrandingScreen from './src/screens/BrandingScreen';
+import LedgerScreen from './src/screens/LedgerScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { Storage, UserSession } from './src/services/api';
 
@@ -175,6 +176,11 @@ export default function App() {
             name="Branding"
             component={BrandingScreen}
             options={{ title: 'Workshop Branding' }}
+          />
+          <Stack.Screen
+            name="Ledger"
+            component={LedgerScreen}
+            options={{ title: 'Daily Ledger & P&L' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

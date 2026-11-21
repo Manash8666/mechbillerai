@@ -18,48 +18,33 @@ async function main() {
   await prisma.vehicle.deleteMany({});
   await prisma.customer.deleteMany({});
 
-  // Create test users
-  const hashedPassword = await bcrypt.hash('test123', 10);
+  // Create production user - MotoFit (Two-Wheeler & Four-Wheeler Service Center)
+  const motofitPassword = await bcrypt.hash('MotoFit@2026', 10);
 
-  // Test User 1 - ABC Motors (Four-Wheeler)
   const user1 = await prisma.user.upsert({
-    where: { email: 'test@garagesaas.com' },
-    update: {},
-    create: {
-      email: 'test@garagesaas.com',
-      password: hashedPassword,
-      name: 'Test User',
-      phone: '+91 98765 43210',
-      role: 'owner',
-      garageType: 'four_wheeler',
-      licenseKey: 'TEST-1234-ABCD-5678',
-      licenseStatus: 'active',
-      expiresAt: null, // Lifetime access
-    },
-  });
-
-  console.log('✅ Created test user:', user1.email);
-
-  // Test User 2 - Speed Garage (Two-Wheeler)
-  const user2 = await prisma.user.upsert({
-    where: { email: 'demo@garagesaas.com' },
+    where: { email: 'garage2motofit@gmail.com' },
     update: {
-      garageType: 'two_wheeler',
-    },
-    create: {
-      email: 'demo@garagesaas.com',
-      password: hashedPassword,
-      name: 'Demo Garage',
-      phone: '+91 99999 88888',
+      name: 'MotoFit Workshop',
       role: 'owner',
       garageType: 'two_wheeler',
-      licenseKey: 'DEMO-9876-WXYZ-4321',
-      licenseStatus: 'active',
-      expiresAt: null,
+      licenseStatus: 'lifetime_free',
+      subdomain: 'motofit',
+    },
+    create: {
+      email: 'garage2motofit@gmail.com',
+      password: motofitPassword,
+      name: 'MotoFit Workshop',
+      phone: '+91 72596 25881',
+      role: 'owner',
+      garageType: 'two_wheeler',
+      licenseKey: 'MOTOFIT-VIP-FOUNDING-2026',
+      licenseStatus: 'lifetime_free',
+      subdomain: 'motofit',
+      expiresAt: null, // Lifetime VIP access
     },
   });
 
-  console.log('✅ Created demo user:', user2.email);
+  console.log('✅ Created MotoFit account:', user1.email);
 
   // Create sample customers for user1
   const customer1 = await prisma.customer.create({
@@ -370,38 +355,24 @@ async function main() {
 
   console.log('✅ Created 2 sample appointments');
 
-  // Create default branding for test user
+  // Create default branding for MotoFit
   await prisma.brandingSettings.create({
     data: {
       userId: user1.id,
-      garageName: 'ABC Motors',
-      primaryColor: '#C9A84C',
+      garageName: 'MotoFit Workshop',
+      primaryColor: '#E5C07B',
     },
   });
 
-  console.log('✅ Created default branding settings');
+  console.log('✅ Created MotoFit branding settings');
 
-  console.log('\n🎉 Database seeding completed!\n');
-  console.log('📝 Test Credentials:');
+  console.log('\n🎉 Production database seeding completed!\n');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('Email:    test@garagesaas.com');
-  console.log('Password: test123');
-  console.log('License:  TEST-1234-ABCD-5678');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('\n📝 Demo Account:');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('Email:    demo@garagesaas.com');
-  console.log('Password: test123');
-  console.log('License:  DEMO-9876-WXYZ-4321');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('\n📊 Sample Data Created:');
-  console.log('  • 2 Users (test & demo)');
-  console.log('  • 3 Customers');
-  console.log('  • 3 Vehicles');
-  console.log('  • 2 Job Cards (1 in-progress, 1 completed)');
-  console.log('  • 2 Invoices (1 paid, 1 partial)');
-  console.log('  • 5 Inventory Items (1 low stock)');
-  console.log('  • 2 Appointments');
+  console.log('Workshop: MotoFit Workshop');
+  console.log('Email:    garage2motofit@gmail.com');
+  console.log('License:  VIP Lifetime Free Founding Account');
+  console.log('Portal:   motofit.motoban.in');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   console.log('\n✨ Ready to test!\n');
 }
 

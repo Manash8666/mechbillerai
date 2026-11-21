@@ -12,6 +12,7 @@ export default function DashboardScreen({ navigation }: any) {
     revenueThisMonth: 0,
     activeJobs: 0,
   });
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
@@ -19,7 +20,11 @@ export default function DashboardScreen({ navigation }: any) {
       const currentUser = await Storage.getUser();
       setUser(currentUser);
 
-      const data = await API.getDashboardStats();
+      const [data, invoices] = await Promise.all([
+        API.getDashboardStats(),
+        API.getInvoices(),
+      ]);
+
       if (data && !data.error) {
         setStats({
           totalCustomers: data.totalCustomers || 0,
@@ -27,6 +32,12 @@ export default function DashboardScreen({ navigation }: any) {
           revenueThisMonth: data.revenueThisMonth?._sum?.total || 0,
           activeJobs: data.activeJobs || 0,
         });
+      }
+
+      if (Array.isArray(invoices)) {
+        setRecentTransactions(invoices.slice(0, 5));
+      } else if (invoices?.data && Array.isArray(invoices.data)) {
+        setRecentTransactions(invoices.data.slice(0, 5));
       }
     } catch (e) {
       console.error('Failed to load dashboard data:', e);
@@ -69,11 +80,15 @@ export default function DashboardScreen({ navigation }: any) {
       </View>
 
       {/* Hero: iOS Banking Balance & Cashflow Card */}
-      <View style={styles.bankBalanceCard}>
+      <TouchableOpacity
+        style={styles.bankBalanceCard}
+        activeOpacity={0.88}
+        onPress={() => navigation?.navigate('Ledger')}
+      >
         <View style={styles.bankCardHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <MaterialCommunityIcons name="shield-check" size={16} color={COLORS.primary} />
-            <Text style={styles.bankCardLabel}>GARAGE OPERATING VAULT</Text>
+            <Text style={styles.bankCardLabel}>GARAGE OPERATING VAULT &bull; P&L</Text>
           </View>
           <View style={styles.liveChip}>
             <View style={styles.liveDot} />
@@ -84,7 +99,7 @@ export default function DashboardScreen({ navigation }: any) {
         <Text style={styles.balanceAmount}>
           ₹{stats.revenueThisMonth.toLocaleString('en-IN')}
         </Text>
-        <Text style={styles.balanceSubtext}>Net Cash Flow Settled (This Month)</Text>
+        <Text style={styles.balanceSubtext}>Tap to view full Daily Ledger & P&L Statement &rarr;</Text>
 
         <View style={styles.bankCardFooter}>
           <TouchableOpacity
@@ -111,9 +126,9 @@ export default function DashboardScreen({ navigation }: any) {
             <Text style={styles.footerMetricVal}>{stats.totalCustomers}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
 
-      {/* iOS Quick Actions Pills (Send, Receive, Invoice, Intake) */}
+      {/* iOS Quick Actions Pills (Send, Receive, Invoice, Intake, Ledger) */}
       <View style={styles.pillsRow}>
         <TouchableOpacity
           style={styles.actionPill}
@@ -147,56 +162,82 @@ export default function DashboardScreen({ navigation }: any) {
 
         <TouchableOpacity
           style={styles.actionPill}
-          onPress={() => navigation?.navigate('Appointments')}
+          onPress={() => navigation?.navigate('Ledger')}
         >
-          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-            <MaterialCommunityIcons name="calendar-clock" size={22} color="#C084FC" />
+          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(201, 243, 29, 0.15)' }]}>
+            <MaterialCommunityIcons name="book-open-page-variant" size={22} color={COLORS.geekLime} />
           </View>
-          <Text style={styles.pillLabel}>Bookings</Text>
+          <Text style={styles.pillLabel}>Ledger</Text>
         </TouchableOpacity>
       </View>
 
       {/* Recent Cash Flow & Job Ledger Section */}
       <View style={styles.ledgerHeader}>
-        <Text style={styles.sectionTitle}>Today&apos;s Garage Cash Flow</Text>
-        <TouchableOpacity>
+        <Text style={styles.sectionTitle}>Recent Invoices & Cash Flow</Text>
+        <TouchableOpacity onPress={() => navigation?.navigate('Invoices')}>
           <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.transactionsCard}>
-        <View style={styles.txRow}>
-          <View style={[styles.txIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-            <MaterialCommunityIcons name="arrow-bottom-left" size={20} color="#10B981" />
+        {recentTransactions.length > 0 ? (
+          recentTransactions.map((tx, idx) => {
+            const isPaid = tx.status === 'paid' || (tx.balance <= 0 && tx.paid > 0);
+            const isPartial = tx.status === 'partial' || (tx.paid > 0 && tx.balance > 0);
+            return (
+              <TouchableOpacity
+                key={tx.id || idx}
+                style={[styles.txRow, idx === recentTransactions.length - 1 && { borderBottomWidth: 0 }]}
+                onPress={() => navigation?.navigate('Invoices')}
+              >
+                <View
+                  style={[
+                    styles.txIcon,
+                    {
+                      backgroundColor: isPaid
+                        ? 'rgba(16, 185, 129, 0.15)'
+                        : isPartial
+                        ? 'rgba(245, 158, 11, 0.15)'
+                        : 'rgba(239, 68, 68, 0.15)',
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={isPaid ? 'arrow-bottom-left' : 'clock-outline'}
+                    size={20}
+                    color={isPaid ? '#10B981' : isPartial ? '#F59E0B' : '#EF4444'}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.txTitle}>
+                    {tx.customer?.name || 'Walk-in Customer'} · #{tx.invoiceNumber}
+                  </Text>
+                  <Text style={styles.txSubtitle}>
+                    {tx.paymentMode ? tx.paymentMode.toUpperCase() : 'CASH'} · {new Date(tx.createdAt || tx.invoiceDate).toLocaleDateString('en-IN')}
+                  </Text>
+                </View>
+                <Text style={isPaid ? styles.txAmountIncome : styles.txAmountPending}>
+                  {isPaid ? `+₹${(tx.paid || tx.total).toLocaleString('en-IN')}` : `₹${(tx.balance || tx.total).toLocaleString('en-IN')}`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+            <MaterialCommunityIcons name="receipt" size={32} color={COLORS.textMuted} style={{ marginBottom: 6 }} />
+            <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center' }}>
+              No transactions recorded yet today.
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation?.navigate('Invoices')}
+              style={{ marginTop: 8 }}
+            >
+              <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>
+                + Create First Invoice
+              </Text>
+            </TouchableOpacity>
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.txTitle}>Splendor Plus (Spark Plug)</Text>
-            <Text style={styles.txSubtitle}>Collected via Cash · 11:20 AM</Text>
-          </View>
-          <Text style={styles.txAmountIncome}>+₹250</Text>
-        </View>
-
-        <View style={styles.txRow}>
-          <View style={[styles.txIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-            <MaterialCommunityIcons name="arrow-bottom-left" size={20} color="#10B981" />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.txTitle}>Activa 6G (Oil Change)</Text>
-            <Text style={styles.txSubtitle}>Collected via UPI GPay · 10:45 AM</Text>
-          </View>
-          <Text style={styles.txAmountIncome}>+₹450</Text>
-        </View>
-
-        <View style={[styles.txRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.txIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-            <MaterialCommunityIcons name="clock-outline" size={20} color="#F59E0B" />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.txTitle}>Royal Enfield Classic 350</Text>
-            <Text style={styles.txSubtitle}>Engine Rebuild (In Progress)</Text>
-          </View>
-          <Text style={styles.txAmountPending}>₹18,400</Text>
-        </View>
+        )}
       </View>
     </ScrollView>
   );

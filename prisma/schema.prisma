@@ -38,6 +38,7 @@ model User {
   branding      BrandingSettings?
   inventoryItems InventoryItem[]
   suppliers      Supplier[]
+  ledgerEntries  LedgerEntry[]
 }
 
 // Customer Management
@@ -339,4 +340,24 @@ model BrandingSettings {
   // Relations
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+// Daily Ledger (Income & Expense for P&L and Balance Sheet)
+model LedgerEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "INCOME" or "EXPENSE"
+  category    String   // "Parts Purchase", "Staff Salary", "Shop Rent", "Utilities", "Tools", "Consumables", "Direct Service", "Miscellaneous"
+  amount      Float
+  paymentMode String   @default("cash") // cash, upi, card, bank
+  description String
+  date        DateTime @default(now())
+  reference   String?  // Voucher #, Bill #, UPI Ref
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 

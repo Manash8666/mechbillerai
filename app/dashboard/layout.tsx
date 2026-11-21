@@ -19,6 +19,7 @@ import {
   Sun,
   FileUp,
   FileSpreadsheet,
+  Wallet,
 } from 'lucide-react';
 import { BrandingLoader } from '@/components/BrandingLoader';
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider';
@@ -76,18 +77,23 @@ function DashboardContent({
     router.push('/login');
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Customers', href: '/dashboard/customers', icon: Users },
-    { name: 'Job Cards', href: '/dashboard/jobcards', icon: Car },
-    { name: 'Invoices', href: '/dashboard/invoices', icon: FileText },
-    { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
-    { name: 'CA Audit Reports', href: '/dashboard/reports', icon: FileSpreadsheet },
-    { name: 'Import Data', href: '/dashboard/import', icon: FileUp },
-    { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
-    { name: 'Branding', href: '/dashboard/settings/branding', icon: Palette },
-    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  const userRole = user?.activeRole || user?.role || 'owner';
+
+  const allNavigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: ['owner', 'super_admin', 'manager', 'mechanic', 'technician'] },
+    { name: 'Customers', href: '/dashboard/customers', icon: Users, roles: ['owner', 'super_admin', 'manager', 'mechanic', 'technician'] },
+    { name: 'Job Cards', href: '/dashboard/jobcards', icon: Car, roles: ['owner', 'super_admin', 'manager', 'mechanic', 'technician'] },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: FileText, roles: ['owner', 'super_admin', 'manager'] },
+    { name: 'Daily Ledger', href: '/dashboard/ledger', icon: Wallet, roles: ['owner', 'super_admin', 'manager'] },
+    { name: 'Inventory', href: '/dashboard/inventory', icon: Package, roles: ['owner', 'super_admin', 'manager'] },
+    { name: 'CA Audit Reports', href: '/dashboard/reports', icon: FileSpreadsheet, roles: ['owner', 'super_admin'] },
+    { name: 'Import Data', href: '/dashboard/import', icon: FileUp, roles: ['owner', 'super_admin'] },
+    { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar, roles: ['owner', 'super_admin', 'manager', 'mechanic', 'technician'] },
+    { name: 'Branding', href: '/dashboard/settings/branding', icon: Palette, roles: ['owner', 'super_admin'] },
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings, roles: ['owner', 'super_admin'] },
   ];
+
+  const navigation = allNavigation.filter((item) => item.roles.includes(userRole));
 
   if (!user) {
     return null;
@@ -155,6 +161,9 @@ function DashboardContent({
                   : user.licenseStatus === 'trial'
                   ? 'Trial'
                   : 'Expired'}
+              </span>
+              <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-[#C9F31D]/15 text-[#C9F31D] border border-[#C9F31D]/30 capitalize">
+                {userRole === 'owner' ? '👑 Owner' : userRole === 'manager' ? '📋 Manager' : '🔧 Technician'}
               </span>
               {user.garageType && (
                 <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-royal-gold/15 text-royal-gold border border-royal-gold/30">

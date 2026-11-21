@@ -3,48 +3,6 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
-async function getDemoFallbackUser(email: string, password: string) {
-  // STRICT SECURITY: Never allow demo fallback in production mode
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
-
-  const isDemo = email === 'demo@garagesaas.com' && (password === 'test123' || password === 'password123');
-  const isTest = email === 'test@garagesaas.com' && (password === 'test123' || password === 'password123');
-
-  if (isDemo) {
-    return {
-      id: 'cmv4zl4620001d96sd1e0qto2',
-      email: 'demo@garagesaas.com',
-      name: 'Demo Two-Wheeler Workshop',
-      role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'active',
-      password: await bcrypt.hash(password, 10),
-      expiresAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-  }
-
-  if (isTest) {
-    return {
-      id: 'cmv4zl4620002d96sd1e0qto3',
-      email: 'test@garagesaas.com',
-      name: 'Premium Multi-Brand Auto Center',
-      role: 'owner',
-      garageType: 'four_wheeler',
-      licenseStatus: 'active',
-      password: await bcrypt.hash(password, 10),
-      expiresAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-  }
-
-  return null;
-}
-
 function checkLicenseStatus(user: any): string | null {
   if (user.licenseStatus === 'expired') {
     return 'License expired. Please renew your license.';
@@ -90,16 +48,9 @@ export async function POST(request: Request) {
       );
     }
 
-    let user: any = null;
-    try {
-      user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase().trim() },
-      });
-    } catch (dbErr) {
-      console.warn('DB error during login, attempting fallback in dev mode:', dbErr);
-      user = await getDemoFallbackUser(email, password);
-      if (!user) throw dbErr;
-    }
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
 
     if (!user) {
       return NextResponse.json(
