@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Filter, FileText, Download, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3, CreditCard, Package, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3, CreditCard, Package, CheckCircle2, Camera, Image as ImageIcon, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import Loader from '@/components/Loader';
@@ -66,26 +66,33 @@ export default function InvoicesPage() {
   const [serviceScope, setServiceScope] = useState('');
   const [paymentMode, setPaymentMode] = useState('cash');
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'ESTIMATE'>('INVOICE');
+  const [deliveryPhoto, setDeliveryPhoto] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<
-    { description: string; details?: string; quantity: number; unitPrice: number }[]
+    { description: string; details?: string; quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }[]
   >([
     {
       description: 'CYLINDER BLOCK & PISTON KIT (OEM)',
       details: 'Top End Core: OEM cylinder block, piston, rings, pin & circlips assembly',
       quantity: 1,
       unitPrice: 5200,
+      discountType: '%',
+      discountValue: 0,
     },
     {
       description: 'CYLINDER HEAD VALVES, SEALS & GUIDES',
       details: 'Top End Core: Intake & exhaust valves, viton stem seals & bronze guide set',
       quantity: 1,
       unitPrice: 1100,
+      discountType: '%',
+      discountValue: 0,
     },
     {
       description: 'MECHANIC LABOUR (TOP END REBUILD)',
       details: 'Labour: Engine top end teardown, decarb, precision assembly, valve lash setup & road test',
       quantity: 1,
       unitPrice: 2500,
+      discountType: '%',
+      discountValue: 0,
     },
   ]);
 
@@ -121,10 +128,25 @@ export default function InvoicesPage() {
   const [editVehicleModel, setEditVehicleModel] = useState('');
   const [editVehicleReg, setEditVehicleReg] = useState('');
   const [editServiceScope, setEditServiceScope] = useState('');
+  const [editDeliveryPhoto, setEditDeliveryPhoto] = useState<string | null>(null);
   const [editLineItems, setEditLineItems] = useState<
-    { description: string; details?: string; quantity: number; unitPrice: number }[]
+    { description: string; details?: string; quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }[]
   >([]);
   const [updatingInvoice, setUpdatingInvoice] = useState(false);
+
+  const getItemNetTotal = (item: { quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }) => {
+    const qty = Number(item.quantity) || 1;
+    const rate = Number(item.unitPrice) || 0;
+    const gross = qty * rate;
+    const discVal = Number(item.discountValue) || 0;
+    let discAmt = 0;
+    if (item.discountType === '%') {
+      discAmt = (gross * discVal) / 100;
+    } else {
+      discAmt = discVal;
+    }
+    return Math.max(0, gross - discAmt);
+  };
 
   const handleDeleteInvoice = async (id: string, invoiceNumber: string) => {
     if (!confirm(`Are you sure you want to delete Invoice #${invoiceNumber}? This will permanently remove its records.`)) {
@@ -155,6 +177,7 @@ export default function InvoicesPage() {
     let vModel = '';
     let vReg = '';
     let vScope = '';
+    let dPhoto: string | null = null;
     let rawNotes = (inv as any).notes || '';
 
     if (rawNotes) {
@@ -164,6 +187,7 @@ export default function InvoicesPage() {
           vModel = parsed.vehicleModel || parsed.model || '';
           vReg = parsed.vehicleReg || parsed.registrationNo || '';
           vScope = parsed.serviceScope || parsed.serviceType || '';
+          dPhoto = parsed.deliveryPhoto || null;
           rawNotes = parsed.userNotes || '';
         }
       } catch {
@@ -187,14 +211,22 @@ export default function InvoicesPage() {
     setEditVehicleModel(vModel);
     setEditVehicleReg(vReg);
     setEditServiceScope(vScope);
+    setEditDeliveryPhoto(dPhoto);
     setEditNotes(rawNotes);
     setEditLineItems(
-      (inv.items || []).map((it) => ({
-        description: it.description,
-        details: (it as any).details || '',
-        quantity: it.quantity || 1,
-        unitPrice: it.unitPrice || 0,
-      }))
+      (inv.items || []).map((it) => {
+        const rawDisc = (it as any).discount;
+        const isPercent = rawDisc && String(rawDisc).includes('%');
+        const discVal = rawDisc ? parseFloat(String(rawDisc).replace(/[^0-9.]/g, '')) || 0 : 0;
+        return {
+          description: it.description,
+          details: (it as any).details || '',
+          quantity: it.quantity || 1,
+          unitPrice: it.unitPrice || 0,
+          discountType: isPercent ? ('%' as const) : ('₹' as const),
+          discountValue: discVal,
+        };
+      })
     );
     setIsEditModalOpen(true);
   };
@@ -210,11 +242,11 @@ export default function InvoicesPage() {
     try {
       setUpdatingInvoice(true);
       const subtotal = editLineItems.reduce(
-        (acc, item) => acc + (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
+        (acc, item) => acc + getItemNetTotal(item),
         0
       );
       const discountVal = Number(editDiscount) || 0;
-      const taxVal = Math.round((subtotal - discountVal) * 0.18);
+      const taxVal = Math.round(Math.max(0, subtotal - discountVal) * 0.18);
       const totalVal = Math.max(0, subtotal - discountVal + taxVal);
       const paidVal = Number(editPaid) || 0;
       const balanceVal = Math.max(0, totalVal - paidVal);
@@ -223,6 +255,7 @@ export default function InvoicesPage() {
         vehicleModel: editVehicleModel.trim() || undefined,
         vehicleReg: editVehicleReg.trim() || undefined,
         serviceScope: editServiceScope.trim() || undefined,
+        deliveryPhoto: editDeliveryPhoto || undefined,
         userNotes: editNotes.trim() || undefined,
       });
 
@@ -236,19 +269,28 @@ export default function InvoicesPage() {
         total: totalVal,
         paid: paidVal,
         balance: balanceVal,
-        items: editLineItems.map((item) => ({
-          description: item.description || 'Workshop Service',
-          details: item.details || undefined,
-          quantity: Number(item.quantity) || 1,
-          unitPrice: Number(item.unitPrice) || 0,
-          tax: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 0.18),
-          total: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 1.18),
-        })),
+        items: editLineItems.map((item) => {
+          const lineNet = getItemNetTotal(item);
+          const discStr = item.discountValue ? `${item.discountValue}${item.discountType || '₹'}` : undefined;
+          return {
+            description: item.description || 'Workshop Service',
+            details: item.details || undefined,
+            quantity: Number(item.quantity) || 1,
+            unitPrice: Number(item.unitPrice) || 0,
+            discount: discStr,
+            tax: Math.round(lineNet * 0.18),
+            total: Math.round(lineNet * 1.18),
+          };
+        }),
       };
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const res = await fetch(`/api/invoices/${editingInvoice.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -530,7 +572,11 @@ export default function InvoicesPage() {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.id || localStorage.getItem('userId');
-      const response = await fetch(`/api/invoices?userId=${userId}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`/api/invoices?userId=${userId}`, { headers });
       if (response.ok) {
         const result = await response.json();
         setInvoices(Array.isArray(result) ? result : result.data || []);
@@ -543,7 +589,7 @@ export default function InvoicesPage() {
   };
 
   const handleAddItem = () => {
-    setLineItems([...lineItems, { description: '', details: '', quantity: 1, unitPrice: 0 }]);
+    setLineItems([...lineItems, { description: '', details: '', quantity: 1, unitPrice: 0, discountType: '%', discountValue: 0 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -553,7 +599,7 @@ export default function InvoicesPage() {
 
   const handleItemChange = (
     index: number,
-    field: 'description' | 'details' | 'quantity' | 'unitPrice',
+    field: 'description' | 'details' | 'quantity' | 'unitPrice' | 'discountType' | 'discountValue',
     val: any
   ) => {
     const updated = [...lineItems];
@@ -774,10 +820,15 @@ export default function InvoicesPage() {
     }
   };
 
-  const calculatedSubtotal = lineItems.reduce(
-    (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0),
+  const calculatedGrossSubtotal = lineItems.reduce(
+    (sum, item) => sum + (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
     0
   );
+  const calculatedSubtotal = lineItems.reduce(
+    (sum, item) => sum + getItemNetTotal(item),
+    0
+  );
+  const calculatedTotalDiscount = calculatedGrossSubtotal - calculatedSubtotal;
   const calculatedTax = Math.round(calculatedSubtotal * 0.18);
   const calculatedTotal = calculatedSubtotal + calculatedTax;
 
@@ -805,6 +856,7 @@ export default function InvoicesPage() {
         vehicleModel: vehicleModel.trim() || undefined,
         vehicleReg: vehicleReg.trim() || undefined,
         serviceScope: serviceScope.trim() || undefined,
+        deliveryPhoto: deliveryPhoto || undefined,
         userNotes: undefined,
         isEstimate: invoiceType === 'ESTIMATE',
       });
@@ -815,7 +867,7 @@ export default function InvoicesPage() {
         paymentMode,
         subtotal: calculatedSubtotal,
         tax: calculatedTax,
-        discount: 0,
+        discount: calculatedTotalDiscount,
         total: calculatedTotal,
         docType: invoiceType,
         isEstimate: invoiceType === 'ESTIMATE',
@@ -825,20 +877,27 @@ export default function InvoicesPage() {
           if (!det?.trim()) {
             det = getAutomotiveTechnicalExplanation(item.description);
           }
+          const net = getItemNetTotal(item);
+          const discStr = item.discountValue ? `${item.discountValue}${item.discountType || '₹'}` : undefined;
           return {
             description: item.description || 'Workshop Service',
             details: det || undefined,
             quantity: Number(item.quantity) || 1,
             unitPrice: Number(item.unitPrice) || 0,
-            tax: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 0.18),
-            total: Math.round(((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)) * 1.18),
+            discount: discStr,
+            tax: Math.round(net * 0.18),
+            total: Math.round(net * 1.18),
           };
         }),
       };
 
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -1367,6 +1426,51 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
+              {/* Vehicle Handover Delivery Proof (Optional) */}
+              <div className="p-3 rounded-xl border border-border bg-muted/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-luxury-gold" /> Handover Delivery Photo (Optional)
+                  </span>
+                  {deliveryPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryPhoto(null)}
+                      className="text-[11px] text-red-400 hover:underline"
+                    >
+                      Remove Photo
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {deliveryPhoto && (
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-luxury-gold/50 bg-black shrink-0">
+                      <img src={deliveryPhoto} alt="Handover Proof" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <label className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border hover:border-luxury-gold rounded-lg bg-background text-xs text-muted-foreground hover:text-foreground transition-all">
+                      <Camera className="w-4 h-4 text-luxury-gold" />
+                      <span>{deliveryPhoto ? '📸 Retake / Change Photo' : '📸 Snap / Upload Vehicle & Client Delivery Photo'}</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setDeliveryPhoto(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Payment Mode */}
               <div>
                 <label htmlFor="create-invoice-payment-mode" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -1438,13 +1542,13 @@ export default function InvoicesPage() {
                 <div className="space-y-3">
                   {lineItems.map((item, index) => (
                     <div key={`line-item-${index}`} className="p-3 rounded-xl border border-border bg-muted/20 space-y-2">
-                      <div className="flex gap-2 items-center">
+                      <div className="flex gap-2 items-center flex-wrap sm:flex-nowrap">
                         <input
                           type="text"
                           placeholder="Service / Spare Title (e.g. CYLINDER BLOCK & PISTON KIT)"
                           value={item.description}
                           onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                          className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          className="flex-1 min-w-[140px] px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                           required
                         />
                         <input
@@ -1453,23 +1557,47 @@ export default function InvoicesPage() {
                           placeholder="Qty"
                           value={item.quantity}
                           onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
-                          className="w-16 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-center focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          className="w-14 px-2 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-center focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                           required
                         />
                         <input
                           type="number"
                           min="0"
-                          placeholder="Price (₹)"
+                          placeholder="MRP / Rate"
                           value={item.unitPrice}
                           onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
-                          className="w-24 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          className="w-20 px-2 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                           required
                         />
+                        {/* Discount Column (% / ₹) */}
+                        <div className="flex items-center bg-background border border-border rounded-lg overflow-hidden">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Disc"
+                            value={item.discountValue || ''}
+                            onChange={(e) => handleItemChange(index, 'discountValue', Number(e.target.value) || 0)}
+                            className="w-12 px-1.5 py-1.5 text-xs text-foreground text-right focus:outline-none bg-transparent"
+                            title="Discount value"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleItemChange(index, 'discountType', item.discountType === '%' ? '₹' : '%')}
+                            className="px-2 py-1.5 text-[11px] font-bold bg-muted hover:bg-luxury-gold/20 text-luxury-gold border-l border-border transition-colors"
+                            title="Toggle discount between % and ₹"
+                          >
+                            {item.discountType || '%'}
+                          </button>
+                        </div>
+                        {/* Net amount */}
+                        <div className="w-16 text-right text-xs font-mono font-bold text-luxury-gold whitespace-nowrap">
+                          ₹{getItemNetTotal(item).toLocaleString('en-IN')}
+                        </div>
                         {lineItems.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(index)}
-                            className="p-2 text-red-500 hover:text-red-700"
+                            className="p-1.5 text-red-500 hover:text-red-700"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1866,6 +1994,51 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
+              {/* Vehicle Handover Delivery Proof (Optional) */}
+              <div className="p-3 rounded-xl border border-border/60 bg-black/20 dark:bg-black/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-amber-400" /> Handover Delivery Photo (Optional)
+                  </span>
+                  {editDeliveryPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setEditDeliveryPhoto(null)}
+                      className="text-[11px] text-red-400 hover:underline"
+                    >
+                      Remove Photo
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {editDeliveryPhoto && (
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-amber-500/50 bg-black shrink-0">
+                      <img src={editDeliveryPhoto} alt="Handover Proof" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <label className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border hover:border-amber-400 rounded-lg bg-background text-xs text-muted-foreground hover:text-foreground transition-all">
+                      <Camera className="w-4 h-4 text-amber-400" />
+                      <span>{editDeliveryPhoto ? '📸 Retake / Change Photo' : '📸 Snap / Upload Vehicle & Client Delivery Photo'}</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setEditDeliveryPhoto(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Line Items */}
               <div className="border border-border/60 rounded-xl p-3 bg-black/10 dark:bg-black/30">
                 <div className="flex items-center justify-between mb-2">
@@ -1877,7 +2050,7 @@ export default function InvoicesPage() {
                     onClick={() =>
                       setEditLineItems((prev) => [
                         ...prev,
-                        { description: '', quantity: 1, unitPrice: 0 },
+                        { description: '', quantity: 1, unitPrice: 0, discountType: '%', discountValue: 0 },
                       ])
                     }
                     className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"
@@ -1888,8 +2061,8 @@ export default function InvoicesPage() {
 
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {editLineItems.map((item, idx) => (
-                    <div key={`edit-item-${idx}`} className="flex gap-2 items-center bg-card/60 p-2 rounded-lg border border-border/40">
-                      <div className="flex-1">
+                    <div key={`edit-item-${idx}`} className="flex gap-2 items-center bg-card/60 p-2 rounded-lg border border-border/40 flex-wrap sm:flex-nowrap">
+                      <div className="flex-1 min-w-[140px]">
                         <input
                           type="text"
                           placeholder="Item Description"
@@ -1904,7 +2077,7 @@ export default function InvoicesPage() {
                           required
                         />
                       </div>
-                      <div className="w-16">
+                      <div className="w-14">
                         <input
                           type="number"
                           placeholder="Qty"
@@ -1920,7 +2093,7 @@ export default function InvoicesPage() {
                           required
                         />
                       </div>
-                      <div className="w-24">
+                      <div className="w-20">
                         <input
                           type="number"
                           placeholder="Price"
@@ -1935,6 +2108,39 @@ export default function InvoicesPage() {
                           className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs text-foreground text-right font-mono"
                           required
                         />
+                      </div>
+                      {/* Discount Column (% / ₹) */}
+                      <div className="flex items-center bg-background border border-border rounded overflow-hidden">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Disc"
+                          value={item.discountValue || ''}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, discountValue: val } : it))
+                            );
+                          }}
+                          className="w-12 px-1 py-1.5 text-xs text-foreground text-right focus:outline-none bg-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) =>
+                                i === idx ? { ...it, discountType: it.discountType === '%' ? '₹' : '%' } : it
+                              )
+                            );
+                          }}
+                          className="px-1.5 py-1.5 text-[11px] font-bold bg-muted text-amber-400 border-l border-border transition-colors"
+                          title="Toggle discount between % and ₹"
+                        >
+                          {item.discountType || '%'}
+                        </button>
+                      </div>
+                      <div className="w-16 text-right text-xs font-mono font-bold text-amber-400 whitespace-nowrap">
+                        ₹{getItemNetTotal(item).toLocaleString('en-IN')}
                       </div>
                       <button
                         type="button"
@@ -1955,7 +2161,7 @@ export default function InvoicesPage() {
               {/* Financials & Discount */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="edit-invoice-discount" className="text-xs font-semibold text-muted-foreground">Discount (₹)</label>
+                  <label htmlFor="edit-invoice-discount" className="text-xs font-semibold text-muted-foreground">Overall Bill Discount (₹)</label>
                   <input
                     id="edit-invoice-discount"
                     type="number"
@@ -1995,19 +2201,19 @@ export default function InvoicesPage() {
                 <div>
                   <span className="text-muted-foreground">Subtotal: </span>
                   <span className="font-bold text-foreground">
-                    ₹{editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0).toLocaleString('en-IN')}
+                    ₹{editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">GST (18%): </span>
                   <span className="font-bold text-foreground">
-                    ₹{Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0) - (Number(editDiscount) || 0)) * 0.18).toLocaleString('en-IN')}
+                    ₹{Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Total: </span>
                   <span className="font-black text-amber-400">
-                    ₹{Math.max(0, editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0) - (Number(editDiscount) || 0) + Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0), 0) - (Number(editDiscount) || 0)) * 0.18)).toLocaleString('en-IN')}
+                    ₹{Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0) + Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18)).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>

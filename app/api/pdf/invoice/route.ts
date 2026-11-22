@@ -144,6 +144,7 @@ export async function GET(request: Request) {
           details: it.details || null,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
+          discount: (it as any).discount || null,
           total: it.total,
         }));
       }
@@ -186,10 +187,11 @@ export async function GET(request: Request) {
       }
     }
 
-    // Extract vehicle & service scope metadata from invoice notes
+    // Extract vehicle, delivery photo & service scope metadata from invoice notes
     let notesVehicleModel: string | null = null;
     let notesVehicleReg: string | null = null;
     let notesServiceScope: string | null = null;
+    let notesDeliveryPhoto: string | null = null;
 
     if (invoice?.notes) {
       try {
@@ -198,6 +200,7 @@ export async function GET(request: Request) {
           notesVehicleModel = parsed.vehicleModel || parsed.model || null;
           notesVehicleReg = parsed.vehicleReg || parsed.registrationNo || null;
           notesServiceScope = parsed.serviceScope || parsed.serviceType || null;
+          notesDeliveryPhoto = parsed.deliveryPhoto || null;
         }
       } catch {
         const vehMatch = /\[VEHICLE:\s*([^|\]]+)/i.exec(invoice.notes);
@@ -306,12 +309,14 @@ export async function GET(request: Request) {
       items,
       subtotal,
       tax,
+      discount: invoice?.discount || 0,
       total,
       paid,
       balance,
       paymentQrUrl,
       upiId,
       upiQrDataUrl,
+      deliveryPhoto: notesDeliveryPhoto,
     });
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));

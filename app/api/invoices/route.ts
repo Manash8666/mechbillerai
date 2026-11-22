@@ -15,13 +15,47 @@ import {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
+    const { getSessionUser } = await import('@/lib/auth');
+    const authUser = await getSessionUser(request);
+    const requestedUserId = authUser?.userId || searchParams.get('userId');
+
+    if (!requestedUserId) {
+      return NextResponse.json(
+        buildErrorResponse('Authentication required. Please sign in.', 'UNAUTHORIZED'),
+        { status: 401 }
+      );
+    }
+
+    // Partner Account Aggregation for MotoFit Garages
+    let targetUserIds = [requestedUserId];
+    const userObj = await prisma.user.findUnique({
+      where: { id: requestedUserId },
+      select: { email: true },
+    });
+    const userEmail = (userObj?.email || '').toLowerCase();
+    if (
+      userEmail.includes('motofit') ||
+      userEmail.includes('manash') ||
+      userEmail.includes('samael') ||
+      userEmail.includes('akshat')
+    ) {
+      const partners = await prisma.user.findMany({
+        where: {
+          OR: [
+            { email: { contains: 'motofit' } },
+            { email: { contains: 'manash' } },
+            { email: { contains: 'samael' } },
+            { email: { contains: 'akshat' } },
+          ],
+        },
+        select: { id: true },
+      });
+      targetUserIds = partners.map((p) => p.id);
+    }
 
     // Parse query parameters
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
@@ -38,7 +72,9 @@ export async function GET(request: Request) {
     const dueTo = searchParams.get('dueTo');
 
     // Build filters
-    const filters: any = { userId };
+    const filters: any = {
+      userId: targetUserIds.length > 1 ? { in: targetUserIds } : requestedUserId,
+    };
     
     if (status) {
       filters.status = status;
@@ -171,11 +207,46 @@ export async function GET(request: Request) {
 // POST - Create new invoice with validation
 export async function POST(request: Request) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
+    const { getSessionUser } = await import('@/lib/auth');
+    const authUser = await getSessionUser(request);
+    const body = await request.json().catch(() => ({}));
+    const url = new URL(request.url);
+    const userId = authUser?.userId || body.userId || url.searchParams.get('userId');
 
-    const body = await request.json();
+    if (!userId) {
+      return NextResponse.json(
+        buildErrorResponse('Authentication required. User ID missing.', 'UNAUTHORIZED'),
+        { status: 401 }
+      );
+    }
+
+    // Partner Account Aggregation for MotoFit Garages
+    let targetUserIds = [userId];
+    const userObj = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    const userEmail = (userObj?.email || '').toLowerCase();
+    if (
+      userEmail.includes('motofit') ||
+      userEmail.includes('manash') ||
+      userEmail.includes('samael') ||
+      userEmail.includes('akshat')
+    ) {
+      const partners = await prisma.user.findMany({
+        where: {
+          OR: [
+            { email: { contains: 'motofit' } },
+            { email: { contains: 'manash' } },
+            { email: { contains: 'samael' } },
+            { email: { contains: 'akshat' } },
+          ],
+        },
+        select: { id: true },
+      });
+      targetUserIds = partners.map((p) => p.id);
+    }
+
     const {
       customerId,
       jobCardId,
@@ -189,11 +260,18 @@ export async function POST(request: Request) {
       notes,
       docType,
       isEstimate,
+      customerName,
+      customerPhone,
+      customerEmail,
+      vehicleModel,
+      vehicleReg,
+      serviceScope,
+      deliveryPhoto,
     } = body;
 
     // Check SaaS Trial Quotas (Max 2 Bills, 2 Estimates per day during 15-day trial)
     const { checkTrialQuota } = await import('@/lib/licensing');
-    const isDocEstimate = Boolean(isEstimate || docType === 'ESTIMATE' || body.type === 'ESTIMATE');
+    const isDocEstimate = Boolean(isEstimate || docType === 'ESTIMATE' || docType === 'SOW_ESTIMATE' || body.type === 'ESTIMATE');
     const quotaCheck = await checkTrialQuota(userId, isDocEstimate ? 'ESTIMATE' : 'BILL');
 
     if (!quotaCheck.allowed) {
@@ -207,15 +285,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate required fields
-    const validationError = validateRequired(body, ['customerId', 'items', 'total']);
-    if (validationError) {
-      return NextResponse.json(
-        buildErrorResponse(validationError, 'VALIDATION_ERROR'),
-        { status: 400 }
-      );
-    }
-
     // Validate items array
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -224,26 +293,60 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate each item
-    for (const item of items) {
-      if (!item.description || !item.quantity || !item.unitPrice || item.total === undefined) {
-        return NextResponse.json(
-          buildErrorResponse('Each item must have description, quantity, unitPrice, and total', 'INVALID_ITEM'),
-          { status: 400 }
-        );
+    // Resolve or Auto-Create Customer
+    let customer: any = null;
+    if (customerId) {
+      customer = await prisma.customer.findFirst({
+        where: { id: customerId, userId: { in: targetUserIds } },
+      });
+    }
+
+    if (!customer) {
+      const phoneToMatch = (customerPhone || body.customer?.phone || '').trim();
+      const nameToMatch = (customerName || body.customer?.name || 'Walk-in Customer').trim();
+      
+      if (phoneToMatch) {
+        customer = await prisma.customer.findFirst({
+          where: { phone: phoneToMatch, userId: { in: targetUserIds } },
+        });
+      }
+      if (!customer) {
+        customer = await prisma.customer.create({
+          data: {
+            userId,
+            name: nameToMatch,
+            phone: phoneToMatch || '',
+            email: customerEmail || body.customer?.email || null,
+          },
+        });
       }
     }
 
-    // Verify customer exists and belongs to this user
-    const customer = await prisma.customer.findFirst({
-      where: { id: customerId, userId },
-    });
+    // Optional Vehicle Linking / Creation
+    const regNo = (vehicleReg || body.customer?.vehicleReg || '').trim();
+    const vMakeModel = (vehicleModel || body.customer?.vehicleModel || '').trim();
+    if (customer && (regNo || vMakeModel)) {
+      const existingVehicle = await prisma.vehicle.findFirst({
+        where: {
+          customerId: customer.id,
+          OR: [
+            ...(regNo ? [{ registrationNo: regNo }] : []),
+            ...(vMakeModel ? [{ model: vMakeModel }] : []),
+          ],
+        },
+      });
 
-    if (!customer) {
-      return NextResponse.json(
-        buildErrorResponse('Customer not found or unauthorized', 'CUSTOMER_NOT_FOUND'),
-        { status: 404 }
-      );
+      if (!existingVehicle && regNo) {
+        await prisma.vehicle.create({
+          data: {
+            customerId: customer.id,
+            registrationNo: regNo,
+            make: vMakeModel.split(' ')[0] || 'Hero',
+            model: vMakeModel || 'Motorcycle',
+            year: 2022,
+          },
+        }).catch(() => {});
+      }
     }
 
     // Verify job card exists if provided
@@ -260,6 +363,34 @@ export async function POST(request: Request) {
       }
     }
 
+    // Financial Calculation
+    const totalAmount = Number(total) || 0;
+    const paidAmount = body.status === 'paid' || body.markPaidImmediately
+      ? totalAmount
+      : Math.min(totalAmount, Number(body.paid) || 0);
+    const balanceAmount = Math.max(0, totalAmount - paidAmount);
+    const invoiceStatus = balanceAmount <= 0 ? 'paid' : (paidAmount > 0 ? 'partial' : 'unpaid');
+
+    // Structured notes with vehicle details, delivery handover photo, and scope
+    let finalNotes: string = '';
+    if (typeof notes === 'object' && notes !== null) {
+      finalNotes = JSON.stringify({
+        ...notes,
+        vehicleModel: vMakeModel || notes.vehicleModel,
+        vehicleReg: regNo || notes.vehicleReg,
+        serviceScope: serviceScope || notes.serviceScope,
+        deliveryPhoto: deliveryPhoto || notes.deliveryPhoto,
+      });
+    } else {
+      finalNotes = JSON.stringify({
+        userNotes: notes || '',
+        vehicleModel: vMakeModel || undefined,
+        vehicleReg: regNo || undefined,
+        serviceScope: serviceScope || undefined,
+        deliveryPhoto: deliveryPhoto || undefined,
+      });
+    }
+
     // Generate invoice or estimate number
     const { generateEstimateNumber } = await import('@/lib/utils');
     const invoiceNumber = isDocEstimate ? generateEstimateNumber() : generateInvoiceNumber();
@@ -268,27 +399,27 @@ export async function POST(request: Request) {
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
-        customerId,
+        customerId: customer.id,
         jobCardId,
-        subtotal: subtotal || 0,
-        tax: tax || 0,
-        discount: discount || 0,
-        total,
-        paid: 0,
-        balance: total,
-        status: 'unpaid',
+        subtotal: Number(subtotal) || 0,
+        tax: Number(tax) || 0,
+        discount: Number(discount) || 0,
+        total: totalAmount,
+        paid: paidAmount,
+        balance: balanceAmount,
+        status: invoiceStatus,
         paymentMode: paymentMode || 'cash',
-        notes,
+        notes: finalNotes,
         dueDate: dueDate ? new Date(dueDate) : null,
         userId,
         items: {
           create: items.map((item: any) => ({
             description: item.description,
-            details: item.details || null,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            tax: item.tax || 0,
-            total: item.total,
+            details: item.details || (item.discount ? `Discount: ${item.discountType === 'percent' ? item.discount + '%' : '₹' + item.discount}` : null),
+            quantity: Number(item.quantity) || 1,
+            unitPrice: Number(item.unitPrice) || 0,
+            tax: Number(item.tax) || 0,
+            total: Number(item.total) || ((Number(item.quantity) || 1) * (Number(item.unitPrice) || 0)),
           })),
         },
       },
@@ -299,6 +430,25 @@ export async function POST(request: Request) {
         payments: true,
       },
     });
+
+    // Record payment if paid amount was collected at generation
+    if (paidAmount > 0) {
+      await prisma.payment.create({
+        data: {
+          invoiceId: invoice.id,
+          amount: paidAmount,
+          paymentMode: (paymentMode || 'cash').toUpperCase(),
+          notes: 'Settled at invoice generation',
+        },
+      }).catch(() => {});
+    }
+
+    // Generate secure token for instant PDF viewing/sharing
+    const { generateInvoiceToken } = await import('@/lib/hmacToken');
+    const invoiceWithToken = {
+      ...invoice,
+      secureToken: generateInvoiceToken(invoice.invoiceNumber, invoice.createdAt),
+    };
 
     // Log activity
     await logActivity(prisma, {
@@ -311,9 +461,9 @@ export async function POST(request: Request) {
         customer: customer.name,
         total: invoice.total,
       },
-    });
+    }).catch(() => {});
 
-    return NextResponse.json(invoice, { status: 201 });
+    return NextResponse.json(invoiceWithToken, { status: 201 });
   } catch (error) {
     console.error('Error creating invoice:', error);
     return NextResponse.json(

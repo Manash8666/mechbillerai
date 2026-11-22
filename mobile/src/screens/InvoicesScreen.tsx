@@ -13,7 +13,10 @@ import {
   Modal,
   ScrollView,
   Platform,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
 import { getAutomotiveTechnicalExplanation } from '../services/aiExplainer';
@@ -28,6 +31,8 @@ interface LineItem {
   category: 'part' | 'labor';
   quantity: number;
   unitPrice: number;
+  discountType?: '%' | '₹';
+  discountValue?: number;
   total: number;
 }
 
@@ -115,7 +120,32 @@ export default function InvoicesScreen() {
   const [paymentType, setPaymentType] = useState<'full' | 'partial' | 'unpaid'>('full');
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'CARD'>('UPI');
+  const [deliveryPhoto, setDeliveryPhoto] = useState<string | null>(null);
   const [branding, setBranding] = useState<any>(null);
+
+  // Custom Item discount state
+  const [customDiscVal, setCustomDiscVal] = useState('0');
+  const [customDiscType, setCustomDiscType] = useState<'%' | '₹'>('%');
+
+  // Edit Invoice Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceItem | null>(null);
+  const [editCustName, setEditCustName] = useState('');
+  const [editCustPhone, setEditCustPhone] = useState('');
+  const [editVehicleModel, setEditVehicleModel] = useState('');
+  const [editVehicleReg, setEditVehicleReg] = useState('');
+  const [editServiceScope, setEditServiceScope] = useState('');
+  const [editLineItems, setEditLineItems] = useState<LineItem[]>([]);
+  const [editPaymentMode, setEditPaymentMode] = useState<'CASH' | 'UPI' | 'CARD'>('UPI');
+  const [editStatus, setEditStatus] = useState<'paid' | 'partial' | 'unpaid'>('paid');
+  const [editPaidAmount, setEditPaidAmount] = useState('0');
+  const [editDiscount, setEditDiscount] = useState('0');
+  const [editDeliveryPhoto, setEditDeliveryPhoto] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Import Bills Modal State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Collect Payment Modal state (for Unpaid / Partial bills later)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -125,6 +155,18 @@ export default function InvoicesScreen() {
   const [collectDate, setCollectDate] = useState('');
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
+
+  const calculateLineTotal = (qty: number, rate: number, discType?: '%' | '₹', discVal?: number) => {
+    const gross = qty * rate;
+    const disc = Number(discVal) || 0;
+    let discountAmount = 0;
+    if (discType === '%') {
+      discountAmount = (gross * disc) / 100;
+    } else {
+      discountAmount = disc;
+    }
+    return Math.max(0, gross - discountAmount);
+  };
 
   const fetchInvoices = async () => {
     try {
@@ -193,6 +235,8 @@ export default function InvoicesScreen() {
       category,
       quantity: 1,
       unitPrice: rate,
+      discountType: '%',
+      discountValue: 0,
       total: rate,
     };
     setLineItems((prev) => [...prev, newItem]);
@@ -205,7 +249,10 @@ export default function InvoicesScreen() {
     }
     const rate = Number.parseFloat(customRate) || 0;
     const qty = Number.parseFloat(customQty) || 1;
+    const disc = Number.parseFloat(customDiscVal) || 0;
     const desc = customDesc.trim();
+    const lineTotal = calculateLineTotal(qty, rate, customDiscType, disc);
+
     const newItem: LineItem = {
       id: Date.now().toString(),
       description: desc,
@@ -213,17 +260,106 @@ export default function InvoicesScreen() {
       category: customCategory,
       quantity: qty,
       unitPrice: rate,
-      total: qty * rate,
+      discountType: customDiscType,
+      discountValue: disc,
+      total: lineTotal,
     };
     setLineItems((prev) => [...prev, newItem]);
     setCustomDesc('');
     setCustomRate('');
     setCustomQty('1');
+    setCustomDiscVal('0');
     setShowCustomItemForm(false);
   };
 
   const handleRemoveLineItem = (id: string) => {
     setLineItems((prev) => prev.filter((it) => it.id !== id));
+  };
+
+  // Delivery Photo Camera & Pickers
+  const handleTakeDeliveryPhoto = async (forEdit = false) => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera permission is required to capture vehicle delivery photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        if (forEdit) {
+          setEditDeliveryPhoto(dataUri);
+        } else {
+          setDeliveryPhoto(dataUri);
+        }
+      }
+    } catch (e: any) {
+      Alert.alert('Camera Error', e.message || 'Could not launch camera.');
+    }
+  };
+
+  const handlePickDeliveryPhoto = async (forEdit = false) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        if (forEdit) {
+          setEditDeliveryPhoto(dataUri);
+        } else {
+          setDeliveryPhoto(dataUri);
+        }
+      }
+    } catch (e: any) {
+      Alert.alert('Gallery Error', e.message || 'Could not pick image.');
+    }
+  };
+
+  const handleQuickCaptureDeliveryPhoto = async (item: InvoiceItem) => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera permission required to capture handover photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+
+        let existingNotesObj: any = {};
+        if ((item as any).notes) {
+          try {
+            existingNotesObj = JSON.parse((item as any).notes);
+          } catch {
+            existingNotesObj = { userNotes: (item as any).notes };
+          }
+        }
+        existingNotesObj.deliveryPhoto = dataUri;
+
+        await API.updateInvoice(item.id, {
+          notes: JSON.stringify(existingNotesObj),
+        });
+
+        Alert.alert('Handover Photo Attached! 📸', `Handover photo verified & attached to #${item.invoiceNumber}.`);
+        await fetchInvoices();
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not attach delivery photo.');
+    }
   };
 
   // Calculations
@@ -285,6 +421,7 @@ export default function InvoicesScreen() {
         vehicleModel: vehicleModel.trim() || undefined,
         vehicleReg: vehicleReg.trim().toUpperCase() || undefined,
         serviceScope: serviceScope.trim() || undefined,
+        deliveryPhoto: deliveryPhoto || undefined,
       });
 
       await API.createInvoice({
@@ -297,6 +434,7 @@ export default function InvoicesScreen() {
           category: it.category,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
+          discount: it.discountValue ? `${it.discountValue}${it.discountType || '₹'}` : undefined,
           total: it.total,
         })),
         subtotal: total,
@@ -317,12 +455,306 @@ export default function InvoicesScreen() {
       setCustPhone('');
       setVehicleReg('');
       setAdvanceAmount('');
+      setDeliveryPhoto(null);
       setPaymentType('full');
       await fetchInvoices();
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to generate bill.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Open Edit Modal for existing invoice
+  const handleOpenEditModal = async (item: InvoiceItem) => {
+    try {
+      setEditingInvoice(item);
+      setEditCustName(item.customer?.name || '');
+      setEditCustPhone(item.customer?.phone || '');
+      setEditPaymentMode(((item.paymentMode || 'UPI').toUpperCase() as any));
+      setEditStatus(((item.status || 'paid').toLowerCase() as any));
+      setEditPaidAmount(String(item.paid || '0'));
+      setEditDiscount(String((item as any).discount || '0'));
+
+      let vModel = '';
+      let vReg = '';
+      let vScope = '';
+      let dPhoto: string | null = null;
+      let rawNotes = (item as any).notes || '';
+
+      if (rawNotes) {
+        try {
+          const parsed = JSON.parse(rawNotes);
+          if (typeof parsed === 'object' && parsed !== null) {
+            vModel = parsed.vehicleModel || parsed.model || '';
+            vReg = parsed.vehicleReg || parsed.registrationNo || '';
+            vScope = parsed.serviceScope || parsed.serviceType || '';
+            dPhoto = parsed.deliveryPhoto || null;
+          }
+        } catch {
+          const vehMatch = rawNotes.match(/\[VEHICLE:\s*([^|\]]+)/i);
+          const regMatch = rawNotes.match(/REG:\s*([^|\]]+)/i);
+          const scopeMatch = rawNotes.match(/SCOPE:\s*([^|\]]+)/i);
+          if (vehMatch) vModel = vehMatch[1].trim();
+          if (regMatch) vReg = regMatch[1].trim();
+          if (scopeMatch) vScope = scopeMatch[1].trim();
+        }
+      }
+
+      setEditVehicleModel(vModel || 'Royal Enfield Classic 350');
+      setEditVehicleReg(vReg);
+      setEditServiceScope(vScope || 'Service & Maintenance');
+      setEditDeliveryPhoto(dPhoto);
+
+      // Fetch full invoice with line items
+      let fullItems: any[] = (item as any).items || [];
+      if (fullItems.length === 0) {
+        try {
+          const fullInv = await API.getInvoiceById(item.id);
+          if (fullInv && fullInv.items) {
+            fullItems = fullInv.items;
+          }
+        } catch {}
+      }
+
+      if (fullItems.length > 0) {
+        setEditLineItems(
+          fullItems.map((it, idx) => {
+            const rawDisc = it.discount;
+            const isPercent = rawDisc && String(rawDisc).includes('%');
+            const discVal = rawDisc ? parseFloat(String(rawDisc).replace(/[^0-9.]/g, '')) || 0 : 0;
+            const qty = it.quantity || 1;
+            const rate = it.unitPrice || 0;
+            return {
+              id: it.id || `edit-item-${idx}`,
+              description: it.description,
+              details: it.details || '',
+              category: it.category || 'part',
+              quantity: qty,
+              unitPrice: rate,
+              discountType: isPercent ? ('%' as const) : ('₹' as const),
+              discountValue: discVal,
+              total: calculateLineTotal(qty, rate, isPercent ? '%' : '₹', discVal),
+            };
+          })
+        );
+      } else {
+        setEditLineItems([
+          {
+            id: '1',
+            description: 'Workshop Service & Maintenance',
+            category: 'labor',
+            quantity: 1,
+            unitPrice: item.subtotal || item.total || 1000,
+            discountType: '%',
+            discountValue: 0,
+            total: item.subtotal || item.total || 1000,
+          },
+        ]);
+      }
+
+      setIsEditModalOpen(true);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not load invoice for editing.');
+    }
+  };
+
+  // Save changes to existing invoice
+  const handleSaveEditInvoice = async () => {
+    if (!editingInvoice) return;
+    if (editLineItems.length === 0) {
+      Alert.alert('Required', 'Please keep at least one line item.');
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      const subtotal = editLineItems.reduce((acc, it) => acc + (it.total || 0), 0);
+      const overallDisc = Number.parseFloat(editDiscount) || 0;
+      const total = Math.max(0, subtotal - overallDisc);
+      const paid = Number.parseFloat(editPaidAmount) || 0;
+      const balance = Math.max(0, total - paid);
+
+      const notesPayload = JSON.stringify({
+        vehicleModel: editVehicleModel.trim() || undefined,
+        vehicleReg: editVehicleReg.trim().toUpperCase() || undefined,
+        serviceScope: editServiceScope.trim() || undefined,
+        deliveryPhoto: editDeliveryPhoto || undefined,
+      });
+
+      await API.updateInvoice(editingInvoice.id, {
+        paymentMode: editPaymentMode,
+        status: editStatus,
+        subtotal,
+        discount: overallDisc,
+        tax: 0,
+        total,
+        paid,
+        balance,
+        notes: notesPayload,
+        items: editLineItems.map((it) => ({
+          description: it.description,
+          details: it.details || getAutomotiveTechnicalExplanation(it.description),
+          category: it.category,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          discount: it.discountValue ? `${it.discountValue}${it.discountType || '₹'}` : undefined,
+          total: it.total,
+        })),
+      });
+
+      Alert.alert('Success 🎉', `Invoice #${editingInvoice.invoiceNumber} updated successfully!`);
+      setIsEditModalOpen(false);
+      setEditingInvoice(null);
+      await fetchInvoices();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not update invoice.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Bills Import (CSV & JSON)
+  const handleSelectImportFile = async () => {
+    try {
+      const doc = await DocumentPicker.getDocumentAsync({
+        type: ['*/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (doc.canceled || !doc.assets || doc.assets.length === 0) {
+        return;
+      }
+
+      const fileAsset = doc.assets[0];
+      setImporting(true);
+
+      const fileRes = await fetch(fileAsset.uri);
+      const content = await fileRes.text();
+
+      if (!content.trim()) {
+        Alert.alert('Empty File', 'The selected file contains no data.');
+        return;
+      }
+
+      let invoicesToImport: any[] = [];
+      const fileName = fileAsset.name || '';
+      const isJson =
+        fileName.toLowerCase().endsWith('.json') ||
+        content.trim().startsWith('{') ||
+        content.trim().startsWith('[');
+
+      if (isJson) {
+        const parsed = JSON.parse(content);
+        const list = Array.isArray(parsed) ? parsed : parsed.invoices || [parsed];
+        invoicesToImport = list.map((inv: any, idx: number) => ({
+          invoiceNumber: inv.invoiceNumber || `IMP-${Date.now().toString().slice(-4)}-${idx + 1}`,
+          date: inv.date || new Date().toISOString(),
+          customer: {
+            name: inv.customer?.name || inv.customerName || 'Walk-in Customer',
+            phone: inv.customer?.phone || inv.customerPhone || '',
+          },
+          vehicle: {
+            makeModel: inv.vehicle?.makeModel || inv.vehicleModel || 'Motorcycle',
+            registrationNo: inv.vehicle?.registrationNo || inv.vehicleReg || 'As Per Estimate',
+          },
+          items: (inv.items || [
+            {
+              description: inv.serviceDescription || inv.description || 'Workshop Service',
+              quantity: 1,
+              unitPrice: Number(inv.subtotal || inv.total || 1000),
+              total: Number(inv.subtotal || inv.total || 1000),
+            },
+          ]).map((it: any) => ({
+            description: it.description || it.name || 'Service Item',
+            quantity: Number(it.quantity || it.qty || 1),
+            unitPrice: Number(it.unitPrice || it.rate || it.price || 0),
+            total: Number(it.total || (Number(it.quantity || 1) * Number(it.unitPrice || 0))),
+          })),
+          subtotal: Number(inv.subtotal || inv.total || 0),
+          tax: Number(inv.tax || 0),
+          discount: Number(inv.discount || 0),
+          total: Number(inv.total || inv.subtotal || 0),
+          paid: Number(inv.paid ?? inv.total ?? 0),
+          balance: Number(inv.balance ?? 0),
+          paymentMode: inv.paymentMode || 'UPI',
+          notes: inv.notes || 'Imported from JSON file',
+        }));
+      } else {
+        // Parse CSV
+        const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        if (lines.length < 2) {
+          Alert.alert('Invalid CSV', 'CSV file must have a header row and at least one data row.');
+          return;
+        }
+        const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/["']/g, ''));
+        const invNumIdx = headers.findIndex((h) => h.includes('invoice') || h.includes('bill') || h.includes('id'));
+        const nameIdx = headers.findIndex((h) => h.includes('name') || h.includes('customer'));
+        const phoneIdx = headers.findIndex((h) => h.includes('phone') || h.includes('mobile'));
+        const vehIdx = headers.findIndex((h) => h.includes('vehicle') || h.includes('model'));
+        const regIdx = headers.findIndex((h) => h.includes('reg') || h.includes('number'));
+        const itemIdx = headers.findIndex((h) => h.includes('item') || h.includes('service') || h.includes('desc'));
+        const qtyIdx = headers.findIndex((h) => h.includes('qty') || h.includes('quantity'));
+        const rateIdx = headers.findIndex((h) => h.includes('rate') || h.includes('price') || h.includes('mrp'));
+        const totalIdx = headers.findIndex((h) => h.includes('total') || h.includes('amount'));
+        const paidIdx = headers.findIndex((h) => h.includes('paid'));
+
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+          if (row.length === 0 || !row.some((c) => c.length > 0)) continue;
+
+          const custName = nameIdx >= 0 && row[nameIdx] ? row[nameIdx] : `Customer ${i}`;
+          const phone = phoneIdx >= 0 && row[phoneIdx] ? row[phoneIdx] : '';
+          const vehModel = vehIdx >= 0 && row[vehIdx] ? row[vehIdx] : 'Royal Enfield Classic 350';
+          const vehReg = regIdx >= 0 && row[regIdx] ? row[regIdx] : 'As Per Estimate';
+          const itemDesc = itemIdx >= 0 && row[itemIdx] ? row[itemIdx] : 'Periodic Maintenance Service';
+          const qty = qtyIdx >= 0 ? Number(row[qtyIdx]) || 1 : 1;
+          const rate = rateIdx >= 0 ? Number(row[rateIdx]) || 1000 : (totalIdx >= 0 ? Number(row[totalIdx]) || 1000 : 1000);
+          const total = totalIdx >= 0 ? Number(row[totalIdx]) || qty * rate : qty * rate;
+          const paid = paidIdx >= 0 ? Number(row[paidIdx]) || total : total;
+          const invNum = invNumIdx >= 0 && row[invNumIdx] ? row[invNumIdx] : `CSV-${Date.now().toString().slice(-4)}-${i}`;
+
+          invoicesToImport.push({
+            invoiceNumber: invNum,
+            date: new Date().toISOString(),
+            customer: { name: custName, phone },
+            vehicle: { makeModel: vehModel, registrationNo: vehReg },
+            items: [
+              {
+                description: itemDesc,
+                quantity: qty,
+                unitPrice: rate,
+                total,
+              },
+            ],
+            subtotal: total,
+            tax: 0,
+            discount: 0,
+            total,
+            paid,
+            balance: Math.max(0, total - paid),
+            paymentMode: 'UPI',
+            notes: 'Imported from CSV file',
+          });
+        }
+      }
+
+      if (invoicesToImport.length === 0) {
+        Alert.alert('No Records Found', 'Could not parse bills from the selected file.');
+        return;
+      }
+
+      await API.importBills(invoicesToImport);
+      Alert.alert(
+        'Import Succeeded! 🚀',
+        `Successfully imported ${invoicesToImport.length} bill(s) into MotoFit workshop.`
+      );
+      setIsImportModalOpen(false);
+      await fetchInvoices();
+    } catch (err: any) {
+      Alert.alert('Import Failed', err?.message || 'Could not import selected file.');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -518,35 +950,63 @@ export default function InvoicesScreen() {
           </View>
         )}
 
-        {/* Balanced 4-Grid Action Row (WhatsApp, Slip, SOW, PDF) */}
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionBtnWhatsApp}
-            onPress={() => handleShareWhatsApp(item)}
-          >
-            <MaterialCommunityIcons name="whatsapp" size={13} color="#25D366" />
-            <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtnSecondary} onPress={() => handleThermalPrint(item)}>
-            <MaterialCommunityIcons name="printer-pos" size={13} color={COLORS.primary} />
-            <Text style={styles.actionBtnSecondaryText}>Slip</Text>
-          </TouchableOpacity>
-
+        {/* Row 1: Document View & Edit (SOW Bill, PDF Bill, Edit) */}
+        <View style={styles.actionsGridRow}>
           <TouchableOpacity
             style={styles.actionBtnSow}
             onPress={() => handleOpenPdf(item.id, 'SOW_BILL')}
+            activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="auto-fix" size={13} color="#A78BFA" />
-            <Text style={styles.actionBtnSowText}>SOW</Text>
+            <Text style={styles.actionBtnSowText}>SOW Bill</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionBtnPrimary}
             onPress={() => handleOpenPdf(item.id, 'INVOICE')}
+            activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="receipt" size={13} color={COLORS.background} />
-            <Text style={styles.actionBtnPrimaryText}>PDF</Text>
+            <Text style={styles.actionBtnPrimaryText}>PDF Bill</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtnEdit}
+            onPress={() => handleOpenEditModal(item)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="pencil-outline" size={13} color="#F59E0B" />
+            <Text style={styles.actionBtnEditText}>Edit Bill</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Row 2: Customer Delivery & Comms (WhatsApp, Slip, Delivery Photo) */}
+        <View style={styles.actionsGridRow}>
+          <TouchableOpacity
+            style={styles.actionBtnWhatsApp}
+            onPress={() => handleShareWhatsApp(item)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="whatsapp" size={13} color="#25D366" />
+            <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtnSecondary}
+            onPress={() => handleThermalPrint(item)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="printer-pos" size={13} color={COLORS.primary} />
+            <Text style={styles.actionBtnSecondaryText}>Slip</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtnPhoto}
+            onPress={() => handleQuickCaptureDeliveryPhoto(item)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="camera-outline" size={13} color="#06B6D4" />
+            <Text style={styles.actionBtnPhotoText}>📸 Photo</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -555,18 +1015,28 @@ export default function InvoicesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Header with New Bill button */}
+      {/* Top Header with New Bill & Import buttons */}
       <View style={styles.topActions}>
         <Text style={styles.topTitle}>Billing Ledger</Text>
-        <MobilePearlButton variant="gold" onPress={() => setIsModalOpen(true)}>
-          <MaterialCommunityIcons
-            name="plus"
-            size={18}
-            color={COLORS.background}
-            style={{ marginRight: 4 }}
-          />
-          <Text style={styles.pearlBtnText}>New Bill / Estimate</Text>
-        </MobilePearlButton>
+        <View style={styles.topBtnGroup}>
+          <TouchableOpacity
+            style={styles.importBtn}
+            onPress={() => setIsImportModalOpen(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="file-import-outline" size={14} color="#C9F31D" />
+            <Text style={styles.importBtnText}>Import</Text>
+          </TouchableOpacity>
+          <MobilePearlButton variant="gold" onPress={() => setIsModalOpen(true)}>
+            <MaterialCommunityIcons
+              name="plus"
+              size={18}
+              color={COLORS.background}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={styles.pearlBtnText}>New Bill</Text>
+          </MobilePearlButton>
+        </View>
       </View>
 
       {/* Top Ledger Summary */}
@@ -768,6 +1238,39 @@ export default function InvoicesScreen() {
                     />
                   </View>
                 </View>
+
+                {/* Handover Delivery Photo (Optional) */}
+                <View style={styles.photoCaptureCard}>
+                  <View style={styles.photoCaptureHeader}>
+                    <Text style={styles.inputLabel}>📸 Handover Delivery Photo (Optional)</Text>
+                    {deliveryPhoto ? (
+                      <TouchableOpacity onPress={() => setDeliveryPhoto(null)}>
+                        <Text style={styles.photoRemoveText}>Remove</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                  <View style={styles.photoCaptureRow}>
+                    {deliveryPhoto ? (
+                      <Image source={{ uri: deliveryPhoto }} style={styles.photoThumb} />
+                    ) : null}
+                    <View style={styles.photoBtnGroup}>
+                      <TouchableOpacity
+                        style={styles.photoActionBtn}
+                        onPress={() => handleTakeDeliveryPhoto(false)}
+                      >
+                        <MaterialCommunityIcons name="camera" size={14} color="#C9F31D" />
+                        <Text style={styles.photoActionBtnText}>Take Photo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.photoActionBtn}
+                        onPress={() => handlePickDeliveryPhoto(false)}
+                      >
+                        <MaterialCommunityIcons name="image-outline" size={14} color={COLORS.primary} />
+                        <Text style={styles.photoActionBtnText}>Pick Image</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
               </View>
 
               {/* Spare Parts & Line Items Section */}
@@ -897,6 +1400,33 @@ export default function InvoicesScreen() {
                           value={customRate}
                           onChangeText={setCustomRate}
                         />
+                      </View>
+                    </View>
+                    <View style={styles.twoColRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Discount ({customDiscType})</Text>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          <TextInput
+                            style={[styles.modalInput, { flex: 1 }]}
+                            placeholder="0"
+                            placeholderTextColor={COLORS.textMuted}
+                            keyboardType="numeric"
+                            value={customDiscVal}
+                            onChangeText={setCustomDiscVal}
+                          />
+                          <TouchableOpacity
+                            style={styles.discToggleBtn}
+                            onPress={() => setCustomDiscType((prev) => (prev === '%' ? '₹' : '%'))}
+                          >
+                            <Text style={styles.discToggleBtnText}>{customDiscType}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <Text style={styles.inputLabel}>Net Line Amount</Text>
+                        <Text style={{ color: '#C9F31D', fontSize: 15, fontWeight: 'bold' }}>
+                          ₹{calculateLineTotal(Number(customQty) || 1, Number(customRate) || 0, customDiscType, Number(customDiscVal) || 0).toLocaleString('en-IN')}
+                        </Text>
                       </View>
                     </View>
                     <View style={styles.customBtnRow}>
@@ -1257,6 +1787,406 @@ export default function InvoicesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* 4. Modal: Edit Bill / Estimate */}
+      <Modal
+        visible={isEditModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsEditModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>
+                  Edit Bill #{editingInvoice?.invoiceNumber}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  Update Line Items, Discounts & Handover Proof
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsEditModalOpen(false)}
+                style={styles.closeBtn}
+              >
+                <MaterialCommunityIcons name="close" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
+              {/* Customer & Vehicle Info */}
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionHeader}>Customer & Vehicle Information</Text>
+                <View style={styles.twoColRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Customer Name</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editCustName}
+                      onChangeText={setEditCustName}
+                      placeholder="Customer Name"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Phone Number</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editCustPhone}
+                      onChangeText={setEditCustPhone}
+                      placeholder="Phone"
+                      placeholderTextColor={COLORS.textMuted}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.twoColRow}>
+                  <View style={{ flex: 1.2 }}>
+                    <Text style={styles.inputLabel}>Vehicle Make & Model</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editVehicleModel}
+                      onChangeText={setEditVehicleModel}
+                      placeholder="Make & Model"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                  <View style={{ flex: 0.8 }}>
+                    <Text style={styles.inputLabel}>Vehicle Reg No.</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editVehicleReg}
+                      onChangeText={setEditVehicleReg}
+                      placeholder="REG NO."
+                      placeholderTextColor={COLORS.textMuted}
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                </View>
+
+                {/* Handover Delivery Photo (Optional) */}
+                <View style={styles.photoCaptureCard}>
+                  <View style={styles.photoCaptureHeader}>
+                    <Text style={styles.inputLabel}>📸 Handover Delivery Photo (Optional)</Text>
+                    {editDeliveryPhoto ? (
+                      <TouchableOpacity onPress={() => setEditDeliveryPhoto(null)}>
+                        <Text style={styles.photoRemoveText}>Remove</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                  <View style={styles.photoCaptureRow}>
+                    {editDeliveryPhoto ? (
+                      <Image source={{ uri: editDeliveryPhoto }} style={styles.photoThumb} />
+                    ) : null}
+                    <View style={styles.photoBtnGroup}>
+                      <TouchableOpacity
+                        style={styles.photoActionBtn}
+                        onPress={() => handleTakeDeliveryPhoto(true)}
+                      >
+                        <MaterialCommunityIcons name="camera" size={14} color="#C9F31D" />
+                        <Text style={styles.photoActionBtnText}>Take Photo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.photoActionBtn}
+                        onPress={() => handlePickDeliveryPhoto(true)}
+                      >
+                        <MaterialCommunityIcons name="image-outline" size={14} color={COLORS.primary} />
+                        <Text style={styles.photoActionBtnText}>Pick Image</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Line Items Editor */}
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionHeader}>Line Items ({editLineItems.length})</Text>
+                  <TouchableOpacity
+                    style={styles.stockPickerBtn}
+                    onPress={() => {
+                      const newItem: LineItem = {
+                        id: Date.now().toString(),
+                        description: 'Custom Repair / Spare',
+                        details: 'Mechanical service task',
+                        category: 'part',
+                        quantity: 1,
+                        unitPrice: 500,
+                        discountType: '%',
+                        discountValue: 0,
+                        total: 500,
+                      };
+                      setEditLineItems((prev) => [...prev, newItem]);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="plus" size={14} color="#C9F31D" />
+                    <Text style={styles.stockPickerBtnText}>Add Item</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {editLineItems.map((item, idx) => (
+                  <View key={item.id || idx} style={styles.editLineItemCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TextInput
+                        style={[styles.modalInput, { flex: 1, fontWeight: 'bold' }]}
+                        value={item.description}
+                        onChangeText={(val) => {
+                          setEditLineItems((prev) =>
+                            prev.map((it, i) => (i === idx ? { ...it, description: val } : it))
+                          );
+                        }}
+                        placeholder="Item Description"
+                        placeholderTextColor={COLORS.textMuted}
+                      />
+                      {editLineItems.length > 1 && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            setEditLineItems((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          style={styles.lineItemDelete}
+                        >
+                          <MaterialCommunityIcons name="trash-can-outline" size={16} color="#EF4444" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    <View style={[styles.twoColRow, { marginTop: 6 }]}>
+                      <View style={{ flex: 0.6 }}>
+                        <Text style={styles.inputLabel}>Qty</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          keyboardType="numeric"
+                          value={String(item.quantity)}
+                          onChangeText={(val) => {
+                            const q = Number(val) || 1;
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) =>
+                                i === idx
+                                  ? {
+                                      ...it,
+                                      quantity: q,
+                                      total: calculateLineTotal(q, it.unitPrice, it.discountType, it.discountValue),
+                                    }
+                                  : it
+                              )
+                            );
+                          }}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Rate (₹)</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          keyboardType="numeric"
+                          value={String(item.unitPrice)}
+                          onChangeText={(val) => {
+                            const r = Number(val) || 0;
+                            setEditLineItems((prev) =>
+                              prev.map((it, i) =>
+                                i === idx
+                                  ? {
+                                      ...it,
+                                      unitPrice: r,
+                                      total: calculateLineTotal(it.quantity, r, it.discountType, it.discountValue),
+                                    }
+                                  : it
+                              )
+                            );
+                          }}
+                        />
+                      </View>
+                      <View style={{ flex: 1.1 }}>
+                        <Text style={styles.inputLabel}>Discount ({item.discountType || '%'})</Text>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          <TextInput
+                            style={[styles.modalInput, { flex: 1 }]}
+                            keyboardType="numeric"
+                            value={String(item.discountValue || 0)}
+                            onChangeText={(val) => {
+                              const d = Number(val) || 0;
+                              setEditLineItems((prev) =>
+                                prev.map((it, i) =>
+                                  i === idx
+                                    ? {
+                                        ...it,
+                                        discountValue: d,
+                                        total: calculateLineTotal(it.quantity, it.unitPrice, it.discountType, d),
+                                      }
+                                    : it
+                                )
+                              );
+                            }}
+                          />
+                          <TouchableOpacity
+                            style={styles.discToggleBtn}
+                            onPress={() => {
+                              const newType = item.discountType === '%' ? '₹' : '%';
+                              setEditLineItems((prev) =>
+                                prev.map((it, i) =>
+                                  i === idx
+                                    ? {
+                                        ...it,
+                                        discountType: newType,
+                                        total: calculateLineTotal(it.quantity, it.unitPrice, newType, it.discountValue),
+                                      }
+                                    : it
+                                )
+                              );
+                            }}
+                          >
+                            <Text style={styles.discToggleBtnText}>{item.discountType || '%'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted }}>
+                        Line Net: <Text style={{ color: '#C9F31D', fontWeight: 'bold' }}>₹{item.total.toLocaleString('en-IN')}</Text>
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* Financials & Settlement */}
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionHeader}>Billing & Payment Status</Text>
+                <View style={styles.twoColRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Overall Discount (₹)</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      keyboardType="numeric"
+                      value={editDiscount}
+                      onChangeText={setEditDiscount}
+                      placeholder="0"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Amount Paid (₹)</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      keyboardType="numeric"
+                      value={editPaidAmount}
+                      onChangeText={setEditPaidAmount}
+                      placeholder="0"
+                    />
+                  </View>
+                </View>
+
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>Payment Mode</Text>
+                <View style={styles.modeRow}>
+                  {(['UPI', 'CASH', 'CARD'] as const).map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.modePill, editPaymentMode === m && styles.modePillActive]}
+                      onPress={() => setEditPaymentMode(m)}
+                    >
+                      <Text style={[styles.modeText, editPaymentMode === m && styles.modeTextActive]}>
+                        {m}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Save Button */}
+              <View style={styles.totalSummaryBanner}>
+                <View>
+                  <Text style={styles.totalSummaryLabel}>Net Bill Amount</Text>
+                  <Text style={styles.totalSummaryVal}>
+                    ₹{Math.max(
+                      0,
+                      editLineItems.reduce((acc, it) => acc + (it.total || 0), 0) -
+                        (Number.parseFloat(editDiscount) || 0)
+                    ).toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                <MobilePearlButton
+                  variant="gold"
+                  onPress={handleSaveEditInvoice}
+                  style={{ minWidth: 150 }}
+                >
+                  {savingEdit ? (
+                    <MobileLoader text="Saving" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={18}
+                        color={COLORS.background}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={styles.pearlBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </MobilePearlButton>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 5. Modal: Import Bills (CSV & JSON) */}
+      <Modal
+        visible={isImportModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsImportModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '75%' }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Import Bills & Invoices</Text>
+                <Text style={styles.modalSubtitle}>CSV and JSON File Formats Supported</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsImportModalOpen(false)}
+                style={styles.closeBtn}
+              >
+                <MaterialCommunityIcons name="close" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <View style={styles.importNoticeCard}>
+                <MaterialCommunityIcons name="file-document-multiple-outline" size={32} color="#C9F31D" />
+                <Text style={styles.importNoticeTitle}>Seamless Workshop Data Migration</Text>
+                <Text style={styles.importNoticeText}>
+                  Import bills exported from the Web App, Tally, Excel, or custom JSON.
+                  Customers, vehicles, and line-item spare parts will be automatically resolved.
+                </Text>
+              </View>
+
+              <View style={styles.supportedFormatCard}>
+                <Text style={styles.supportedFormatTitle}>Supported Formats:</Text>
+                <Text style={styles.supportedFormatRow}>• .JSON — MotoBan Web App bill export array</Text>
+                <Text style={styles.supportedFormatRow}>• .CSV — Standard spreadsheet with Invoice, Customer, Phone, Items, Rates</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.selectFileBigBtn}
+                onPress={handleSelectImportFile}
+                disabled={importing}
+                activeOpacity={0.8}
+              >
+                {importing ? (
+                  <MobileLoader text="Importing Bills..." />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="cloud-upload-outline" size={24} color="#0B0F19" />
+                    <Text style={styles.selectFileBigBtnText}>Choose CSV or JSON File</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1273,6 +2203,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 4,
+  },
+  topBtnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  importBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(201, 243, 29, 0.12)',
+    borderWidth: 1,
+    borderColor: '#C9F31D',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  importBtnText: {
+    color: '#C9F31D',
+    fontSize: 11,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   topTitle: {
     fontSize: 16,
@@ -1492,24 +2444,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
-  actionsGrid: {
+  actionsGridRow: {
     flexDirection: 'row',
     gap: 6,
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    marginTop: 6,
   },
   actionBtnWhatsApp: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 7,
     borderWidth: 1,
     borderColor: '#25D366',
-    backgroundColor: 'rgba(37, 211, 102, 0.06)',
+    backgroundColor: 'rgba(37, 211, 102, 0.08)',
   },
   actionBtnWhatsAppText: {
     color: '#25D366',
@@ -1523,11 +2472,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 7,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(229, 192, 123, 0.05)',
+    backgroundColor: 'rgba(229, 192, 123, 0.08)',
   },
   actionBtnSecondaryText: {
     color: COLORS.primary,
@@ -1541,11 +2490,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 7,
     borderWidth: 1,
     borderColor: '#8B5CF6',
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
   actionBtnSowText: {
     color: '#A78BFA',
@@ -1559,7 +2508,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 7,
     backgroundColor: COLORS.primary,
   },
@@ -1568,6 +2517,179 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: 'bold',
     marginLeft: 3,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  actionBtnEdit: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  actionBtnEditText: {
+    color: '#F59E0B',
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    marginLeft: 3,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  actionBtnPhoto: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#06B6D4',
+    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+  },
+  actionBtnPhotoText: {
+    color: '#06B6D4',
+    fontSize: 10.5,
+    fontWeight: 'bold',
+    marginLeft: 3,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  photoCaptureCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+  },
+  photoCaptureHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  photoRemoveText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  photoCaptureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  photoThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C9F31D',
+  },
+  photoBtnGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  photoActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  photoActionBtnText: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  discToggleBtn: {
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
+    borderWidth: 1,
+    borderColor: '#C9F31D',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  discToggleBtnText: {
+    color: '#C9F31D',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  editLineItemCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  importNoticeCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(201, 243, 29, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 243, 29, 0.25)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 14,
+  },
+  importNoticeTitle: {
+    color: '#C9F31D',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 8,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  importNoticeText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 16,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  supportedFormatCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    marginBottom: 16,
+  },
+  supportedFormatTitle: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  supportedFormatRow: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
+  },
+  selectFileBigBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#C9F31D',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  selectFileBigBtnText: {
+    color: '#0B0F19',
+    fontSize: 13.5,
+    fontWeight: 'bold',
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   center: {

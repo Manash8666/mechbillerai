@@ -27,6 +27,7 @@ export interface InvoicePdfData {
   dueDate?: string | null;
   serviceType?: string | null;
   refEstimate?: string | null;
+  deliveryPhoto?: string | null;
   vehicle?: {
     makeModel?: string | null;
     registrationNo?: string | null;
@@ -53,6 +54,7 @@ export interface InvoicePdfData {
     details?: string | null;
     quantity: number;
     unitPrice: number;
+    discount?: number | string | null;
     total: number;
   }[];
   subtotal: number;
@@ -286,8 +288,8 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     currentY += infoCardH + 6;
   }
 
-  // 3. Itemized Services & Parts Table with Two-Tier Titles & Detailed Explanations
-  const colDescWidth = 102;
+  // 3. Itemized Services & Parts Table with Two-Tier Titles, Explanations & Discount Column
+  const colDescWidth = 94;
   const tableData = data.items.map((item, idx) => {
     const title = (item.description || 'Service Work').toUpperCase();
     let details = item.details ? item.details.trim() : '';
@@ -304,11 +306,25 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
       combinedText = `${title}\n${detailLines.join('\n')}`;
     }
 
+    let discountStr = '-';
+    if (
+      item.discount !== undefined &&
+      item.discount !== null &&
+      item.discount !== '' &&
+      item.discount !== 0 &&
+      item.discount !== '0'
+    ) {
+      discountStr = String(item.discount).includes('%') || String(item.discount).includes('₹')
+        ? String(item.discount)
+        : `₹${Number(item.discount).toLocaleString('en-IN')}`;
+    }
+
     return [
       (idx + 1).toString(),
       combinedText,
       item.quantity.toString(),
       Number(item.unitPrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      discountStr,
       Number(item.total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     ];
   });
@@ -316,7 +332,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   applyAutoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
-    head: [['S.NO.', 'SERVICE ITEM / SPARE PART DESCRIPTION', 'QTY', 'RATE (₹)', 'AMOUNT (₹)']],
+    head: [['S.NO.', 'SERVICE ITEM / SPARE PART DESCRIPTION', 'QTY', 'RATE (₹)', 'DISCOUNT', 'AMOUNT (₹)']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -334,11 +350,12 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
       lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 14, fontStyle: 'bold', halign: 'center' },
+      0: { cellWidth: 12, fontStyle: 'bold', halign: 'center' },
       1: { cellWidth: colDescWidth },
-      2: { cellWidth: 14, halign: 'center' },
-      3: { cellWidth: 26, halign: 'right' },
-      4: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
+      2: { cellWidth: 12, halign: 'center' },
+      3: { cellWidth: 22, halign: 'right' },
+      4: { cellWidth: 18, halign: 'center', textColor: [220, 38, 38], fontStyle: 'bold' },
+      5: { cellWidth: 24, halign: 'right', fontStyle: 'bold' },
     },
     didDrawCell: (hookData: any) => {
       // Custom two-tone typography for Description column
@@ -640,6 +657,70 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   doc.setFontSize(5.5);
   doc.setTextColor(148, 163, 184);
   doc.text('MotoFit Workshop • Digitally Verified Authority', signX + signWidth / 2, footerY + 16, { align: 'center' });
+
+  // Optional Delivery Photo Handover Proof
+  if (data.deliveryPhoto) {
+    try {
+      let photoFormat = 'JPEG';
+      if (data.deliveryPhoto.includes('image/png')) photoFormat = 'PNG';
+      else if (data.deliveryPhoto.includes('image/webp')) photoFormat = 'WEBP';
+
+      doc.addPage();
+      // Architectural Header on Delivery Verification Page
+      doc.setFillColor(...SLATE_DARK);
+      doc.rect(0, 0, pageWidth, 28, 'F');
+      doc.setFillColor(...PRIMARY_COLOR);
+      doc.rect(0, 28, pageWidth, 2, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text('CERTIFIED VEHICLE & CLIENT DELIVERY HANDOVER PROOF', margin, 14);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(200, 205, 215);
+      doc.text(`Document Ref: #${data.documentNumber}   |   Date: ${data.date}   |   Workshop: ${data.garage.name || 'MotoFit Workshop'}`, margin, 21);
+
+      // Card frame for the delivery photo
+      const cardX = margin;
+      const cardY = 38;
+      const cardW = pageWidth - margin * 2;
+      const cardH = 175;
+
+      doc.setFillColor(249, 250, 251);
+      doc.setDrawColor(229, 231, 235);
+      doc.roundedRect(cardX, cardY, cardW, cardH, 3, 3, 'FD');
+
+      const imgW = cardW - 16;
+      const imgH = cardH - 30;
+      doc.addImage(data.deliveryPhoto, photoFormat, cardX + 8, cardY + 8, imgW, imgH);
+
+      // Caption bar
+      doc.setFillColor(243, 244, 246);
+      doc.roundedRect(cardX + 8, cardY + imgH + 11, imgW, 14, 2, 2, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(17, 24, 39);
+      doc.text(`Handover Delivery Verification: ${data.customer.name}`, cardX + 12, cardY + imgH + 17);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(107, 114, 128);
+      const vehicleDetails = `${data.vehicle?.makeModel || 'Motorcycle'} • Reg: ${data.vehicle?.registrationNo || 'N/A'}`;
+      doc.text(`${vehicleDetails} — Verified delivery and client acceptance logged at ${data.garage.name || 'MotoFit Workshop'}.`, cardX + 12, cardY + imgH + 22);
+
+      // Signatory endorsement on delivery page
+      drawSamaelCursiveSignature(doc, rightX - 56, cardY + cardH + 10, 0.22);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text('Verified Handover Authority — Samael Morningstar', rightX - 28, cardY + cardH + 24, { align: 'center' });
+    } catch (photoErr) {
+      console.warn('Could not render delivery handover photo on PDF:', photoErr);
+    }
+  }
 
   return doc;
 }

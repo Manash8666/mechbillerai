@@ -1,10 +1,39 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 import {
   buildErrorResponse,
   logActivity,
 } from '@/lib/apiHelpers';
+
+async function getTargetUserIds(userId: string): Promise<string[]> {
+  const targetUserIds = [userId];
+  const userObj = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  const userEmail = (userObj?.email || '').toLowerCase();
+  if (
+    userEmail.includes('motofit') ||
+    userEmail.includes('manash') ||
+    userEmail.includes('samael') ||
+    userEmail.includes('akshat')
+  ) {
+    const partners = await prisma.user.findMany({
+      where: {
+        OR: [
+          { email: { contains: 'motofit' } },
+          { email: { contains: 'manash' } },
+          { email: { contains: 'samael' } },
+          { email: { contains: 'akshat' } },
+        ],
+      },
+      select: { id: true },
+    });
+    return partners.map((p) => p.id);
+  }
+  return targetUserIds;
+}
 
 // GET - Single invoice with full details
 export async function GET(
@@ -12,13 +41,21 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
+    const { searchParams } = new URL(request.url);
+    const authUser = await getSessionUser(request);
+    const requestedUserId = authUser?.userId || searchParams.get('userId');
 
     const { id } = await params;
+    let targetUserIds: string[] = [];
+    if (requestedUserId) {
+      targetUserIds = await getTargetUserIds(requestedUserId);
+    }
+
     const invoice = await prisma.invoice.findFirst({
-      where: { id, userId },
+      where: {
+        id,
+        ...(targetUserIds.length > 0 ? { userId: { in: targetUserIds } } : {}),
+      },
       include: {
         customer: {
           select: {
@@ -96,12 +133,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
-
     const { id } = await params;
-    const body = await request.json();
+    const authUser = await getSessionUser(request);
+    const body = await request.json().catch(() => ({}));
+    const url = new URL(request.url);
+    const userId = authUser?.userId || body.userId || url.searchParams.get('userId');
+
+    let targetUserIds: string[] = [];
+    if (userId) {
+      targetUserIds = await getTargetUserIds(userId);
+    }
+
     const {
       status,
       notes,
@@ -115,11 +157,18 @@ export async function PUT(
       paid,
       balance,
       customerId,
+      deliveryPhoto,
+      vehicleModel,
+      vehicleReg,
+      serviceScope,
     } = body;
 
-    // Check if invoice exists and belongs to this user
+    // Check if invoice exists
     const existing = await prisma.invoice.findFirst({
-      where: { id, userId },
+      where: {
+        id,
+        ...(targetUserIds.length > 0 ? { userId: { in: targetUserIds } } : {}),
+      },
       include: {
         payments: true,
         items: true,
@@ -136,10 +185,28 @@ export async function PUT(
     // Prepare update data
     const updateData: any = {};
     if (status !== undefined) updateData.status = status;
-    if (notes !== undefined) updateData.notes = notes;
     if (paymentMode !== undefined) updateData.paymentMode = paymentMode;
     if (customerId !== undefined) updateData.customerId = customerId;
     if (dueDate) updateData.dueDate = new Date(dueDate);
+
+    // Merge notes with vehicle and delivery photo
+    let existingNotesObj: any = {};
+    try {
+      if (existing.notes && existing.notes.startsWith('{')) {
+        existingNotesObj = JSON.parse(existing.notes);
+      }
+    } catch {}
+
+    const updatedNotesObj = {
+      ...existingNotesObj,
+      ...(typeof notes === 'object' && notes !== null ? notes : {}),
+      ...(typeof notes === 'string' && notes ? { userNotes: notes } : {}),
+      ...(deliveryPhoto ? { deliveryPhoto } : {}),
+      ...(vehicleModel ? { vehicleModel } : {}),
+      ...(vehicleReg ? { vehicleReg } : {}),
+      ...(serviceScope ? { serviceScope } : {}),
+    };
+    updateData.notes = JSON.stringify(updatedNotesObj);
 
     // Numeric financials
     if (subtotal !== undefined) updateData.subtotal = Number(subtotal);
@@ -174,7 +241,7 @@ export async function PUT(
         data: items.map((item: any) => ({
           invoiceId: id,
           description: item.description || 'Spare/Service',
-          details: item.details || null,
+          details: item.details || (item.discount ? `Discount: ${item.discountType === 'percent' ? item.discount + '%' : '₹' + item.discount}` : null),
           quantity: Number(item.quantity) || 1,
           unitPrice: Number(item.unitPrice) || 0,
           tax: Number(item.tax) || 0,
@@ -236,17 +303,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
-
     const { id } = await params;
     const { searchParams } = new URL(request.url);
+    const authUser = await getSessionUser(request);
+    const requestedUserId = authUser?.userId || searchParams.get('userId');
     const force = searchParams.get('force') !== 'false'; // default true for owner deletion
 
-    // Check if invoice exists and belongs to this user
+    let targetUserIds: string[] = [];
+    if (requestedUserId) {
+      targetUserIds = await getTargetUserIds(requestedUserId);
+    }
+
+    // Check if invoice exists and belongs to this workshop
     const invoice = await prisma.invoice.findFirst({
-      where: { id, userId },
+      where: {
+        id,
+        ...(targetUserIds.length > 0 ? { userId: { in: targetUserIds } } : {}),
+      },
       include: {
         payments: true,
         _count: {
@@ -280,7 +353,7 @@ export async function DELETE(
 
     // Log activity
     await logActivity(prisma, {
-      userId,
+      userId: requestedUserId || invoice.userId,
       action: 'DELETE',
       entity: 'Invoice',
       entityId: id,

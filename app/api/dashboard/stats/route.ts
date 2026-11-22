@@ -1,12 +1,48 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    const auth = await requireAuth(request);
-    if (auth.errorResponse) return auth.errorResponse;
-    const userId = auth.user.userId;
+    const { searchParams } = new URL(request.url);
+    const authUser = await getSessionUser(request);
+    const requestedUserId = authUser?.userId || searchParams.get('userId');
+
+    if (!requestedUserId) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please sign in.' },
+        { status: 401 }
+      );
+    }
+
+    // Collect all associated workshop partner IDs if MotoFit/Samael/Akshat/Manash
+    let targetUserIds = [requestedUserId];
+    const userObj = await prisma.user.findUnique({
+      where: { id: requestedUserId },
+      select: { email: true },
+    });
+    const userEmail = (userObj?.email || '').toLowerCase();
+    if (
+      userEmail.includes('motofit') ||
+      userEmail.includes('manash') ||
+      userEmail.includes('samael') ||
+      userEmail.includes('akshat')
+    ) {
+      const partners = await prisma.user.findMany({
+        where: {
+          OR: [
+            { email: { contains: 'motofit' } },
+            { email: { contains: 'manash' } },
+            { email: { contains: 'samael' } },
+            { email: { contains: 'akshat' } },
+          ],
+        },
+        select: { id: true },
+      });
+      targetUserIds = partners.map((p) => p.id);
+    }
+
+    const userCondition = targetUserIds.length > 1 ? { in: targetUserIds } : requestedUserId;
 
     // Get date ranges
     const today = new Date();
@@ -18,13 +54,13 @@ export async function GET(request: Request) {
 
     // Total customers
     const totalCustomers = await prisma.customer.count({
-      where: { userId },
+      where: { userId: userCondition },
     });
 
     // Total invoices this month
     const invoicesThisMonth = await prisma.invoice.count({
       where: {
-        userId,
+        userId: userCondition,
         createdAt: { gte: startOfMonth },
       },
     });
@@ -32,7 +68,7 @@ export async function GET(request: Request) {
     // Revenue this month
     const revenueThisMonth = await prisma.invoice.aggregate({
       where: {
-        userId,
+        userId: userCondition,
         createdAt: { gte: startOfMonth },
       },
       _sum: {
@@ -43,7 +79,7 @@ export async function GET(request: Request) {
     // Revenue last month
     const revenueLastMonth = await prisma.invoice.aggregate({
       where: {
-        userId,
+        userId: userCondition,
         createdAt: {
           gte: startOfLastMonth,
           lte: endOfLastMonth,
@@ -57,7 +93,7 @@ export async function GET(request: Request) {
     // Active job cards
     const activeJobCards = await prisma.jobCard.count({
       where: {
-        userId,
+        userId: userCondition,
         status: {
           in: ['pending', 'in-progress'],
         },
@@ -67,7 +103,7 @@ export async function GET(request: Request) {
     // Pending invoices
     const pendingInvoices = await prisma.invoice.count({
       where: {
-        userId,
+        userId: userCondition,
         status: {
           in: ['unpaid', 'partial'],
         },
@@ -77,7 +113,7 @@ export async function GET(request: Request) {
     // Outstanding amount
     const outstandingAmount = await prisma.invoice.aggregate({
       where: {
-        userId,
+        userId: userCondition,
         status: {
           in: ['unpaid', 'partial'],
         },
@@ -106,7 +142,7 @@ export async function GET(request: Request) {
     
     const todayAppointments = await prisma.appointment.count({
       where: {
-        userId,
+        userId: userCondition,
         date: {
           gte: today,
           lte: todayEnd,

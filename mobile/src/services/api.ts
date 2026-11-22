@@ -309,6 +309,24 @@ export const API = {
     return res.json();
   },
 
+  importBills: async (invoices: any[], inventory: any[] = []) => {
+    const user = await Storage.getUser();
+    const token = await Storage.getToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await apiFetch('/import/commit', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        userId: user?.id,
+        invoices,
+        inventory,
+      }),
+    }, 30000);
+    return res.json();
+  },
+
   // Inventory
   getInventory: async (search?: string) => {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
