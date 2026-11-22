@@ -330,11 +330,11 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(201, 168, 76, 0.12)',
+    backgroundColor: 'rgba(201, 243, 29, 0.12)',
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.3)',
+    borderColor: 'rgba(201, 243, 29, 0.3)',
     marginBottom: 16,
   },
   bannerTitle: {

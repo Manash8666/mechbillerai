@@ -326,7 +326,7 @@ export default function JobCardsScreen({ navigation }: any) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="car-wrench" size={48} color={COLORS.textMuted} />
+              <MaterialCommunityIcons name="motorbike" size={48} color={COLORS.textMuted} />
               <Text style={styles.emptyText}>No job cards found</Text>
             </View>
           }
@@ -602,9 +602,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.3)',
+    borderColor: 'rgba(201, 243, 29, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   },
   priorityPillActive: {
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
   },
   priorityText: {
     fontSize: 11,

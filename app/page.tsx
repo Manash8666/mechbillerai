@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Car, ClipboardList, Package, TrendingUp, Users, Calendar, Sparkles, ShieldCheck } from "lucide-react";
+import { Bike, ClipboardList, Package, TrendingUp, Users, Calendar, Sparkles, ShieldCheck } from "lucide-react";
 
 export default function Home() {
   return (
@@ -9,26 +9,32 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <Car className="h-8 w-8 text-luxury-gold" />
+              <Bike className="h-8 w-8 text-geek-lime" />
               <div>
                 <h1 className="text-2xl font-bold text-luxury-ink-light dark:text-luxury-ink-dark">
                   MotoBan
                 </h1>
-                <p className="text-[10px] text-luxury-gold tracking-wider uppercase font-semibold">
+                <p className="text-[10px] text-royal-gold tracking-wider uppercase font-semibold">
                   Powered by Hybrid StudioZ
                 </p>
               </div>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/motofit"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all"
+              >
+                🏍️ MotoFit 2 Portal
+              </Link>
               <Link
                 href="/login"
-                className="px-4 py-2 text-cool-slate hover:text-geek-lime font-medium transition-colors"
+                className="px-4 py-2 text-cool-slate hover:text-geek-lime font-medium transition-colors text-sm"
               >
                 Login
               </Link>
               <Link
                 href="/register"
-                className="px-6 py-2 bg-geek-lime text-void-black rounded-lg hover:bg-geek-lime-hover hover:shadow-lime-glow font-bold transition-all duration-300"
+                className="px-5 py-2 bg-geek-lime text-void-black rounded-lg hover:bg-geek-lime-hover hover:shadow-lime-glow font-bold transition-all duration-300 text-sm"
               >
                 Get Started
               </Link>
@@ -48,7 +54,7 @@ export default function Home() {
           </div>
 
           <h2 className="text-5xl sm:text-6xl font-extrabold text-pure-white mb-4 tracking-tight">
-            Automotive Garage POS & Smart Billing
+            Motorcycle & Superbike Garage POS & Smart Billing
           </h2>
           <p className="text-xl text-cool-slate mb-8 max-w-2xl mx-auto">
             High-velocity workshop management, instant UPI invoices, digital job cards & real-time daily ledger. Trusted by MotoFit.
@@ -90,9 +96,9 @@ export default function Home() {
             gujarati="ઇન્વેન્ટરી મેનેજમેન્ટ"
           />
           <FeatureCard
-            icon={<Car className="h-12 w-12 text-geek-lime" />}
+            icon={<Bike className="h-12 w-12 text-geek-lime" />}
             title="Job Cards"
-            description="Digital job cards with checklists and status tracking"
+            description="Digital two-wheeler job cards with checklists and status tracking"
             gujarati="ડિજિટલ જોબ કાર્ડ"
           />
           <FeatureCard

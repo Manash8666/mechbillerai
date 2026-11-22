@@ -32,6 +32,12 @@ export async function middleware(request: NextRequest) {
 
   // If a client visits the root of their custom subdomain (e.g. https://motofit.motoban.in/)
   if (isTenantSubdomain && (pathname === '/' || pathname === '')) {
+    if (subdomain === 'motofit' || subdomain === 'motofit2') {
+      const motofitUrl = new URL('/motofit', request.url);
+      const response = NextResponse.rewrite(motofitUrl);
+      response.headers.set('x-tenant-subdomain', subdomain);
+      return response;
+    }
     const portalUrl = new URL(`/portal/${subdomain}`, request.url);
     const response = NextResponse.rewrite(portalUrl);
     response.headers.set('x-tenant-subdomain', subdomain as string);

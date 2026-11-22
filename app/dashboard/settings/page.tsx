@@ -15,6 +15,8 @@ import {
   Save,
   CheckCircle2,
   RotateCcw,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
@@ -34,6 +36,13 @@ export default function SettingsPage() {
   const [garageName, setGarageName] = useState('');
   const [phone, setPhone] = useState('');
   const [savingIdentity, setSavingIdentity] = useState(false);
+
+  // Security Credentials & Quick PIN State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [quickPin, setQuickPin] = useState('');
+  const [savingCreds, setSavingCreds] = useState(false);
 
   const settingsCategories = [
     {
@@ -165,6 +174,63 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpdateCreds = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    if (newPassword && newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (quickPin && !/^\d{4,6}$/.test(quickPin.trim())) {
+      toast.error('Quick PIN must be 4 to 6 numeric digits');
+      return;
+    }
+    if (!newPassword && !quickPin) {
+      toast.error('Please enter a new password or 4-digit PIN to update');
+      return;
+    }
+
+    try {
+      setSavingCreds(true);
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const userObj = userStr ? JSON.parse(userStr) : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('motoban_token') : null;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          userId: userObj?.id,
+          currentPassword: currentPassword || undefined,
+          newPassword: newPassword || undefined,
+          quickPin: quickPin.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Credentials & Security PIN updated successfully!');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setQuickPin('');
+      } else {
+        toast.error(data.error || 'Failed to update credentials');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error updating security credentials');
+    } finally {
+      setSavingCreds(false);
+    }
+  };
+
   const handleToggleGST = async () => {
     const nextVal = !gstEnabled;
     setGstEnabled(nextVal);
@@ -276,6 +342,94 @@ export default function SettingsPage() {
             >
               <Save className="h-4 w-4" />
               {savingIdentity ? 'Saving Identity...' : 'Save Name & Details'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Account Password & Quick 4-Digit PIN Security Hub */}
+      <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg p-6 border-2 border-geek-lime/30">
+        <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-luxury-gold/20">
+          <div>
+            <h2 className="text-lg font-bold text-luxury-ink-light dark:text-luxury-ink-dark flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-geek-lime" />
+              Account Password & Quick 4-Digit PIN Security Hub
+            </h2>
+            <p className="text-xs text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mt-0.5">
+              Reset your workshop master account password and configure the 4-digit numeric PIN for quick tablet/mobile unlock.
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-geek-lime/20 text-geek-lime border border-geek-lime/40">
+            Encrypted bcrypt & PIN
+          </span>
+        </div>
+
+        <form onSubmit={handleUpdateCreds} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs uppercase font-bold text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1 flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-luxury-ink-light/50 dark:text-luxury-ink-dark/50" />
+              Current Password (Optional if Admin)
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-4 py-2 rounded-xl bg-luxury-canvas-light/70 dark:bg-void-black/70 border border-luxury-gold/30 text-pure-white text-sm focus:outline-none focus:border-geek-lime"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase font-bold text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1 flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-geek-lime" />
+              New Password (Min 6 chars)
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password"
+              className="w-full px-4 py-2 rounded-xl bg-luxury-canvas-light/70 dark:bg-void-black/70 border border-luxury-gold/30 text-pure-white text-sm focus:outline-none focus:border-geek-lime"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase font-bold text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1 flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-geek-lime" />
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              className="w-full px-4 py-2 rounded-xl bg-luxury-canvas-light/70 dark:bg-void-black/70 border border-luxury-gold/30 text-pure-white text-sm focus:outline-none focus:border-geek-lime"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase font-bold text-luxury-ink-light/70 dark:text-luxury-ink-dark/70 mb-1 flex items-center gap-1.5">
+              <KeyRound className="h-3.5 w-3.5 text-luxury-gold" />
+              Quick 4-Digit PIN
+            </label>
+            <input
+              type="password"
+              maxLength={6}
+              value={quickPin}
+              onChange={(e) => setQuickPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="e.g. 1234"
+              className="w-full px-4 py-2 rounded-xl bg-luxury-canvas-light/70 dark:bg-void-black/70 border border-luxury-gold/30 text-pure-white text-sm tracking-widest font-mono focus:outline-none focus:border-geek-lime text-center"
+            />
+          </div>
+
+          <div className="md:col-span-4 pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={savingCreds}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-geek-lime text-void-black font-bold text-sm shadow-lime-glow hover:bg-geek-lime-hover transition-all"
+            >
+              <KeyRound className="h-4 w-4" />
+              {savingCreds ? 'Updating Credentials...' : 'Save Password & PIN'}
             </button>
           </div>
         </form>

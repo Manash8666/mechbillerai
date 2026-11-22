@@ -280,10 +280,12 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(75, 85, 99);
-    doc.text(`GSTIN Registration:`, rightCardX + 4, currentY + 24.5);
+    const hasTax = Boolean(data.tax && data.tax > 0);
+    doc.text(hasTax ? `GSTIN Registration:` : `Taxation Status:`, rightCardX + 4, currentY + 24.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(17, 24, 39);
-    doc.text(data.garage.gstNumber || 'Unregistered / N/A', rightCardX + 30, currentY + 24.5);
+    const taxBadge = hasTax ? (data.garage.gstNumber || 'GST Registered') : 'MSME Simplified (0% GST)';
+    doc.text(taxBadge, rightCardX + 30, currentY + 24.5);
 
     currentY += infoCardH + 6;
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Calendar, Phone, MessageSquare, CheckCircle, Clock, ShieldCheck, Wrench, Download, Car } from 'lucide-react';
+import { Search, Calendar, Phone, MessageSquare, CheckCircle, Clock, ShieldCheck, Wrench, Download, Bike } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface TenantData {
@@ -115,7 +115,7 @@ export default function PortalClientView({ tenant }: { readonly tenant: TenantDa
             <img src={tenant.logoUrl} alt={tenant.garageName} className="w-10 h-10 object-contain rounded-lg border border-slate-700 bg-black/40" />
           ) : (
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-black flex items-center justify-center font-extrabold text-base shadow-sm">
-              <Car className="w-5 h-5" />
+              <Bike className="w-5 h-5" />
             </div>
           )}
           <div>

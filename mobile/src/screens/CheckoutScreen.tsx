@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabActive: {
-    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
   },
   tabText: {
     color: COLORS.textMuted,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   detailedCard: {
-    borderColor: 'rgba(201, 168, 76, 0.4)',
+    borderColor: 'rgba(201, 243, 29, 0.4)',
   },
   jobPlate: {
     color: COLORS.text,
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.35)',
+    borderColor: 'rgba(201, 243, 29, 0.35)',
     alignItems: 'center',
   },
   modalHeader: {

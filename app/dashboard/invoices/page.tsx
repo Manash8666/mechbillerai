@@ -133,6 +133,7 @@ export default function InvoicesPage() {
     { description: string; details?: string; quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }[]
   >([]);
   const [updatingInvoice, setUpdatingInvoice] = useState(false);
+  const [gstEnabled, setGstEnabled] = useState(false);
 
   const getItemNetTotal = (item: { quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }) => {
     const qty = Number(item.quantity) || 1;
@@ -246,7 +247,7 @@ export default function InvoicesPage() {
         0
       );
       const discountVal = Number(editDiscount) || 0;
-      const taxVal = Math.round(Math.max(0, subtotal - discountVal) * 0.18);
+      const taxVal = gstEnabled ? Math.round(Math.max(0, subtotal - discountVal) * 0.18) : 0;
       const totalVal = Math.max(0, subtotal - discountVal + taxVal);
       const paidVal = Number(editPaid) || 0;
       const balanceVal = Math.max(0, totalVal - paidVal);
@@ -272,14 +273,15 @@ export default function InvoicesPage() {
         items: editLineItems.map((item) => {
           const lineNet = getItemNetTotal(item);
           const discStr = item.discountValue ? `${item.discountValue}${item.discountType || '₹'}` : undefined;
+          const lineTax = gstEnabled ? Math.round(lineNet * 0.18) : 0;
           return {
             description: item.description || 'Workshop Service',
             details: item.details || undefined,
             quantity: Number(item.quantity) || 1,
             unitPrice: Number(item.unitPrice) || 0,
             discount: discStr,
-            tax: Math.round(lineNet * 0.18),
-            total: Math.round(lineNet * 1.18),
+            tax: lineTax,
+            total: lineNet + lineTax,
           };
         }),
       };
@@ -316,6 +318,29 @@ export default function InvoicesPage() {
     void fetchInvoices();
     void fetchCustomerOptions();
     void fetchInventory();
+
+    // Sync GST setting from user profile
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (typeof u.gstEnabled === 'boolean') {
+          setGstEnabled(u.gstEnabled);
+        }
+        if (u.id) {
+          fetch(`/api/settings?userId=${u.id}`)
+            .then((r) => r.json())
+            .then((d) => {
+              if (d && typeof d.gstEnabled === 'boolean') {
+                setGstEnabled(d.gstEnabled);
+                u.gstEnabled = d.gstEnabled;
+                localStorage.setItem('user', JSON.stringify(u));
+              }
+            })
+            .catch(() => {});
+        }
+      } catch {}
+    }
   }, []);
 
   const fetchInventory = async () => {
@@ -829,7 +854,7 @@ export default function InvoicesPage() {
     0
   );
   const calculatedTotalDiscount = calculatedGrossSubtotal - calculatedSubtotal;
-  const calculatedTax = Math.round(calculatedSubtotal * 0.18);
+  const calculatedTax = gstEnabled ? Math.round(calculatedSubtotal * 0.18) : 0;
   const calculatedTotal = calculatedSubtotal + calculatedTax;
 
   const handleCreateInvoice = async (e: React.SyntheticEvent) => {
@@ -879,14 +904,15 @@ export default function InvoicesPage() {
           }
           const net = getItemNetTotal(item);
           const discStr = item.discountValue ? `${item.discountValue}${item.discountType || '₹'}` : undefined;
+          const lineTax = gstEnabled ? Math.round(net * 0.18) : 0;
           return {
             description: item.description || 'Workshop Service',
             details: det || undefined,
             quantity: Number(item.quantity) || 1,
             unitPrice: Number(item.unitPrice) || 0,
             discount: discStr,
-            tax: Math.round(net * 0.18),
-            total: Math.round(net * 1.18),
+            tax: lineTax,
+            total: net + lineTax,
           };
         }),
       };
@@ -1644,10 +1670,17 @@ export default function InvoicesPage() {
                   <span>Subtotal:</span>
                   <span className="font-semibold text-foreground">₹{calculatedSubtotal.toLocaleString('en-IN')}</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>GST (18%):</span>
-                  <span className="font-semibold text-foreground">₹{calculatedTax.toLocaleString('en-IN')}</span>
-                </div>
+                {gstEnabled ? (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>GST (18%):</span>
+                    <span className="font-semibold text-foreground">₹{calculatedTax.toLocaleString('en-IN')}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-emerald-400 font-medium">
+                    <span>Tax (MSME 0% GST Mode):</span>
+                    <span className="font-semibold">₹0</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-bold text-foreground border-t border-border pt-1">
                   <span>Grand Total:</span>
                   <span className="text-luxury-gold">₹{calculatedTotal.toLocaleString('en-IN')}</span>
@@ -2205,15 +2238,15 @@ export default function InvoicesPage() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">GST (18%): </span>
+                  <span className="text-muted-foreground">{gstEnabled ? 'GST (18%): ' : 'Tax (0% MSME): '}</span>
                   <span className="font-bold text-foreground">
-                    ₹{Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18).toLocaleString('en-IN')}
+                    ₹{gstEnabled ? Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18).toLocaleString('en-IN') : '0'}
                   </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Total: </span>
                   <span className="font-black text-amber-400">
-                    ₹{Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0) + Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18)).toLocaleString('en-IN')}
+                    ₹{(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) + (gstEnabled ? Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18) : 0)).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>

@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.3)',
+    borderColor: 'rgba(201, 243, 29, 0.3)',
     marginBottom: 14,
   },
   summaryTop: {
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.4)',
+    borderColor: 'rgba(201, 243, 29, 0.4)',
   },
   modalHeader: {
     flexDirection: 'row',

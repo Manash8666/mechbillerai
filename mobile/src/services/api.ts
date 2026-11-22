@@ -423,7 +423,15 @@ export const API = {
     return res.json();
   },
 
-  updateSettings: async (payload: { gstEnabled?: boolean; name?: string }) => {
+  updateSettings: async (payload: {
+    gstEnabled?: boolean;
+    name?: string;
+    currentPassword?: string;
+    newPassword?: string;
+    quickPin?: string;
+    garageName?: string;
+    phone?: string;
+  }) => {
     const user = await Storage.getUser();
     const res = await apiFetch('/settings', {
       method: 'PUT',

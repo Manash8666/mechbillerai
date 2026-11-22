@@ -30,7 +30,7 @@ function TabBarIcon({ routeName, color, size }: { readonly routeName: string; re
   if (routeName === 'Dashboard') {
     iconName = 'view-dashboard-outline';
   } else if (routeName === 'Job Cards') {
-    iconName = 'car-wrench';
+    iconName = 'motorbike';
   } else if (routeName === 'Invoices') {
     iconName = 'receipt';
   } else if (routeName === 'Inventory') {

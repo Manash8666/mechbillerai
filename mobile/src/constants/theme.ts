@@ -33,11 +33,17 @@ export const COLORS = {
   steelDim: '#64748B',
   darkSlate: '#334155',
 
-  // Luxury Gold & Brand Accents (Compatibility Aliases)
-  primary: '#E5C07B',
-  primaryDark: '#C9A84C',
-  primaryLight: '#F3E5AB',
-  primaryGlow: 'rgba(229, 192, 123, 0.25)',
+  // MotoBan Active Brand Accent (Geek Lime - matches Web App)
+  primary: '#C9F31D',
+  primaryDark: '#b8e214',
+  primaryLight: '#dff863',
+  primaryGlow: 'rgba(201, 243, 29, 0.35)',
+  
+  // Luxury Gold & VIP Badges
+  gold: '#E5C07B',
+  goldDark: '#C9A84C',
+  goldLight: '#F3E5AB',
+  goldGlow: 'rgba(229, 192, 123, 0.25)',
   
   // Banking / Financial Accents
   balanceCardBg: '#111827',
@@ -65,7 +71,7 @@ export const COLORS = {
   
   // Pills & Badges
   pillBg: 'rgba(255, 255, 255, 0.06)',
-  pillBgActive: 'rgba(229, 192, 123, 0.18)',
+  pillBgActive: 'rgba(201, 243, 29, 0.18)',
   cardBg: '#151D2F',
 };
 

@@ -149,7 +149,7 @@ export default function AppointmentsScreen() {
         <View style={styles.metaRow}>
           {item.bay ? (
             <View style={styles.tag}>
-              <MaterialCommunityIcons name="car-wrench" size={13} color={COLORS.textMuted} />
+              <MaterialCommunityIcons name="motorbike" size={13} color={COLORS.textMuted} />
               <Text style={styles.tagText}>Bay: {item.bay}</Text>
             </View>
           ) : null}
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   filterTabActive: {
-    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
     borderColor: COLORS.primary,
   },
   filterTabText: {

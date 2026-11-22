@@ -79,6 +79,7 @@ export async function PUT(request: Request) {
       currentPassword,
       newPassword,
       forceResetPassword,
+      quickPin,
     } = body;
 
     const userUpdateData: {
@@ -162,6 +163,50 @@ export async function PUT(request: Request) {
           garageName: updatedGarageName,
         },
       });
+    }
+
+    // 6. Quick PIN update for POS access
+    if (quickPin && typeof quickPin === 'string') {
+      const cleanPin = quickPin.trim();
+      if (/^\d{4,6}$/.test(cleanPin)) {
+        try {
+          const settingKey = `team_${targetUserId}`;
+          const setting = await prisma.settings.findUnique({
+            where: { key: settingKey },
+          });
+          let teamList: any[] = [];
+          if (setting) {
+            teamList = JSON.parse(setting.value);
+          }
+          if (!teamList || teamList.length === 0) {
+            teamList = [
+              {
+                id: `team_${targetUserId}`,
+                name: updatedUser.name || 'Owner',
+                phone: updatedUser.phone || '',
+                role: 'owner',
+                pin: cleanPin,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+              },
+            ];
+          } else {
+            const ownerIdx = teamList.findIndex((m) => m.role === 'owner' || m.role === 'super_admin');
+            if (ownerIdx !== -1) {
+              teamList[ownerIdx].pin = cleanPin;
+            } else {
+              teamList[0].pin = cleanPin;
+            }
+          }
+          await prisma.settings.upsert({
+            where: { key: settingKey },
+            create: { key: settingKey, value: JSON.stringify(teamList) },
+            update: { value: JSON.stringify(teamList) },
+          });
+        } catch (e) {
+          console.error('Failed to update quickPin in team settings:', e);
+        }
+      }
     }
 
     return NextResponse.json({

@@ -900,7 +900,7 @@ export default function InvoicesScreen() {
 
         {item.jobCard?.jobNumber ? (
           <View style={styles.jobBadgeRow}>
-            <MaterialCommunityIcons name="car-wrench" size={13} color={COLORS.textMuted} />
+            <MaterialCommunityIcons name="motorbike" size={13} color={COLORS.textMuted} />
             <Text style={styles.jobBadgeText}>Job Card: {item.jobCard.jobNumber}</Text>
           </View>
         ) : null}
@@ -2308,7 +2308,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   filterTabActive: {
-    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.18)',
     borderColor: COLORS.primary,
   },
   filterTabText: {
@@ -2476,7 +2476,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(229, 192, 123, 0.08)',
+    backgroundColor: 'rgba(201, 243, 29, 0.12)',
   },
   actionBtnSecondaryText: {
     color: COLORS.primary,
@@ -2786,8 +2786,8 @@ const styles = StyleSheet.create({
     borderColor: '#C9F31D',
   },
   docTypeBtnActiveEstimate: {
-    backgroundColor: '#E5C07B',
-    borderColor: '#E5C07B',
+    backgroundColor: '#C9F31D',
+    borderColor: '#C9F31D',
   },
   docTypeBtnText: {
     fontSize: 11.5,

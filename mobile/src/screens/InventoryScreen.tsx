@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   filterTabActive: {
-    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
     borderColor: COLORS.primary,
   },
   filterTabText: {

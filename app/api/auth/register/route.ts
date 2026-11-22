@@ -43,13 +43,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate garage type
-    if (garageType && !['two_wheeler', 'four_wheeler'].includes(garageType)) {
-      return NextResponse.json(
-        { error: 'Invalid garage type' },
-        { status: 400 }
-      );
-    }
+    // Always initialize as two-wheeler & superbike workshop
+    const selectedGarageType = 'two_wheeler';
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -98,7 +93,7 @@ export async function POST(request: Request) {
         name,
         phone,
         subdomain: finalSubdomain,
-        garageType: garageType || (isMotoFit ? 'two_wheeler' : 'four_wheeler'),
+        garageType: selectedGarageType,
         licenseKey,
         licenseStatus: isVip ? 'lifetime_free' : 'trial',
         expiresAt: isVip ? null : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days SaaS trial blueprint

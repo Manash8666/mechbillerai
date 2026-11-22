@@ -15,7 +15,7 @@ export default function RegisterPage() {
     name: '',
     email: '',
     phone: '',
-    garageType: 'four_wheeler',
+    garageType: 'two_wheeler',
     password: '',
     confirmPassword: '',
   });
@@ -143,29 +143,8 @@ export default function RegisterPage() {
             <label className="block text-xs font-bold uppercase tracking-wider text-[#94A3B8] mb-1.5">
               Workshop Segment
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, garageType: 'two_wheeler' })}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
-                  formData.garageType === 'two_wheeler'
-                    ? 'bg-[#C9F31D] text-[#0B0F19] border-[#C9F31D]'
-                    : 'bg-[#0B0F19] text-[#94A3B8] border-[#1C263D]'
-                }`}
-              >
-                🏍️ Two-Wheeler
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, garageType: 'four_wheeler' })}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
-                  formData.garageType === 'four_wheeler'
-                    ? 'bg-[#C9F31D] text-[#0B0F19] border-[#C9F31D]'
-                    : 'bg-[#0B0F19] text-[#94A3B8] border-[#1C263D]'
-                }`}
-              >
-                🚗 Four-Wheeler
-              </button>
+            <div className="py-2.5 px-3 rounded-xl bg-[#0B0F19] border border-[#C9F31D]/40 text-xs font-bold text-[#C9F31D] flex items-center justify-center gap-2">
+              <span>🏍️ Two-Wheeler & Superbike Specialist Workshop</span>
             </div>
           </div>
 

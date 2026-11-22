@@ -43,6 +43,55 @@ export default function SettingsScreen({ navigation }: any) {
   const [resetPassword, setResetPassword] = React.useState('');
   const [resetting, setResetting] = React.useState(false);
 
+  // Security Credentials & Quick PIN Reset State
+  const [isCredModalOpen, setIsCredModalOpen] = React.useState(false);
+  const [credCurrentPass, setCredCurrentPass] = React.useState('');
+  const [credNewPass, setCredNewPass] = React.useState('');
+  const [credConfirmPass, setCredConfirmPass] = React.useState('');
+  const [credQuickPin, setCredQuickPin] = React.useState('');
+  const [savingCreds, setSavingCreds] = React.useState(false);
+
+  const handleSaveCredentialsMobile = async () => {
+    if (credNewPass && credNewPass.length < 6) {
+      Alert.alert('Invalid Password', 'New password must be at least 6 characters long.');
+      return;
+    }
+    if (credNewPass && credNewPass !== credConfirmPass) {
+      Alert.alert('Mismatch', 'New passwords do not match.');
+      return;
+    }
+    if (credQuickPin && !/^\d{4,6}$/.test(credQuickPin.trim())) {
+      Alert.alert('Invalid PIN', 'Quick PIN must be 4 to 6 numeric digits.');
+      return;
+    }
+    if (!credNewPass && !credQuickPin) {
+      Alert.alert('Input Required', 'Please enter a new password or 4-digit PIN.');
+      return;
+    }
+    try {
+      setSavingCreds(true);
+      const res = await API.updateSettings({
+        currentPassword: credCurrentPass || undefined,
+        newPassword: credNewPass || undefined,
+        quickPin: credQuickPin.trim() || undefined,
+      });
+      if (res?.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        Alert.alert('Credentials Updated! ✨', 'Password and quick PIN saved successfully.');
+        setCredCurrentPass('');
+        setCredNewPass('');
+        setCredConfirmPass('');
+        setCredQuickPin('');
+        setIsCredModalOpen(false);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to connect to authentication server.');
+    } finally {
+      setSavingCreds(false);
+    }
+  };
+
   const loadTeam = async () => {
     try {
       setLoadingTeam(true);
@@ -392,6 +441,12 @@ export default function SettingsScreen({ navigation }: any) {
       },
     },
     {
+      icon: 'lock-reset',
+      title: 'Reset PIN & Password',
+      subtitle: 'Change workshop password and quick 4-digit PIN',
+      onPress: () => setIsCredModalOpen(true),
+    },
+    {
       icon: 'database-refresh-outline',
       title: 'Workshop Data & System Reset',
       subtitle: 'Clean test transactions or factory system reset',
@@ -708,80 +763,106 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
               )}
 
-              {/* Pricing Tiers Carousel / Cards */}
-              <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>SUBSCRIPTION TIERS</Text>
-
-              {/* Monthly */}
-              <View style={styles.tierCard}>
-                <View style={styles.tierHeaderRow}>
-                  <Text style={styles.tierName}>Monthly Plan</Text>
-                  <Text style={styles.tierPrice}>₹1,299<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
-                </View>
-                <Text style={styles.tierFeatures}>• Unlimited Invoices, Estimates & Job Cards</Text>
-                <Text style={styles.tierFeatures}>• Dynamic Counter UPI QR & WhatsApp Dispatch</Text>
-                <Text style={styles.tierFeatures}>• Up to 5 Staff User Accounts Included</Text>
-              </View>
-
-              {/* Quarterly */}
-              <View style={styles.tierCard}>
-                <View style={styles.tierHeaderRow}>
-                  <View>
-                    <Text style={styles.tierName}>Quarterly Plan</Text>
-                    <Text style={styles.savingsTag}>Save 15%</Text>
+              {/* VIP Enterprise Active or Pricing Tiers */}
+              {licensingData?.isVip ? (
+                <View style={{ marginTop: 16, padding: 16, borderRadius: 14, backgroundColor: 'rgba(201, 243, 29, 0.08)', borderWidth: 1.5, borderColor: 'rgba(201, 243, 29, 0.35)' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <MaterialCommunityIcons name="crown" size={20} color={COLORS.primary} />
+                    <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 14 }}>
+                      MotoFit 2 VIP Enterprise Lifetime License
+                    </Text>
                   </View>
-                  <Text style={styles.tierPrice}>₹1,099<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                  <Text style={{ color: COLORS.text, fontSize: 12, lineHeight: 18 }}>
+                    • Unlimited Staff User Accounts (Auto-enabled & Active)
+                  </Text>
+                  <Text style={{ color: COLORS.text, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
+                    • Unlimited Multi-Location Branches (Auto-enabled & Active)
+                  </Text>
+                  <Text style={{ color: COLORS.text, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
+                    • Unlimited Daily Bills, Estimates & Digital Job Cards
+                  </Text>
+                  <Text style={{ color: '#10B981', fontSize: 12, fontWeight: 'bold', marginTop: 10 }}>
+                    100% Free Lifetime Commercial Agreement · Zero Renewal Fees
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 11, color: COLORS.primary, marginBottom: 4 }}>Billed ₹3,297 every 3 months</Text>
-                <Text style={styles.tierFeatures}>• Everything in Monthly</Text>
-                <Text style={styles.tierFeatures}>• 4-Sided Pre-Inspection Dent Photo Shield</Text>
-                <Text style={styles.tierFeatures}>• Customer Credit & Ledger Tracking</Text>
-              </View>
+              ) : (
+                <>
+                  {/* Pricing Tiers Carousel / Cards */}
+                  <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>SUBSCRIPTION TIERS</Text>
 
-              {/* Yearly - Best Value */}
-              <View style={[styles.tierCard, styles.tierCardFeatured]}>
-                <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>⭐ MOST POPULAR · SAVE 31%</Text>
-                </View>
-                <View style={styles.tierHeaderRow}>
-                  <View>
-                    <Text style={[styles.tierName, { color: COLORS.primary }]}>Annual Pro Plan</Text>
-                    <Text style={styles.savingsTag}>Save ₹4,800/yr</Text>
+                  {/* Monthly */}
+                  <View style={styles.tierCard}>
+                    <View style={styles.tierHeaderRow}>
+                      <Text style={styles.tierName}>Monthly Plan</Text>
+                      <Text style={styles.tierPrice}>₹1,299<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                    </View>
+                    <Text style={styles.tierFeatures}>• Unlimited Invoices, Estimates & Job Cards</Text>
+                    <Text style={styles.tierFeatures}>• Dynamic Counter UPI QR & WhatsApp Dispatch</Text>
+                    <Text style={styles.tierFeatures}>• Up to 5 Staff User Accounts Included</Text>
                   </View>
-                  <Text style={[styles.tierPrice, { color: COLORS.primary }]}>₹899<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
-                </View>
-                <Text style={{ fontSize: 11, color: '#10B981', marginBottom: 4, fontWeight: 'bold' }}>Billed ₹10,788 yearly (Just ₹29/day)</Text>
-                <Text style={styles.tierFeatures}>• Everything in Quarterly</Text>
-                <Text style={styles.tierFeatures}>• Indian VAHAN / RTO Plate Decoder</Text>
-                <Text style={styles.tierFeatures}>• Low-Stock Inventory Alerts & Subdomain</Text>
-                <Text style={styles.tierFeatures}>• VIP 24/7 Dedicated Support</Text>
-              </View>
 
-              {/* Lifetime */}
-              <View style={styles.tierCard}>
-                <View style={styles.tierHeaderRow}>
-                  <View>
-                    <Text style={styles.tierName}>Perpetual License</Text>
-                    <Text style={[styles.savingsTag, { backgroundColor: '#8B5CF6' }]}>Zero Renewal Fees</Text>
+                  {/* Quarterly */}
+                  <View style={styles.tierCard}>
+                    <View style={styles.tierHeaderRow}>
+                      <View>
+                        <Text style={styles.tierName}>Quarterly Plan</Text>
+                        <Text style={styles.savingsTag}>Save 15%</Text>
+                      </View>
+                      <Text style={styles.tierPrice}>₹1,099<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: COLORS.primary, marginBottom: 4 }}>Billed ₹3,297 every 3 months</Text>
+                    <Text style={styles.tierFeatures}>• Everything in Monthly</Text>
+                    <Text style={styles.tierFeatures}>• 4-Sided Pre-Inspection Dent Photo Shield</Text>
+                    <Text style={styles.tierFeatures}>• Customer Credit & Ledger Tracking</Text>
                   </View>
-                  <Text style={styles.tierPrice}>₹15,999<Text style={{ fontSize: 11, color: COLORS.textMuted }}> one-time</Text></Text>
-                </View>
-                <Text style={styles.tierFeatures}>• 2 Years Guaranteed Feature Drops</Text>
-                <Text style={styles.tierFeatures}>• Air-Gapped Offline Local SQLite Vault</Text>
-                <Text style={styles.tierFeatures}>• Lifetime Commercial Ownership</Text>
-              </View>
 
-              {/* Addons */}
-              <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>ECOSYSTEM ADDONS</Text>
-              <View style={styles.addonCard}>
-                <Text style={styles.addonTitle}>🏢 Multi-Location / Franchise</Text>
-                <Text style={styles.addonPrice}>₹6,999 / additional shop</Text>
-                <Text style={styles.addonDesc}>Centralized multi-bay reporting & unified vehicle history</Text>
-              </View>
-              <View style={styles.addonCard}>
-                <Text style={styles.addonTitle}>👥 Extra Staff User Seat</Text>
-                <Text style={styles.addonPrice}>₹1,599 / user above 5</Text>
-                <Text style={styles.addonDesc}>Individual technician login with role-based permissions</Text>
-              </View>
+                  {/* Yearly - Best Value */}
+                  <View style={[styles.tierCard, styles.tierCardFeatured]}>
+                    <View style={styles.featuredBadge}>
+                      <Text style={styles.featuredBadgeText}>⭐ MOST POPULAR · SAVE 31%</Text>
+                    </View>
+                    <View style={styles.tierHeaderRow}>
+                      <View>
+                        <Text style={[styles.tierName, { color: COLORS.primary }]}>Annual Pro Plan</Text>
+                        <Text style={styles.savingsTag}>Save ₹4,800/yr</Text>
+                      </View>
+                      <Text style={[styles.tierPrice, { color: COLORS.primary }]}>₹899<Text style={{ fontSize: 11, color: COLORS.textMuted }}>/mo</Text></Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: '#10B981', marginBottom: 4, fontWeight: 'bold' }}>Billed ₹10,788 yearly (Just ₹29/day)</Text>
+                    <Text style={styles.tierFeatures}>• Everything in Quarterly</Text>
+                    <Text style={styles.tierFeatures}>• Indian VAHAN / RTO Plate Decoder</Text>
+                    <Text style={styles.tierFeatures}>• Low-Stock Inventory Alerts & Subdomain</Text>
+                    <Text style={styles.tierFeatures}>• VIP 24/7 Dedicated Support</Text>
+                  </View>
+
+                  {/* Lifetime */}
+                  <View style={styles.tierCard}>
+                    <View style={styles.tierHeaderRow}>
+                      <View>
+                        <Text style={styles.tierName}>Perpetual License</Text>
+                        <Text style={[styles.savingsTag, { backgroundColor: '#8B5CF6' }]}>Zero Renewal Fees</Text>
+                      </View>
+                      <Text style={styles.tierPrice}>₹15,999<Text style={{ fontSize: 11, color: COLORS.textMuted }}> one-time</Text></Text>
+                    </View>
+                    <Text style={styles.tierFeatures}>• 2 Years Guaranteed Feature Drops</Text>
+                    <Text style={styles.tierFeatures}>• Air-Gapped Offline Local SQLite Vault</Text>
+                    <Text style={styles.tierFeatures}>• Lifetime Commercial Ownership</Text>
+                  </View>
+
+                  {/* Addons */}
+                  <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>ECOSYSTEM ADDONS</Text>
+                  <View style={styles.addonCard}>
+                    <Text style={styles.addonTitle}>🏢 Multi-Location / Franchise</Text>
+                    <Text style={styles.addonPrice}>₹6,999 / additional shop</Text>
+                    <Text style={styles.addonDesc}>Centralized multi-bay reporting & unified vehicle history</Text>
+                  </View>
+                  <View style={styles.addonCard}>
+                    <Text style={styles.addonTitle}>👥 Extra Staff User Seat</Text>
+                    <Text style={styles.addonPrice}>₹1,599 / user above 5</Text>
+                    <Text style={styles.addonDesc}>Individual technician login with role-based permissions</Text>
+                  </View>
+                </>
+              )}
 
               {/* License Activation Form */}
               <Text style={[styles.modalSectionLabel, { marginTop: 20 }]}>ACTIVATE LICENSE / VIP FOUNDER KEY</Text>
@@ -808,14 +889,16 @@ export default function SettingsScreen({ navigation }: any) {
                 </Text>
               </TouchableOpacity>
 
-              {/* Contact Founders to Upgrade */}
-              <TouchableOpacity
-                style={styles.whatsappUpgradeBtn}
-                onPress={() => Linking.openURL('https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20upgrade%20my%20garage%20subscription.')}
-              >
-                <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
-                <Text style={styles.whatsappUpgradeBtnText}>Contact Founder Desk to Upgrade</Text>
-              </TouchableOpacity>
+              {/* Contact Founders to Upgrade (Non-VIP only) */}
+              {!licensingData?.isVip && (
+                <TouchableOpacity
+                  style={styles.whatsappUpgradeBtn}
+                  onPress={() => Linking.openURL('https://wa.me/916359635416?text=Hi%20MotoBan,%20I%20want%20to%20upgrade%20my%20garage%20subscription.')}
+                >
+                  <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
+                  <Text style={styles.whatsappUpgradeBtnText}>Contact Founder Desk to Upgrade</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -1167,6 +1250,80 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* Workshop Password & Quick PIN Reset Modal */}
+      <Modal visible={isCredModalOpen} animationType="slide" transparent onRequestClose={() => setIsCredModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="lock-reset" size={24} color={COLORS.primary} />
+                <View>
+                  <Text style={styles.modalTitle}>Reset PIN & Password</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted }}>Update account credentials & POS PIN</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsCredModalOpen(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 24 }}>
+              <Text style={styles.inputFieldLabel}>CURRENT PASSWORD (OPTIONAL)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="••••••••"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                value={credCurrentPass}
+                onChangeText={setCredCurrentPass}
+              />
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>NEW PASSWORD (MIN 6 CHARACTERS)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter new strong password"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                value={credNewPass}
+                onChangeText={setCredNewPass}
+              />
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>CONFIRM NEW PASSWORD</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Re-enter new password"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                value={credConfirmPass}
+                onChangeText={setCredConfirmPass}
+              />
+
+              <Text style={[styles.inputFieldLabel, { marginTop: 12 }]}>QUICK 4-DIGIT PIN (FOR FAST POS UNLOCK)</Text>
+              <TextInput
+                style={[styles.modalInput, { fontSize: 18, letterSpacing: 4, textAlign: 'center' }]}
+                placeholder="1234"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+                maxLength={6}
+                value={credQuickPin}
+                onChangeText={(t) => setCredQuickPin(t.replace(/\D/g, ''))}
+              />
+
+              <TouchableOpacity
+                style={[styles.savePrinterBtn, { marginTop: 20, width: '100%' }]}
+                onPress={handleSaveCredentialsMobile}
+                disabled={savingCreds}
+              >
+                <MaterialCommunityIcons name="shield-check" size={18} color={COLORS.background} />
+                <Text style={styles.savePrinterBtnText}>
+                  {savingCreds ? 'Saving Credentials...' : 'Save Password & Quick PIN'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1226,7 +1383,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(201, 168, 76, 0.4)',
+    borderColor: 'rgba(201, 243, 29, 0.4)',
     marginBottom: 16,
   },
   gstTitle: {
@@ -1268,7 +1425,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.2)',
+    borderColor: 'rgba(201, 243, 29, 0.25)',
   },
   taxText: {
     color: COLORS.primary,

@@ -16,7 +16,7 @@ import {
   Eye,
   ShieldCheck,
   Building2,
-  Car,
+  Bike,
   User,
   ExternalLink,
 } from 'lucide-react';

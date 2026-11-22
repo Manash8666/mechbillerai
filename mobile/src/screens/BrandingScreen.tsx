@@ -122,7 +122,7 @@ export default function BrandingScreen() {
             style={styles.input}
             value={tagline}
             onChangeText={setTagline}
-            placeholder="e.g. Luxury Car Repair & Body Shop"
+            placeholder="e.g. Precision Superbike & Motorcycle Center"
             placeholderTextColor={COLORS.textMuted}
           />
         </View>

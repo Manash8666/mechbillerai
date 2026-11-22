@@ -19,7 +19,7 @@ model User {
   name          String
   phone         String?
   role          String    @default("owner") // owner, admin, staff
-  garageType    String    @default("four_wheeler") // two_wheeler, four_wheeler
+  garageType    String    @default("two_wheeler") // two_wheeler
   gstEnabled    Boolean   @default(false) // MSME toggle: false = flat billing, true = CGST/SGST breakdown
   licenseKey    String?   @unique
   licenseStatus String    @default("trial") // trial, active, expired

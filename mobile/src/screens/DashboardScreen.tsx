@@ -134,7 +134,7 @@ export default function DashboardScreen({ navigation }: any) {
           style={styles.actionPill}
           onPress={() => navigation?.navigate('Intake')}
         >
-          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(229, 192, 123, 0.15)' }]}>
+          <View style={[styles.pillIconCircle, { backgroundColor: 'rgba(201, 243, 29, 0.15)' }]}>
             <MaterialCommunityIcons name="camera-plus" size={22} color={COLORS.primary} />
           </View>
           <Text style={styles.pillLabel}>Intake</Text>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(229, 192, 123, 0.15)',
+    backgroundColor: 'rgba(201, 243, 29, 0.15)',
     borderWidth: 1.5,
     borderColor: COLORS.primary,
     alignItems: 'center',

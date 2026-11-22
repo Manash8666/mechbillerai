@@ -240,31 +240,30 @@ export function generateJobCardPdf(data: JobCardPdfData): any {
   doc.setLineWidth(0.5);
   doc.setFillColor(255, 255, 255);
 
-  // Center car roof/cabin
-  doc.roundedRect(diagCenterX - 20, diagCenterY - 9, 40, 18, 3, 3, 'FD');
-  // Windshield & Rear glass
-  doc.line(diagCenterX - 11, diagCenterY - 9, diagCenterX - 11, diagCenterY + 9);
-  doc.line(diagCenterX + 11, diagCenterY - 9, diagCenterX + 11, diagCenterY + 9);
-  // Left door flank
-  doc.roundedRect(diagCenterX - 18, diagCenterY - 17, 36, 6, 1.5, 1.5, 'FD');
-  // Right door flank
-  doc.roundedRect(diagCenterX - 18, diagCenterY + 11, 36, 6, 1.5, 1.5, 'FD');
+  // Center motorcycle frame & fuel tank
+  doc.roundedRect(diagCenterX - 14, diagCenterY - 5, 28, 10, 3, 3, 'FD');
+  // Handlebars / Triple Clamp
+  doc.line(diagCenterX + 12, diagCenterY - 11, diagCenterX + 12, diagCenterY + 11);
+  doc.circle(diagCenterX + 12, diagCenterY - 11, 1, 'FD');
+  doc.circle(diagCenterX + 12, diagCenterY + 11, 1, 'FD');
+  // Seat & Tail Cowl
+  doc.roundedRect(diagCenterX - 10, diagCenterY - 3.5, 14, 7, 1.5, 1.5, 'FD');
 
-  // Wheels
+  // Two Wheels (Front & Rear inline motorcycle wheels)
   doc.setFillColor(40, 40, 50);
-  doc.roundedRect(diagCenterX - 16, diagCenterY - 19, 7, 2, 0.5, 0.5, 'F');
-  doc.roundedRect(diagCenterX + 9, diagCenterY - 19, 7, 2, 0.5, 0.5, 'F');
-  doc.roundedRect(diagCenterX - 16, diagCenterY + 17, 7, 2, 0.5, 0.5, 'F');
-  doc.roundedRect(diagCenterX + 9, diagCenterY + 17, 7, 2, 0.5, 0.5, 'F');
+  // Front Wheel
+  doc.roundedRect(diagCenterX + 18, diagCenterY - 2.5, 9, 5, 1.5, 1.5, 'F');
+  // Rear Wheel
+  doc.roundedRect(diagCenterX - 25, diagCenterY - 2.5, 9, 5, 1.5, 1.5, 'F');
 
   // Angle labels
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(140, 140, 160);
-  doc.text('FRONT', diagCenterX + 24, diagCenterY + 1);
-  doc.text('REAR', diagCenterX - 30, diagCenterY + 1);
-  doc.text('LEFT SIDE', diagCenterX - 7, diagCenterY - 18);
-  doc.text('RIGHT SIDE', diagCenterX - 8, diagCenterY + 20);
+  doc.text('FRONT (FORK)', diagCenterX + 28, diagCenterY + 1);
+  doc.text('REAR (TAIL)', diagCenterX - 34, diagCenterY + 1);
+  doc.text('LEFT FLANK', diagCenterX - 8, diagCenterY - 14);
+  doc.text('RIGHT FLANK', diagCenterX - 9, diagCenterY + 16);
 
   // Verification stamp badge
   doc.setFontSize(7);

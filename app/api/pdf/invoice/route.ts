@@ -45,6 +45,7 @@ export async function GET(request: Request) {
             name: true,
             phone: true,
             email: true,
+            gstEnabled: true,
             branding: true,
           },
         },
@@ -67,6 +68,7 @@ export async function GET(request: Request) {
               name: true,
               phone: true,
               email: true,
+              gstEnabled: true,
               branding: true,
             },
           },
@@ -132,6 +134,10 @@ export async function GET(request: Request) {
       paid = invoice.paid;
       balance = invoice.balance;
       dateStr = invoice.createdAt.toLocaleDateString('en-GB');
+      const isGstActive = Boolean(invoice.user?.gstEnabled);
+      if (!isGstActive) {
+        tax = 0;
+      }
       garageName = invoice.user?.branding?.garageName || invoice.user?.name || garageName;
       garagePhone = (invoice.user?.branding as any)?.phone || invoice.user?.phone || garagePhone;
       garageEmail = (invoice.user?.branding as any)?.email || invoice.user?.email || garageEmail;
@@ -155,8 +161,14 @@ export async function GET(request: Request) {
       customerAddress = jobCard.customer?.address || '';
       docNumber = jobCard.jobNumber.replace('JOB-', 'EST-');
       const est = jobCard.estimatedCost || jobCard.actualCost || 0;
-      subtotal = Math.round(est * 0.82);
-      tax = est - subtotal;
+      const isJobGstActive = Boolean(jobCard.user?.gstEnabled);
+      if (isJobGstActive) {
+        subtotal = Math.round(est * 0.82);
+        tax = est - subtotal;
+      } else {
+        subtotal = est;
+        tax = 0;
+      }
       total = est;
       balance = est;
       dateStr = jobCard.createdAt.toLocaleDateString('en-GB');
