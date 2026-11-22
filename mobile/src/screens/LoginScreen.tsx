@@ -37,7 +37,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }: any) {
           ...res.user,
           activeRole: selectedRole || res.user.role || 'owner',
         };
-        await Storage.setUser(userWithRole);
+        await Storage.setUser(userWithRole, res.token);
         if (onLoginSuccess) {
           onLoginSuccess(userWithRole);
         } else {

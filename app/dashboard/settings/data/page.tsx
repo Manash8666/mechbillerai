@@ -92,7 +92,7 @@ export default function DataSettingsPage() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          userId: userObj?.id,
+          userId: userObj?.id || userObj?.userId || (typeof window !== 'undefined' ? localStorage.getItem('userId') : null),
           mode: resetModalMode,
           confirmPhrase: confirmInput.trim(),
           password: resetPassword.trim(),
@@ -105,6 +105,9 @@ export default function DataSettingsPage() {
         setResetModalMode(null);
         setConfirmInput('');
         setResetPassword('');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1200);
       } else {
         toast.error(data.error || 'Reset operation failed');
       }
@@ -260,12 +263,20 @@ export default function DataSettingsPage() {
 
             <form onSubmit={handleExecuteReset} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase font-bold text-steel-dim mb-1">
-                  Type <span className="text-rose-400 font-mono">{resetModalMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}</span> to confirm:
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs uppercase font-bold text-steel-dim">
+                    Type <span className="text-rose-400 font-mono">{resetModalMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}</span>:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmInput(resetModalMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM')}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
+                  >
+                    Tap to autofill
+                  </button>
+                </div>
                 <input
                   type="text"
-                  required
                   value={confirmInput}
                   onChange={(e) => setConfirmInput(e.target.value)}
                   placeholder={resetModalMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}

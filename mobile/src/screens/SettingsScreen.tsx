@@ -172,13 +172,24 @@ export default function SettingsScreen({ navigation }: any) {
               if (res?.error) {
                 Alert.alert('Reset Failed', res.error);
               } else {
+                try {
+                  await AsyncStorage.removeItem('@motoban_offline_jobcards_queue');
+                } catch {}
                 Alert.alert(
                   'Reset Completed! ✨',
-                  res.message || 'Workshop transactional records cleared.'
+                  res.message || 'Workshop transactional records cleared.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        setIsResetModalOpen(false);
+                        setResetConfirmPhrase('');
+                        setResetPassword('');
+                        navigation?.navigate('Dashboard');
+                      },
+                    },
+                  ]
                 );
-                setIsResetModalOpen(false);
-                setResetConfirmPhrase('');
-                setResetPassword('');
               }
             } catch {
               Alert.alert('Error', 'Failed to execute reset.');
@@ -1103,9 +1114,16 @@ export default function SettingsScreen({ navigation }: any) {
               </View>
 
               {/* Confirmation Phrase Prompt */}
-              <Text style={styles.inputFieldLabel}>
-                TYPE &quot;{resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}&quot; TO CONFIRM *
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={[styles.inputFieldLabel, { marginBottom: 0 }]}>
+                  TYPE &quot;{resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}&quot; TO CONFIRM *
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setResetConfirmPhrase(resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM')}
+                >
+                  <Text style={{ fontSize: 11, color: '#F59E0B', fontWeight: 'bold' }}>Tap to autofill</Text>
+                </TouchableOpacity>
+              </View>
               <TextInput
                 style={[styles.modalInput, { borderColor: resetMode === 'SYSTEM_RESET' ? '#EF4444' : '#F59E0B' }]}
                 placeholder={resetMode === 'DATA_RESET' ? 'RESET DATA' : 'RESET SYSTEM'}

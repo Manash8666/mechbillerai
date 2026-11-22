@@ -43,7 +43,7 @@ export default function DashboardPage() {
       </div>
 
       {/* iOS Banking Vault Hero Card & Quick Stats */}
-      <div className="rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-navy-steel via-[#111827] to-void-black text-white border-2 border-deep-glass shadow-2xl relative overflow-hidden">
+      <div className="rounded-2xl p-4 sm:p-8 bg-gradient-to-br from-navy-steel via-[#111827] to-void-black text-white border-2 border-deep-glass shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-geek-lime/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
@@ -68,7 +68,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-6 relative z-10">
-          <div className="text-4xl sm:text-5xl font-extrabold tracking-tight text-geek-lime mb-2 font-mono">
+          <div className="text-3xl sm:text-5xl font-extrabold tracking-tight text-geek-lime mb-2 font-mono">
             {formatCurrency(stats?.revenueThisMonth || 0)}
           </div>
           <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-300">
@@ -82,32 +82,32 @@ export default function DashboardPage() {
         </div>
 
         {/* Banking Metrics Footer Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-void-black/60 border border-deep-glass relative z-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 p-3.5 sm:p-4 rounded-xl bg-void-black/60 border border-deep-glass relative z-10">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-steel-dim">Active Jobs</div>
-            <div className="text-xl font-bold text-royal-gold mt-1 font-mono">{stats?.activeJobCards || 0}</div>
+            <div className="text-lg sm:text-xl font-bold text-royal-gold mt-1 font-mono">{stats?.activeJobCards || 0}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-steel-dim">Total Customers</div>
-            <div className="text-xl font-bold text-pure-white mt-1 font-mono">{stats?.totalCustomers || 0}</div>
+            <div className="text-lg sm:text-xl font-bold text-pure-white mt-1 font-mono">{stats?.totalCustomers || 0}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-amber-alert">Pending Invoices</div>
-            <div className="text-xl font-bold text-amber-alert mt-1 font-mono">{stats?.pendingInvoices || 0}</div>
+            <div className="text-lg sm:text-xl font-bold text-amber-alert mt-1 font-mono">{stats?.pendingInvoices || 0}</div>
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-crimson-brake">Outstanding (₹)</div>
-            <div className="text-xl font-bold text-crimson-brake mt-1 font-mono">{formatCurrency(stats?.outstandingAmount || 0)}</div>
+            <div className="text-lg sm:text-xl font-bold text-crimson-brake mt-1 font-mono">{formatCurrency(stats?.outstandingAmount || 0)}</div>
           </div>
         </div>
       </div>
 
       {/* Quick Action Pills */}
-      <div className="bg-navy-steel rounded-xl shadow-lg p-6 border border-deep-glass">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-cool-slate mb-4">
+      <div className="bg-navy-steel rounded-xl shadow-lg p-4 sm:p-6 border border-deep-glass">
+        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-cool-slate mb-3 sm:mb-4">
           Reactive Garage Shortcuts (v3.0 Telemetry)
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
           <QuickAction
             title="🛡️ Express Intake"
             href="/dashboard/jobcards"

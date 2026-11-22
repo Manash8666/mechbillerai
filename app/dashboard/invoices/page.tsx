@@ -1088,19 +1088,19 @@ export default function InvoicesPage() {
                 </div>
 
                   {/* Right Section - Actions */}
-                  <div className="flex lg:flex-col gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-col gap-2 w-full lg:w-48 shrink-0">
                     {invoice.balance > 0 && (
                       <button
                         type="button"
                         onClick={() => handleOpenRecordPayment(invoice)}
-                        className="w-full px-3 py-2 bg-[#C9F31D] text-[#0B0F19] font-extrabold rounded-lg hover:bg-[#d8ff33] transition-all text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                        className="col-span-2 sm:col-span-4 lg:w-full px-3 py-2 bg-[#C9F31D] text-[#0B0F19] font-extrabold rounded-lg hover:bg-[#d8ff33] transition-all text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
                         title="Record payment collected on a later date (Partial / Full / Delayed)"
                       >
                         <CreditCard className="w-3.5 h-3.5" />
                         Collect Payment (₹{invoice.balance.toLocaleString('en-IN')} Due)
                       </button>
                     )}
-                    <div className="flex gap-1.5 w-full">
+                    <div className="col-span-2 sm:col-span-4 lg:w-full flex gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(invoice)}

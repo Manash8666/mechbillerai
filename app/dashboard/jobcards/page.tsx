@@ -620,8 +620,8 @@ export default function JobCardsPage() {
                   </div>
 
                   {/* Right Section - Actions */}
-                  <div className="flex lg:flex-col gap-2">
-                    <div className="flex gap-1.5 w-full">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-col gap-2 w-full lg:w-44 shrink-0">
+                    <div className="col-span-2 sm:col-span-4 lg:w-full flex gap-1.5">
                       <button
                         type="button"
                         onClick={(e) => {

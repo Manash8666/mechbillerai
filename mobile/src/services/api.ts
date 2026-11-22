@@ -512,16 +512,20 @@ export const API = {
   // Workshop Data Management & Reset
   resetWorkshopData: async (mode: 'DATA_RESET' | 'SYSTEM_RESET', confirmPhrase: string, password?: string) => {
     const user = await Storage.getUser();
+    const token = await Storage.getToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await apiFetch('/settings/reset', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         userId: user?.id,
         mode,
         confirmPhrase,
         password,
       }),
-    }, 12000);
+    }, 30000);
     return res.json();
   },
 

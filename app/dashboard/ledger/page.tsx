@@ -301,10 +301,10 @@ export default function DailyLedgerPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => handleOpenAdd('EXPENSE')}
-            className="px-4 py-2.5 rounded-xl bg-[#FF5E14] text-white font-bold text-xs hover:bg-[#e6510d] shadow-[0_0_15px_rgba(255,94,20,0.3)] transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-xl bg-[#FF5E14] text-white font-bold text-xs hover:bg-[#e6510d] shadow-[0_0_15px_rgba(255,94,20,0.3)] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <ArrowUpRight className="w-4 h-4" />
             <span>- Record Expense</span>
@@ -312,7 +312,7 @@ export default function DailyLedgerPage() {
 
           <button
             onClick={() => handleOpenAdd('INCOME')}
-            className="px-4 py-2.5 rounded-xl bg-[#10B981] text-[#0B0F19] font-bold text-xs hover:bg-[#0ea371] shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-xl bg-[#10B981] text-[#0B0F19] font-bold text-xs hover:bg-[#0ea371] shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <ArrowDownLeft className="w-4 h-4" />
             <span>+ Record Income</span>
