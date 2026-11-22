@@ -275,6 +275,22 @@ export async function PUT(
       },
     });
 
+    // Update customer name & phone if provided
+    if (existing.customerId && (body.customerName || body.customerPhone || body.customerEmail !== undefined)) {
+      const custData: any = {};
+      if (body.customerName?.trim()) custData.name = body.customerName.trim();
+      if (body.customerPhone?.trim()) custData.phone = body.customerPhone.trim();
+      if (body.customerEmail !== undefined) custData.email = body.customerEmail?.trim() || null;
+      try {
+        await prisma.customer.update({
+          where: { id: existing.customerId },
+          data: custData,
+        });
+      } catch (custErr) {
+        console.warn('Customer update warning:', custErr);
+      }
+    }
+
     // Log activity
     await logActivity(prisma, {
       userId,

@@ -442,8 +442,8 @@ export default function ExpressIntakeModal({ isOpen, onClose, onSuccess }: Expre
                 />
                 <input
                   id="customerPhone"
-                  type="text"
-                  placeholder="9898XXXXXX"
+                  type="tel"
+                  placeholder="e.g. 9876543210"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-luxury-gold/30 bg-luxury-canvas-light dark:bg-luxury-canvas-dark text-luxury-ink-light dark:text-luxury-ink-dark focus:outline-none focus:ring-2 focus:ring-luxury-gold"

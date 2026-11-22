@@ -47,6 +47,8 @@ export default function JobCardsPage() {
   // Edit Job Card State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<JobCard | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
   const [editStatus, setEditStatus] = useState('pending');
   const [editPriority, setEditPriority] = useState('normal');
   const [editDescription, setEditDescription] = useState('');
@@ -198,6 +200,8 @@ export default function JobCardsPage() {
 
   const handleOpenEditModal = (job: JobCard) => {
     setEditingJob(job);
+    setEditCustomerName(job.customer?.name || '');
+    setEditCustomerPhone(job.customer?.phone || '');
     setEditStatus(job.status || 'pending');
     setEditPriority(job.priority || 'normal');
     setEditDescription(job.description || '');
@@ -214,6 +218,8 @@ export default function JobCardsPage() {
     try {
       setUpdatingJob(true);
       const payload = {
+        customerName: editCustomerName.trim(),
+        customerPhone: editCustomerPhone.trim(),
         status: editStatus,
         priority: editPriority,
         description: editDescription,
@@ -858,6 +864,37 @@ export default function JobCardsPage() {
             </div>
 
             <form onSubmit={handleUpdateJobCard} className="space-y-4">
+              {/* Customer Information (Editable) */}
+              <div className="p-3 rounded-xl border border-border/60 bg-black/20 dark:bg-black/40 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Customer Details
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label htmlFor="edit-jobcard-cust-name" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Customer Name</label>
+                    <input
+                      id="edit-jobcard-cust-name"
+                      type="text"
+                      value={editCustomerName}
+                      onChange={(e) => setEditCustomerName(e.target.value)}
+                      placeholder="Customer Name"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-jobcard-cust-phone" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Mobile Number</label>
+                    <input
+                      id="edit-jobcard-cust-phone"
+                      type="tel"
+                      value={editCustomerPhone}
+                      onChange={(e) => setEditCustomerPhone(e.target.value)}
+                      placeholder="Mobile Number"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="edit-jobcard-status" className="text-xs font-semibold text-muted-foreground">Status</label>

@@ -202,8 +202,8 @@ export default function CustomersPage() {
           onClick={() => setIsModalOpen(true)}
           className="text-xs"
         >
-          <Plus className="h-4 w-4 mr-1 text-luxury-gold" />
-          Add Customer
+          <Plus className="h-4 w-4 mr-1 text-slate-900" />
+          + Add Customer (Name & Mobile)
         </PearlButton>
       </div>
 
@@ -225,12 +225,13 @@ export default function CustomersPage() {
       <div className="bg-luxury-surface-light dark:bg-luxury-surface-dark rounded-xl shadow-lg overflow-hidden border border-luxury-gold/20">
         {filteredCustomers.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-luxury-ink-light/60 dark:text-luxury-ink-dark/60">No customers found</p>
+            <p className="text-muted-foreground">No customer records found</p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="mt-4 text-luxury-gold hover:text-luxury-gold-light font-medium cursor-pointer"
+              className="mt-4 px-4 py-2 bg-[#C9F31D] text-slate-900 font-bold rounded-lg hover:bg-[#b8e017] transition-all shadow-sm text-xs inline-flex items-center gap-1.5 cursor-pointer"
             >
-              Add your first customer
+              <Plus className="w-4 h-4" />
+              + Add First Customer Profile (Name & Mobile)
             </button>
           </div>
         ) : (

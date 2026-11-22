@@ -40,6 +40,9 @@ export default function AppointmentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customerMode, setCustomerMode] = useState<'new' | 'existing'>('new');
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [serviceType, setServiceType] = useState('Periodic Maintenance Service');
   const [description, setDescription] = useState('');
@@ -51,6 +54,8 @@ export default function AppointmentsPage() {
   // Edit Appointment Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
   const [editServiceType, setEditServiceType] = useState('Periodic Maintenance Service');
   const [editDate, setEditDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('10:00 AM');
@@ -76,6 +81,8 @@ export default function AppointmentsPage() {
         setCustomers(list);
         if (list.length > 0) {
           setSelectedCustomerId(list[0].id);
+        } else {
+          setCustomerMode('new');
         }
       }
     } catch (err) {
@@ -101,23 +108,69 @@ export default function AppointmentsPage() {
 
   const handleCreateAppointment = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedCustomerId) {
-      toast.error('Please select a customer');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.id || localStorage.getItem('userId');
+    if (!userId) {
+      toast.error('Session expired. Please log in again.');
+      return;
+    }
+
+    let customerIdToUse = selectedCustomerId;
+
+    // Direct Customer Entry (New Customer / Walk-in)
+    if (customerMode === 'new' || !customerIdToUse) {
+      if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+        toast.error('Please enter Customer Name and Mobile Number');
+        return;
+      }
+      const rawDigits = newCustomerPhone.replace(/\D/g, '');
+      const validPhone = rawDigits.length >= 10 ? rawDigits.slice(-10) : newCustomerPhone.trim();
+
+      try {
+        const searchRes = await fetch(`/api/customers?userId=${userId}&search=${encodeURIComponent(validPhone)}`);
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const list = Array.isArray(searchData) ? searchData : searchData.data || [];
+          const existingCust = list.find((c: any) => c.phone?.replace(/\D/g, '').slice(-10) === validPhone);
+          if (existingCust?.id) {
+            customerIdToUse = existingCust.id;
+          }
+        }
+
+        if (!customerIdToUse) {
+          const createCustRes = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              name: newCustomerName.trim(),
+              phone: validPhone,
+            }),
+          });
+          const newCust = await createCustRes.json();
+          if (!createCustRes.ok) {
+            throw new Error(newCust.message || newCust.error || 'Failed to create customer');
+          }
+          customerIdToUse = newCust.id || newCust.data?.id;
+          void fetchCustomerOptions();
+        }
+      } catch (custErr: any) {
+        toast.error(custErr.message || 'Error saving customer details');
+        return;
+      }
+    }
+
+    if (!customerIdToUse) {
+      toast.error('Please enter Customer Name and Mobile Number or select a customer');
       return;
     }
 
     try {
       setSubmitting(true);
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId');
-      if (!userId) {
-        toast.error('Session expired. Please log in again.');
-        return;
-      }
 
       const payload = {
         userId,
-        customerId: selectedCustomerId,
+        customerId: customerIdToUse,
         serviceType,
         description: description || serviceType,
         date: new Date(date).toISOString(),
@@ -139,6 +192,8 @@ export default function AppointmentsPage() {
 
       toast.success('Appointment scheduled successfully!');
       setIsModalOpen(false);
+      setNewCustomerName('');
+      setNewCustomerPhone('');
       setDescription('');
       await fetchAppointments();
     } catch (err: any) {
@@ -170,6 +225,8 @@ export default function AppointmentsPage() {
 
   const handleOpenEditModal = (apt: Appointment) => {
     setEditingAppointment(apt);
+    setEditCustomerName(apt.customer?.name || '');
+    setEditCustomerPhone(apt.customer?.phone || '');
     setEditServiceType(apt.serviceType || 'Periodic Maintenance Service');
     const d = apt.date ? new Date(apt.date).toISOString().split('T')[0] : '';
     setEditDate(d);
@@ -188,6 +245,8 @@ export default function AppointmentsPage() {
     try {
       setUpdatingAppointment(true);
       const payload = {
+        customerName: editCustomerName.trim(),
+        customerPhone: editCustomerPhone.trim(),
         serviceType: editServiceType,
         date: editDate,
         startTime: editStartTime,
@@ -483,23 +542,97 @@ export default function AppointmentsPage() {
             </div>
 
             <form onSubmit={handleCreateAppointment} className="space-y-4">
-              <div>
-                <label htmlFor="appointmentCustomer" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  Select Customer *
-                </label>
-                <select
-                  id="appointmentCustomer"
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
-                  required
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone})
-                    </option>
-                  ))}
-                </select>
+              {/* Customer Details Box: Direct Entry or Select Saved */}
+              <div className="p-3.5 rounded-xl border border-[#C9F31D]/30 bg-black/20 dark:bg-black/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Customer Information *
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C9F31D]/15 text-[#C9F31D] font-bold">
+                      {customerMode === 'new' || customers.length === 0 ? '⚡ Direct Entry / Walk-in' : '📋 Saved Customer'}
+                    </span>
+                  </div>
+
+                  {customers.length > 0 && (
+                    <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setCustomerMode('new')}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                          customerMode === 'new'
+                            ? 'bg-[#C9F31D] text-slate-900 shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        + New Customer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerMode('existing')}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                          customerMode === 'existing'
+                            ? 'bg-[#C9F31D] text-slate-900 shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Saved ({customers.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {customerMode === 'new' || customers.length === 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="appointmentCustomerName" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        Customer Full Name *
+                      </label>
+                      <input
+                        id="appointmentCustomerName"
+                        type="text"
+                        placeholder="e.g. Ramesh Patel"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                        required={customerMode === 'new' || customers.length === 0}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="appointmentCustomerPhone" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        Customer Mobile Number *
+                      </label>
+                      <input
+                        id="appointmentCustomerPhone"
+                        type="tel"
+                        placeholder="e.g. 9876543210"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                        required={customerMode === 'new' || customers.length === 0}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="appointmentCustomer" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      Select Customer *
+                    </label>
+                    <select
+                      id="appointmentCustomer"
+                      value={selectedCustomerId}
+                      onChange={(e) => setSelectedCustomerId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                      required={customerMode === 'existing' && customers.length > 0}
+                    >
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.phone})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -638,6 +771,37 @@ export default function AppointmentsPage() {
             </div>
 
             <form onSubmit={handleUpdateAppointment} className="space-y-4">
+              {/* Customer Information (Editable) */}
+              <div className="p-3 rounded-xl border border-border/60 bg-black/20 dark:bg-black/40 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Customer Details
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label htmlFor="edit-apt-cust-name" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Customer Name</label>
+                    <input
+                      id="edit-apt-cust-name"
+                      type="text"
+                      value={editCustomerName}
+                      onChange={(e) => setEditCustomerName(e.target.value)}
+                      placeholder="Customer Name"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-apt-cust-phone" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Mobile Number</label>
+                    <input
+                      id="edit-apt-cust-phone"
+                      type="tel"
+                      value={editCustomerPhone}
+                      onChange={(e) => setEditCustomerPhone(e.target.value)}
+                      placeholder="Mobile Number"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="edit-apt-service-type" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Service Type *

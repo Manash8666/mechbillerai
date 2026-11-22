@@ -60,6 +60,10 @@ export default function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customerMode, setCustomerMode] = useState<'new' | 'existing'>('new');
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleReg, setVehicleReg] = useState('');
@@ -120,6 +124,9 @@ export default function InvoicesPage() {
   // Edit Invoice State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [editCustomerEmail, setEditCustomerEmail] = useState('');
   const [editPaymentMode, setEditPaymentMode] = useState('cash');
   const [editStatus, setEditStatus] = useState('paid');
   const [editDiscount, setEditDiscount] = useState('0');
@@ -170,6 +177,9 @@ export default function InvoicesPage() {
 
   const handleOpenEditModal = (inv: Invoice) => {
     setEditingInvoice(inv);
+    setEditCustomerName(inv.customer?.name || '');
+    setEditCustomerPhone(inv.customer?.phone || '');
+    setEditCustomerEmail(inv.customer?.email || '');
     setEditPaymentMode(inv.paymentMode || 'cash');
     setEditStatus(inv.status || 'paid');
     setEditDiscount(String((inv as any).discount || 0));
@@ -263,6 +273,9 @@ export default function InvoicesPage() {
       const payload = {
         paymentMode: editPaymentMode,
         status: editStatus,
+        customerName: editCustomerName.trim(),
+        customerPhone: editCustomerPhone.trim(),
+        customerEmail: editCustomerEmail.trim() || undefined,
         notes: finalNotes,
         subtotal,
         discount: discountVal,
@@ -424,7 +437,9 @@ export default function InvoicesPage() {
         const list = Array.isArray(data) ? data : data.data || [];
         setCustomers(list);
         if (list.length > 0) {
-          setSelectedCustomerId(list[0].id);
+          if (!selectedCustomerId) {
+            setSelectedCustomerId(list[0].id);
+          }
           if (list[0].vehicles && list[0].vehicles.length > 0) {
             const v = list[0].vehicles[0];
             const fullModel = `${v.make || ''} ${v.model || ''}`.trim();
@@ -435,6 +450,8 @@ export default function InvoicesPage() {
               setVehicleReg(v.registrationNo);
             }
           }
+        } else {
+          setCustomerMode('new');
         }
       }
     } catch (err) {
@@ -859,10 +876,67 @@ export default function InvoicesPage() {
 
   const handleCreateInvoice = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId) {
-      toast.error('Please select a customer');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.id || localStorage.getItem('userId');
+    if (!userId) {
+      toast.error('Session expired. Please log in again.');
       return;
     }
+
+    let customerIdToUse = selectedCustomerId;
+
+    // Direct Customer Entry (Walk-in / New Customer)
+    if (customerMode === 'new' || !customerIdToUse) {
+      if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+        toast.error('Please enter Customer Name and Mobile Number');
+        return;
+      }
+
+      const rawDigits = newCustomerPhone.replace(/\D/g, '');
+      const validPhone = rawDigits.length >= 10 ? rawDigits.slice(-10) : newCustomerPhone.trim();
+
+      try {
+        // Check if customer with this phone already exists
+        const searchRes = await fetch(`/api/customers?userId=${userId}&search=${encodeURIComponent(validPhone)}`);
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const list = Array.isArray(searchData) ? searchData : searchData.data || [];
+          const existingCust = list.find((c: any) => c.phone?.replace(/\D/g, '').slice(-10) === validPhone);
+          if (existingCust?.id) {
+            customerIdToUse = existingCust.id;
+          }
+        }
+
+        // If not found, create new customer profile
+        if (!customerIdToUse) {
+          const createCustRes = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              name: newCustomerName.trim(),
+              phone: validPhone,
+              email: newCustomerEmail.trim() || undefined,
+            }),
+          });
+          const newCust = await createCustRes.json();
+          if (!createCustRes.ok) {
+            throw new Error(newCust.message || newCust.error || 'Failed to create customer profile');
+          }
+          customerIdToUse = newCust.id || newCust.data?.id;
+          void fetchCustomerOptions();
+        }
+      } catch (custErr: any) {
+        toast.error(custErr.message || 'Error saving customer details');
+        return;
+      }
+    }
+
+    if (!customerIdToUse) {
+      toast.error('Please enter Customer Name and Mobile Number or select a customer');
+      return;
+    }
+
     if (lineItems.length === 0 || calculatedTotal <= 0) {
       toast.error('Please add at least one line item with a price');
       return;
@@ -870,12 +944,6 @@ export default function InvoicesPage() {
 
     try {
       setSubmitting(true);
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const userId = user.id || localStorage.getItem('userId');
-      if (!userId) {
-        toast.error('Session expired. Please log in again.');
-        return;
-      }
 
       const finalNotes = JSON.stringify({
         vehicleModel: vehicleModel.trim() || undefined,
@@ -888,7 +956,7 @@ export default function InvoicesPage() {
 
       const payload = {
         userId,
-        customerId: selectedCustomerId,
+        customerId: customerIdToUse,
         paymentMode,
         subtotal: calculatedSubtotal,
         tax: calculatedTax,
@@ -936,6 +1004,9 @@ export default function InvoicesPage() {
       const created = await res.json();
       toast.success(`${invoiceType === 'ESTIMATE' ? 'Estimate' : 'Invoice'} ${created.invoiceNumber || 'created'} saved successfully!`);
       setIsModalOpen(false);
+      setNewCustomerName('');
+      setNewCustomerPhone('');
+      setNewCustomerEmail('');
       setLineItems([{ description: 'General Service & Inspection', quantity: 1, unitPrice: 1500 }]);
       await fetchInvoices();
 
@@ -1375,38 +1446,111 @@ export default function InvoicesPage() {
                 </button>
               </div>
 
-              {/* Customer Selector */}
-              <div>
-                <label htmlFor="create-invoice-customer" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Select Customer *
-                </label>
-                <select
-                  id="create-invoice-customer"
-                  value={selectedCustomerId}
-                  onChange={(e) => {
-                    const cId = e.target.value;
-                    setSelectedCustomerId(cId);
-                    const cust = customers.find((c) => c.id === cId);
-                    if (cust?.vehicles && cust.vehicles.length > 0) {
-                      const v = cust.vehicles[0];
-                      const fullModel = `${v.make || ''} ${v.model || ''}`.trim();
-                      if (fullModel && !fullModel.toLowerCase().includes('standard')) {
-                        setVehicleModel(fullModel);
-                      }
-                      if (v.registrationNo) {
-                        setVehicleReg(v.registrationNo);
-                      }
-                    }
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
-                  required
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone})
-                    </option>
-                  ))}
-                </select>
+              {/* Customer Details Box: Direct Customer Entry (Name & Phone) or Existing Selection */}
+              <div className="p-3.5 rounded-xl border border-[#C9F31D]/30 bg-black/20 dark:bg-black/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Customer Information *
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C9F31D]/15 text-[#C9F31D] font-bold">
+                      {customerMode === 'new' || customers.length === 0 ? '⚡ Direct Entry / Walk-in' : '📋 Saved Customer'}
+                    </span>
+                  </div>
+
+                  {customers.length > 0 && (
+                    <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setCustomerMode('new')}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                          customerMode === 'new'
+                            ? 'bg-[#C9F31D] text-slate-900 shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        + New Customer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerMode('existing')}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                          customerMode === 'existing'
+                            ? 'bg-[#C9F31D] text-slate-900 shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Saved ({customers.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {customerMode === 'new' || customers.length === 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="create-invoice-customer-name" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        Customer Full Name *
+                      </label>
+                      <input
+                        id="create-invoice-customer-name"
+                        type="text"
+                        placeholder="e.g. Ramesh Patel"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                        required={customerMode === 'new' || customers.length === 0}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="create-invoice-customer-phone" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        Customer Mobile Number *
+                      </label>
+                      <input
+                        id="create-invoice-customer-phone"
+                        type="tel"
+                        placeholder="e.g. 9876543210"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                        required={customerMode === 'new' || customers.length === 0}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="create-invoice-customer" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      Select Customer *
+                    </label>
+                    <select
+                      id="create-invoice-customer"
+                      value={selectedCustomerId}
+                      onChange={(e) => {
+                        const cId = e.target.value;
+                        setSelectedCustomerId(cId);
+                        const cust = customers.find((c) => c.id === cId);
+                        if (cust?.vehicles && cust.vehicles.length > 0) {
+                          const v = cust.vehicles[0];
+                          const fullModel = `${v.make || ''} ${v.model || ''}`.trim();
+                          if (fullModel && !fullModel.toLowerCase().includes('standard')) {
+                            setVehicleModel(fullModel);
+                          }
+                          if (v.registrationNo) {
+                            setVehicleReg(v.registrationNo);
+                          }
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                      required={customerMode === 'existing' && customers.length > 0}
+                    >
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.phone})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Vehicle & Service Scope Details */}
@@ -1951,6 +2095,37 @@ export default function InvoicesPage() {
             </div>
 
             <form onSubmit={handleUpdateInvoice} className="space-y-4">
+              {/* Customer Information (Editable) */}
+              <div className="p-3 rounded-xl border border-border/60 bg-black/20 dark:bg-black/40 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Customer Details
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label htmlFor="edit-customer-name" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Customer Name</label>
+                    <input
+                      id="edit-customer-name"
+                      type="text"
+                      value={editCustomerName}
+                      onChange={(e) => setEditCustomerName(e.target.value)}
+                      placeholder="Customer Name"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-customer-phone" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Mobile Number</label>
+                    <input
+                      id="edit-customer-phone"
+                      type="tel"
+                      value={editCustomerPhone}
+                      onChange={(e) => setEditCustomerPhone(e.target.value)}
+                      placeholder="Mobile Number"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="edit-invoice-status" className="text-xs font-semibold text-muted-foreground">Status</label>

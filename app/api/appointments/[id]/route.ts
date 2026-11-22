@@ -95,6 +95,21 @@ export async function PUT(
       },
     });
 
+    // Update customer name & phone if provided
+    if (existing.customerId && (body.customerName || body.customerPhone)) {
+      const custData: any = {};
+      if (body.customerName?.trim()) custData.name = body.customerName.trim();
+      if (body.customerPhone?.trim()) custData.phone = body.customerPhone.trim();
+      try {
+        await prisma.customer.update({
+          where: { id: existing.customerId },
+          data: custData,
+        });
+      } catch (custErr) {
+        console.warn('Customer update warning:', custErr);
+      }
+    }
+
     return NextResponse.json(appointment);
   } catch (error) {
     console.error('Error updating appointment:', error);
