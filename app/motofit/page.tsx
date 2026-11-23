@@ -32,7 +32,7 @@ export default function MotoFitPage() {
 
   // Quick Staff Terminal State
   const [staffRole, setStaffRole] = useState<'owner' | 'manager' | 'mechanic'>('owner');
-  const [staffEmail, setStaffEmail] = useState('manashdash@aol.com');
+  const [staffEmail, setStaffEmail] = useState('akshat@motoban.in');
   const [staffPin, setStaffPin] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
@@ -301,7 +301,7 @@ export default function MotoFitPage() {
                   type="button"
                   onClick={() => {
                     setStaffRole('owner');
-                    setStaffEmail('manashdash@aol.com');
+                    setStaffEmail('akshat@motoban.in');
                   }}
                   className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 border ${
                     staffRole === 'owner'

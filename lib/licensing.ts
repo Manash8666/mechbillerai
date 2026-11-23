@@ -128,6 +128,9 @@ export const VIP_FOUNDING_GARAGES: string[] = [
   'vipgarage@motoban.in',     // Second Founding Garage
   'manashdash@aol.com',       // Manash Dash / Samael Morningstar (Super Admin)
   'samael@motoban.in',
+  'akshat@motoban.in',        // Akshat Mohanty (Owner)
+  'akshat@motofit.in',
+  'akshatmohanty@gmail.com',
   ...(process.env.VIP_FREE_GARAGES ? process.env.VIP_FREE_GARAGES.split(',').map((e) => e.trim().toLowerCase()) : []),
 ];
 
