@@ -75,26 +75,10 @@ export default function InvoicesPage() {
     { description: string; details?: string; quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }[]
   >([
     {
-      description: 'CYLINDER BLOCK & PISTON KIT (OEM)',
-      details: 'Top End Core: OEM cylinder block, piston, rings, pin & circlips assembly',
+      description: '',
+      details: '',
       quantity: 1,
-      unitPrice: 5200,
-      discountType: '%',
-      discountValue: 0,
-    },
-    {
-      description: 'CYLINDER HEAD VALVES, SEALS & GUIDES',
-      details: 'Top End Core: Intake & exhaust valves, viton stem seals & bronze guide set',
-      quantity: 1,
-      unitPrice: 1100,
-      discountType: '%',
-      discountValue: 0,
-    },
-    {
-      description: 'MECHANIC LABOUR (TOP END REBUILD)',
-      details: 'Labour: Engine top end teardown, decarb, precision assembly, valve lash setup & road test',
-      quantity: 1,
-      unitPrice: 2500,
+      unitPrice: 0,
       discountType: '%',
       discountValue: 0,
     },
@@ -328,9 +312,12 @@ export default function InvoicesPage() {
   };
 
   useEffect(() => {
-    void fetchInvoices();
-    void fetchCustomerOptions();
-    void fetchInventory();
+    // Parallelize all initial data fetching for fast load
+    void Promise.allSettled([
+      fetchInvoices(),
+      fetchCustomerOptions(),
+      fetchInventory(),
+    ]);
 
     // Sync GST setting from user profile
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
@@ -427,6 +414,31 @@ export default function InvoicesPage() {
     toast.success(`Added ${desc} to bill!`);
   };
 
+  const handleOpenNewInvoiceModal = () => {
+    setCustomerMode('new');
+    setNewCustomerName('');
+    setNewCustomerPhone('');
+    setNewCustomerEmail('');
+    setSelectedCustomerId(customers[0]?.id || '');
+    setVehicleModel('');
+    setVehicleReg('');
+    setServiceScope('');
+    setPaymentMode('cash');
+    setInvoiceType('INVOICE');
+    setDeliveryPhoto(null);
+    setLineItems([
+      {
+        description: '',
+        details: '',
+        quantity: 1,
+        unitPrice: 0,
+        discountType: '%',
+        discountValue: 0,
+      },
+    ]);
+    setIsModalOpen(true);
+  };
+
   const fetchCustomerOptions = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -439,16 +451,6 @@ export default function InvoicesPage() {
         if (list.length > 0) {
           if (!selectedCustomerId) {
             setSelectedCustomerId(list[0].id);
-          }
-          if (list[0].vehicles && list[0].vehicles.length > 0) {
-            const v = list[0].vehicles[0];
-            const fullModel = `${v.make || ''} ${v.model || ''}`.trim();
-            if (fullModel && !fullModel.toLowerCase().includes('standard')) {
-              setVehicleModel(fullModel);
-            }
-            if (v.registrationNo) {
-              setVehicleReg(v.registrationNo);
-            }
           }
         } else {
           setCustomerMode('new');
@@ -1073,7 +1075,7 @@ export default function InvoicesPage() {
             <FileUp className="w-4 h-4" />
             Import Vyapar / Gemini Bill
           </Link>
-          <PearlButton onClick={() => setIsModalOpen(true)} className="text-xs">
+          <PearlButton onClick={handleOpenNewInvoiceModal} className="text-xs">
             <Plus className="w-4 h-4 mr-1 text-luxury-gold" />
             New Invoice / Estimate
           </PearlButton>
@@ -1489,7 +1491,7 @@ export default function InvoicesPage() {
                 {customerMode === 'new' || customers.length === 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label htmlFor="create-invoice-customer-name" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      <label htmlFor="create-invoice-customer-name" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                         Customer Full Name *
                       </label>
                       <input
@@ -1498,12 +1500,12 @@ export default function InvoicesPage() {
                         placeholder="e.g. Ramesh Patel"
                         value={newCustomerName}
                         onChange={(e) => setNewCustomerName(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
                         required={customerMode === 'new' || customers.length === 0}
                       />
                     </div>
                     <div>
-                      <label htmlFor="create-invoice-customer-phone" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      <label htmlFor="create-invoice-customer-phone" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                         Customer Mobile Number *
                       </label>
                       <input
@@ -1512,14 +1514,14 @@ export default function InvoicesPage() {
                         placeholder="e.g. 9876543210"
                         value={newCustomerPhone}
                         onChange={(e) => setNewCustomerPhone(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9F31D]"
                         required={customerMode === 'new' || customers.length === 0}
                       />
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <label htmlFor="create-invoice-customer" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    <label htmlFor="create-invoice-customer" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                       Select Customer *
                     </label>
                     <select
@@ -1556,7 +1558,7 @@ export default function InvoicesPage() {
               {/* Vehicle & Service Scope Details */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-muted/40 border border-border">
                 <div>
-                  <label htmlFor="create-invoice-vehicle-model" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="create-invoice-vehicle-model" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Vehicle Make & Model
                   </label>
                   <input
@@ -1565,11 +1567,11 @@ export default function InvoicesPage() {
                     placeholder="e.g. Royal Enfield Classic 350"
                     value={vehicleModel}
                     onChange={(e) => setVehicleModel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                   />
                 </div>
                 <div>
-                  <label htmlFor="create-invoice-vehicle-reg" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="create-invoice-vehicle-reg" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Registration No.
                   </label>
                   <input
@@ -1578,11 +1580,11 @@ export default function InvoicesPage() {
                     placeholder="e.g. GJ01PU7510"
                     value={vehicleReg}
                     onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold uppercase"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-luxury-gold uppercase"
                   />
                 </div>
                 <div>
-                  <label htmlFor="create-invoice-service-scope" className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label htmlFor="create-invoice-service-scope" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Service Scope / Title
                   </label>
                   <input
@@ -1591,7 +1593,7 @@ export default function InvoicesPage() {
                     placeholder="e.g. Classic 350 Overhaul & Service"
                     value={serviceScope}
                     onChange={(e) => setServiceScope(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                   />
                 </div>
               </div>
@@ -1725,18 +1727,30 @@ export default function InvoicesPage() {
                           type="number"
                           min="1"
                           placeholder="Qty"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
-                          className="w-14 px-2 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-center focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          value={item.quantity === 0 ? '' : item.quantity}
+                          onFocus={(e) => {
+                            if (e.target.value === '0' || e.target.value === '1') e.target.select();
+                          }}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                            handleItemChange(index, 'quantity', raw === '' ? 1 : Number(raw));
+                          }}
+                          className="w-16 sm:w-20 px-2.5 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-semibold text-center focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                           required
                         />
                         <input
                           type="number"
                           min="0"
                           placeholder="MRP / Rate"
-                          value={item.unitPrice}
-                          onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
-                          className="w-20 px-2 py-2 rounded-lg border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-2 focus:ring-luxury-gold"
+                          value={item.unitPrice === 0 ? '' : item.unitPrice}
+                          onFocus={(e) => {
+                            if (e.target.value === '0') e.target.select();
+                          }}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                            handleItemChange(index, 'unitPrice', raw === '' ? 0 : Number(raw));
+                          }}
+                          className="w-28 sm:w-32 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-semibold text-right focus:outline-none focus:ring-2 focus:ring-luxury-gold"
                           required
                         />
                         {/* Discount Column (% / ₹) */}
@@ -1745,22 +1759,28 @@ export default function InvoicesPage() {
                             type="number"
                             min="0"
                             placeholder="Disc"
-                            value={item.discountValue || ''}
-                            onChange={(e) => handleItemChange(index, 'discountValue', Number(e.target.value) || 0)}
-                            className="w-12 px-1.5 py-1.5 text-xs text-foreground text-right focus:outline-none bg-transparent"
+                            value={item.discountValue === 0 ? '' : item.discountValue}
+                            onFocus={(e) => {
+                              if (e.target.value === '0') e.target.select();
+                            }}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                              handleItemChange(index, 'discountValue', raw === '' ? 0 : Number(raw));
+                            }}
+                            className="w-16 sm:w-20 px-2 py-1.5 text-xs font-semibold text-foreground text-right focus:outline-none bg-transparent"
                             title="Discount value"
                           />
                           <button
                             type="button"
                             onClick={() => handleItemChange(index, 'discountType', item.discountType === '%' ? '₹' : '%')}
-                            className="px-2 py-1.5 text-[11px] font-bold bg-muted hover:bg-luxury-gold/20 text-luxury-gold border-l border-border transition-colors"
+                            className="px-2 py-1.5 text-xs font-bold bg-muted hover:bg-luxury-gold/20 text-luxury-gold border-l border-border transition-colors"
                             title="Toggle discount between % and ₹"
                           >
                             {item.discountType || '%'}
                           </button>
                         </div>
                         {/* Net amount */}
-                        <div className="w-16 text-right text-xs font-mono font-bold text-luxury-gold whitespace-nowrap">
+                        <div className="w-20 text-right text-xs font-mono font-bold text-luxury-gold whitespace-nowrap">
                           ₹{getItemNetTotal(item).toLocaleString('en-IN')}
                         </div>
                         {lineItems.length > 1 && (
@@ -1775,10 +1795,10 @@ export default function InvoicesPage() {
                       </div>
 
                       {/* Automated Gemini AI Technical Explanation Badge with optional customize */}
-                      <div className="flex items-center justify-between bg-purple-500/10 dark:bg-purple-500/15 border border-purple-500/25 rounded-lg px-2.5 py-1.5 text-[11px]">
+                      <div className="flex items-center justify-between bg-purple-500/10 dark:bg-purple-500/15 border border-purple-500/25 rounded-lg px-2.5 py-1.5 text-xs">
                         <div className="flex items-center gap-1.5 text-purple-900 dark:text-purple-300 font-medium truncate flex-1 mr-2">
                           <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          <span className="font-bold text-[9px] uppercase tracking-wide bg-purple-500/20 text-purple-950 dark:text-purple-200 px-1 py-0.5 rounded shrink-0">
+                          <span className="font-bold text-[10px] uppercase tracking-wide bg-purple-500/20 text-purple-950 dark:text-purple-200 px-1.5 py-0.5 rounded shrink-0">
                             Gemini Auto-Detail
                           </span>
                           <span className="truncate text-foreground/80 italic font-normal">
@@ -1788,7 +1808,7 @@ export default function InvoicesPage() {
                         <button
                           type="button"
                           onClick={() => setEditingDetailIndex(editingDetailIndex === index ? null : index)}
-                          className="text-[10px] text-muted-foreground hover:text-foreground font-semibold underline shrink-0"
+                          className="text-xs text-muted-foreground hover:text-foreground font-semibold underline shrink-0"
                           title="Override or edit this technical description if needed"
                         >
                           {editingDetailIndex === index ? 'Done' : 'Customize'}
@@ -2097,30 +2117,30 @@ export default function InvoicesPage() {
             <form onSubmit={handleUpdateInvoice} className="space-y-4">
               {/* Customer Information (Editable) */}
               <div className="p-3 rounded-xl border border-border/60 bg-black/20 dark:bg-black/40 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Customer Details
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
-                    <label htmlFor="edit-customer-name" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Customer Name</label>
+                    <label htmlFor="edit-customer-name" className="block text-xs font-semibold text-muted-foreground mb-1">Customer Name</label>
                     <input
                       id="edit-customer-name"
                       type="text"
                       value={editCustomerName}
                       onChange={(e) => setEditCustomerName(e.target.value)}
                       placeholder="Customer Name"
-                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-semibold focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label htmlFor="edit-customer-phone" className="block text-[10px] font-semibold text-muted-foreground mb-0.5">Mobile Number</label>
+                    <label htmlFor="edit-customer-phone" className="block text-xs font-semibold text-muted-foreground mb-1">Mobile Number</label>
                     <input
                       id="edit-customer-phone"
                       type="tel"
                       value={editCustomerPhone}
                       onChange={(e) => setEditCustomerPhone(e.target.value)}
                       placeholder="Mobile Number"
-                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold focus:ring-1 focus:ring-amber-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-mono font-semibold focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -2162,7 +2182,7 @@ export default function InvoicesPage() {
               {/* Vehicle & Service Scope Details */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-black/20 dark:bg-black/40 border border-border/60">
                 <div>
-                  <label htmlFor="edit-invoice-vehicle-model" className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  <label htmlFor="edit-invoice-vehicle-model" className="block text-xs font-bold text-muted-foreground mb-1">
                     Vehicle Make & Model
                   </label>
                   <input
@@ -2171,11 +2191,11 @@ export default function InvoicesPage() {
                     placeholder="e.g. Royal Enfield Classic 350"
                     value={editVehicleModel}
                     onChange={(e) => setEditVehicleModel(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-semibold focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-invoice-vehicle-reg" className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  <label htmlFor="edit-invoice-vehicle-reg" className="block text-xs font-bold text-muted-foreground mb-1">
                     Registration No.
                   </label>
                   <input
@@ -2184,11 +2204,11 @@ export default function InvoicesPage() {
                     placeholder="e.g. GJ01PU7510"
                     value={editVehicleReg}
                     onChange={(e) => setEditVehicleReg(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-mono font-semibold uppercase focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-mono font-semibold uppercase focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-invoice-service-scope" className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  <label htmlFor="edit-invoice-service-scope" className="block text-xs font-bold text-muted-foreground mb-1">
                     Service Scope / Title
                   </label>
                   <input
@@ -2197,7 +2217,7 @@ export default function InvoicesPage() {
                     placeholder="e.g. Classic 350 Overhaul & Service"
                     value={editServiceScope}
                     onChange={(e) => setEditServiceScope(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -2285,35 +2305,43 @@ export default function InvoicesPage() {
                           required
                         />
                       </div>
-                      <div className="w-14">
+                      <div className="w-16 sm:w-20">
                         <input
                           type="number"
                           placeholder="Qty"
                           min="1"
-                          value={item.quantity}
+                          value={item.quantity === 0 ? '' : item.quantity}
+                          onFocus={(e) => {
+                            if (e.target.value === '0' || e.target.value === '1') e.target.select();
+                          }}
                           onChange={(e) => {
-                            const val = Number(e.target.value) || 1;
+                            const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                            const val = raw === '' ? 1 : Number(raw);
                             setEditLineItems((prev) =>
                               prev.map((it, i) => (i === idx ? { ...it, quantity: val } : it))
                             );
                           }}
-                          className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs text-foreground text-center"
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-sm text-foreground text-center font-semibold"
                           required
                         />
                       </div>
-                      <div className="w-20">
+                      <div className="w-28 sm:w-32">
                         <input
                           type="number"
                           placeholder="Price"
                           min="0"
-                          value={item.unitPrice}
+                          value={item.unitPrice === 0 ? '' : item.unitPrice}
+                          onFocus={(e) => {
+                            if (e.target.value === '0') e.target.select();
+                          }}
                           onChange={(e) => {
-                            const val = Number(e.target.value) || 0;
+                            const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                            const val = raw === '' ? 0 : Number(raw);
                             setEditLineItems((prev) =>
                               prev.map((it, i) => (i === idx ? { ...it, unitPrice: val } : it))
                             );
                           }}
-                          className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs text-foreground text-right font-mono"
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-sm text-foreground text-right font-mono font-semibold"
                           required
                         />
                       </div>
@@ -2323,14 +2351,18 @@ export default function InvoicesPage() {
                           type="number"
                           min="0"
                           placeholder="Disc"
-                          value={item.discountValue || ''}
+                          value={item.discountValue === 0 ? '' : item.discountValue}
+                          onFocus={(e) => {
+                            if (e.target.value === '0') e.target.select();
+                          }}
                           onChange={(e) => {
-                            const val = Number(e.target.value) || 0;
+                            const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                            const val = raw === '' ? 0 : Number(raw);
                             setEditLineItems((prev) =>
                               prev.map((it, i) => (i === idx ? { ...it, discountValue: val } : it))
                             );
                           }}
-                          className="w-12 px-1 py-1.5 text-xs text-foreground text-right focus:outline-none bg-transparent"
+                          className="w-16 sm:w-20 px-2 py-1.5 text-xs text-foreground text-right focus:outline-none bg-transparent"
                         />
                         <button
                           type="button"
@@ -2341,13 +2373,13 @@ export default function InvoicesPage() {
                               )
                             );
                           }}
-                          className="px-1.5 py-1.5 text-[11px] font-bold bg-muted text-amber-400 border-l border-border transition-colors"
+                          className="px-2 py-1.5 text-xs font-bold bg-muted text-amber-400 border-l border-border transition-colors"
                           title="Toggle discount between % and ₹"
                         >
                           {item.discountType || '%'}
                         </button>
                       </div>
-                      <div className="w-16 text-right text-xs font-mono font-bold text-amber-400 whitespace-nowrap">
+                      <div className="w-20 text-right text-xs font-mono font-bold text-amber-400 whitespace-nowrap">
                         ₹{getItemNetTotal(item).toLocaleString('en-IN')}
                       </div>
                       <button
@@ -2374,8 +2406,12 @@ export default function InvoicesPage() {
                     id="edit-invoice-discount"
                     type="number"
                     min="0"
-                    value={editDiscount}
-                    onChange={(e) => setEditDiscount(e.target.value)}
+                    placeholder="0"
+                    value={editDiscount === '0' ? '' : editDiscount}
+                    onFocus={(e) => {
+                      if (e.target.value === '0') e.target.select();
+                    }}
+                    onChange={(e) => setEditDiscount(e.target.value.replace(/^0+(?=\d)/, ''))}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
                   />
                 </div>
@@ -2385,8 +2421,12 @@ export default function InvoicesPage() {
                     id="edit-invoice-paid"
                     type="number"
                     min="0"
-                    value={editPaid}
-                    onChange={(e) => setEditPaid(e.target.value)}
+                    placeholder="0"
+                    value={editPaid === '0' ? '' : editPaid}
+                    onFocus={(e) => {
+                      if (e.target.value === '0') e.target.select();
+                    }}
+                    onChange={(e) => setEditPaid(e.target.value.replace(/^0+(?=\d)/, ''))}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
                   />
                 </div>

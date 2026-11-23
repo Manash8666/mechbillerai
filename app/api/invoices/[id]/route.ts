@@ -1,39 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { getTargetUserIds } from '@/lib/partnerAccounts';
 import {
   buildErrorResponse,
   logActivity,
 } from '@/lib/apiHelpers';
-
-async function getTargetUserIds(userId: string): Promise<string[]> {
-  const targetUserIds = [userId];
-  const userObj = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-  const userEmail = (userObj?.email || '').toLowerCase();
-  if (
-    userEmail.includes('motofit') ||
-    userEmail.includes('manash') ||
-    userEmail.includes('samael') ||
-    userEmail.includes('akshat')
-  ) {
-    const partners = await prisma.user.findMany({
-      where: {
-        OR: [
-          { email: { contains: 'motofit' } },
-          { email: { contains: 'manash' } },
-          { email: { contains: 'samael' } },
-          { email: { contains: 'akshat' } },
-        ],
-      },
-      select: { id: true },
-    });
-    return partners.map((p) => p.id);
-  }
-  return targetUserIds;
-}
 
 // GET - Single invoice with full details
 export async function GET(

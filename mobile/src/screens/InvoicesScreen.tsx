@@ -82,29 +82,12 @@ export default function InvoicesScreen() {
   const [docType, setDocType] = useState<'SOW_BILL' | 'SOW_ESTIMATE'>('SOW_BILL');
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
-  const [vehicleModel, setVehicleModel] = useState('Royal Enfield Classic 350');
+  const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleReg, setVehicleReg] = useState('');
-  const [serviceScope, setServiceScope] = useState('Classic 350 Overhaul & Service');
+  const [serviceScope, setServiceScope] = useState('');
 
   // Line items state
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    {
-      id: '1',
-      description: 'General Service & Precision Inspection',
-      category: 'labor',
-      quantity: 1,
-      unitPrice: 600,
-      total: 600,
-    },
-    {
-      id: '2',
-      description: 'Motul 15W50 3100 Engine Oil (1.5L)',
-      category: 'part',
-      quantity: 1,
-      unitPrice: 1050,
-      total: 1050,
-    },
-  ]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
 
   // Custom Item creation inline form
   const [showCustomItemForm, setShowCustomItemForm] = useState(false);
@@ -155,6 +138,25 @@ export default function InvoicesScreen() {
   const [collectDate, setCollectDate] = useState('');
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
+
+  const handleOpenNewBillModal = () => {
+    setCustName('');
+    setCustPhone('');
+    setVehicleModel('');
+    setVehicleReg('');
+    setServiceScope('');
+    setLineItems([]);
+    setPaymentType('full');
+    setAdvanceAmount('');
+    setPaymentMode('UPI');
+    setDeliveryPhoto(null);
+    setCustomDesc('');
+    setCustomRate('');
+    setCustomQty('1');
+    setCustomDiscVal('0');
+    setShowCustomItemForm(false);
+    setIsModalOpen(true);
+  };
 
   const calculateLineTotal = (qty: number, rate: number, discType?: '%' | '₹', discVal?: number) => {
     const gross = qty * rate;
@@ -1027,7 +1029,7 @@ export default function InvoicesScreen() {
             <MaterialCommunityIcons name="file-import-outline" size={14} color="#C9F31D" />
             <Text style={styles.importBtnText}>Import</Text>
           </TouchableOpacity>
-          <MobilePearlButton variant="gold" onPress={() => setIsModalOpen(true)}>
+          <MobilePearlButton variant="gold" onPress={handleOpenNewBillModal}>
             <MaterialCommunityIcons
               name="plus"
               size={18}
@@ -1116,7 +1118,7 @@ export default function InvoicesScreen() {
       )}
 
       {/* Floating Action Button - Positioned above 60px bottom tab bar */}
-      <TouchableOpacity style={styles.fab} onPress={() => setIsModalOpen(true)}>
+      <TouchableOpacity style={styles.fab} onPress={handleOpenNewBillModal}>
         <MaterialCommunityIcons name="plus" size={28} color={COLORS.background} />
       </TouchableOpacity>
 
@@ -1387,7 +1389,7 @@ export default function InvoicesScreen() {
                           placeholderTextColor={COLORS.textMuted}
                           keyboardType="numeric"
                           value={customQty}
-                          onChangeText={setCustomQty}
+                          onChangeText={(text) => setCustomQty(text.replace(/^0+(?=\d)/, ''))}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -1398,7 +1400,7 @@ export default function InvoicesScreen() {
                           placeholderTextColor={COLORS.textMuted}
                           keyboardType="numeric"
                           value={customRate}
-                          onChangeText={setCustomRate}
+                          onChangeText={(text) => setCustomRate(text.replace(/^0+(?=\d)/, ''))}
                         />
                       </View>
                     </View>
@@ -1411,8 +1413,8 @@ export default function InvoicesScreen() {
                             placeholder="0"
                             placeholderTextColor={COLORS.textMuted}
                             keyboardType="numeric"
-                            value={customDiscVal}
-                            onChangeText={setCustomDiscVal}
+                            value={customDiscVal === '0' ? '' : customDiscVal}
+                            onChangeText={(text) => setCustomDiscVal(text.replace(/^0+(?=\d)/, ''))}
                           />
                           <TouchableOpacity
                             style={styles.discToggleBtn}
@@ -1513,7 +1515,7 @@ export default function InvoicesScreen() {
                       placeholderTextColor={COLORS.textMuted}
                       keyboardType="numeric"
                       value={advanceAmount}
-                      onChangeText={setAdvanceAmount}
+                      onChangeText={(text) => setAdvanceAmount(text.replace(/^0+(?=\d)/, ''))}
                     />
                     <Text style={styles.creditNotice}>
                       Remaining ₹
@@ -1647,7 +1649,7 @@ export default function InvoicesScreen() {
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="numeric"
                 value={collectAmount}
-                onChangeText={setCollectAmount}
+                onChangeText={(text) => setCollectAmount(text.replace(/^0+(?=\d)/, ''))}
               />
 
               {/* Quick Amount Pills */}
@@ -2060,9 +2062,10 @@ export default function InvoicesScreen() {
                     <TextInput
                       style={styles.modalInput}
                       keyboardType="numeric"
-                      value={editDiscount}
-                      onChangeText={setEditDiscount}
+                      value={editDiscount === '0' ? '' : editDiscount}
+                      onChangeText={(text) => setEditDiscount(text.replace(/^0+(?=\d)/, ''))}
                       placeholder="0"
+                      placeholderTextColor={COLORS.textMuted}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -2070,9 +2073,10 @@ export default function InvoicesScreen() {
                     <TextInput
                       style={styles.modalInput}
                       keyboardType="numeric"
-                      value={editPaidAmount}
-                      onChangeText={setEditPaidAmount}
+                      value={editPaidAmount === '0' ? '' : editPaidAmount}
+                      onChangeText={(text) => setEditPaidAmount(text.replace(/^0+(?=\d)/, ''))}
                       placeholder="0"
+                      placeholderTextColor={COLORS.textMuted}
                     />
                   </View>
                 </View>
@@ -2440,31 +2444,31 @@ const styles = StyleSheet.create({
   },
   paidInFullText: {
     color: '#10B981',
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: 'bold',
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   actionsGridRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginTop: 6,
+    gap: 8,
+    marginTop: 8,
   },
   actionBtnWhatsApp: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#25D366',
     backgroundColor: 'rgba(37, 211, 102, 0.08)',
   },
   actionBtnWhatsAppText: {
     color: '#25D366',
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 3,
+    marginLeft: 4,
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   actionBtnSecondary: {
@@ -2472,17 +2476,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.primary,
     backgroundColor: 'rgba(201, 243, 29, 0.12)',
   },
   actionBtnSecondaryText: {
     color: COLORS.primary,
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: '600',
-    marginLeft: 3,
+    marginLeft: 4,
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   actionBtnSow: {
@@ -2490,17 +2494,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#8B5CF6',
     backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
   actionBtnSowText: {
     color: '#A78BFA',
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 3,
+    marginLeft: 4,
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   actionBtnPrimary: {
@@ -2508,15 +2512,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
     backgroundColor: COLORS.primary,
   },
   actionBtnPrimaryText: {
     color: COLORS.background,
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 3,
+    marginLeft: 4,
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   actionBtnEdit: {
@@ -2524,17 +2528,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#F59E0B',
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
   },
   actionBtnEditText: {
     color: '#F59E0B',
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 3,
+    marginLeft: 4,
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   actionBtnPhoto: {
@@ -2542,17 +2546,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 7,
+    paddingVertical: 9,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#06B6D4',
     backgroundColor: 'rgba(6, 182, 212, 0.1)',
   },
   actionBtnPhotoText: {
     color: '#06B6D4',
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 3,
+    marginLeft: 4,
     fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System',
   },
   photoCaptureCard: {

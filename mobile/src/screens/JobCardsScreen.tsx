@@ -51,8 +51,19 @@ export default function JobCardsScreen({ navigation }: any) {
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
   const [issueDesc, setIssueDesc] = useState('');
-  const [estCost, setEstCost] = useState('800');
+  const [estCost, setEstCost] = useState('');
   const [priority, setPriority] = useState<'normal' | 'high' | 'low'>('normal');
+
+  const handleOpenModal = () => {
+    setRegNo('');
+    setMakeModel('');
+    setCustName('');
+    setCustPhone('');
+    setIssueDesc('');
+    setEstCost('');
+    setPriority('normal');
+    setIsModalOpen(true);
+  };
 
   const fetchJobs = async () => {
     try {
@@ -306,7 +317,7 @@ export default function JobCardsScreen({ navigation }: any) {
         <Text style={styles.topTitle}>Workshop Floor</Text>
         <MobilePearlButton
           variant="gold"
-          onPress={() => setIsModalOpen(true)}
+          onPress={handleOpenModal}
         >
           <MaterialCommunityIcons name="plus" size={18} color={COLORS.background} style={{ marginRight: 4 }} />
           <Text style={styles.pearlBtnText}>New Job Card</Text>
@@ -336,7 +347,7 @@ export default function JobCardsScreen({ navigation }: any) {
       {/* Floating Plus Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setIsModalOpen(true)}
+        onPress={handleOpenModal}
       >
         <MaterialCommunityIcons name="plus" size={28} color={COLORS.background} />
       </TouchableOpacity>
@@ -409,11 +420,11 @@ export default function JobCardsScreen({ navigation }: any) {
               <Text style={styles.inputLabel}>Estimated Cost (₹)</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="800"
+                placeholder="e.g. 800"
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="numeric"
                 value={estCost}
-                onChangeText={setEstCost}
+                onChangeText={(t) => setEstCost(t.replace(/^0+(?=\d)/, ''))}
               />
 
               <Text style={styles.inputLabel}>Priority</Text>

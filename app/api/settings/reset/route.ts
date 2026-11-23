@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { invalidatePartnerCache } from '@/lib/partnerAccounts';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
@@ -287,6 +288,8 @@ export async function POST(request: Request) {
         });
       }
     }
+
+    invalidatePartnerCache();
 
     return NextResponse.json({
       success: true,

@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   bankCardLabel: {
     color: COLORS.textMuted,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
   },
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   },
   liveChipText: {
     color: '#10B981',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   balanceAmount: {
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   },
   footerMetricLabel: {
     color: COLORS.textSubtle,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   },
   pillLabel: {
     color: COLORS.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },

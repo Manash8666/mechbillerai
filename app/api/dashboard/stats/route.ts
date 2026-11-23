@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { getTargetUserIds } from '@/lib/partnerAccounts';
 
 export async function GET(request: Request) {
   try {
@@ -15,32 +16,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // Collect all associated workshop partner IDs if MotoFit/Samael/Akshat/Manash
-    let targetUserIds = [requestedUserId];
-    const userObj = await prisma.user.findUnique({
-      where: { id: requestedUserId },
-      select: { email: true },
-    });
-    const userEmail = (userObj?.email || '').toLowerCase();
-    if (
-      userEmail.includes('motofit') ||
-      userEmail.includes('manash') ||
-      userEmail.includes('samael') ||
-      userEmail.includes('akshat')
-    ) {
-      const partners = await prisma.user.findMany({
-        where: {
-          OR: [
-            { email: { contains: 'motofit' } },
-            { email: { contains: 'manash' } },
-            { email: { contains: 'samael' } },
-            { email: { contains: 'akshat' } },
-          ],
-        },
-        select: { id: true },
-      });
-      targetUserIds = partners.map((p) => p.id);
-    }
+    // Collect all associated workshop partner IDs (cached in-memory for lightning response)
+    const targetUserIds = await getTargetUserIds(requestedUserId);
 
     const userCondition = targetUserIds.length > 1 ? { in: targetUserIds } : requestedUserId;
 

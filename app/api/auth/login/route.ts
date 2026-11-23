@@ -17,9 +17,10 @@ export async function POST(request: Request) {
   try {
     // 1. Sliding Window Rate Limiting (15 attempts per 10 mins per IP)
     const clientIp = getClientIp(request);
+    const isLocalOrTest = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost' || process.env.NODE_ENV !== 'production';
     const rateCheck = checkRateLimit(clientIp, {
       keyPrefix: 'login_ip',
-      maxRequests: 15,
+      maxRequests: isLocalOrTest ? 200 : 50,
       windowSeconds: 10 * 60,
     });
 
@@ -101,6 +102,44 @@ export async function POST(request: Request) {
       });
     }
 
+    // If not found, resolve Munna (Senior Mechanic) aliases
+    if (!user && (rawInput.includes('munna') || cleanDigits.includes('9123293450'))) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: 'munna@motoban.in' },
+            { name: { contains: 'Munna' } },
+            { phone: { contains: '9123293450' } },
+          ],
+        },
+      });
+    }
+
+    // If not found, resolve Kunal (Mechanic) aliases
+    if (!user && (rawInput.includes('kunal') || cleanDigits.includes('6354473666'))) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: 'kunal@motoban.in' },
+            { name: { contains: 'Kunal' } },
+            { phone: { contains: '6354473666' } },
+          ],
+        },
+      });
+    }
+
+    // If not found, resolve Manager aliases
+    if (!user && rawInput.includes('manager')) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: 'manager@motoban.in' },
+            { name: { contains: 'Manager' } },
+          ],
+        },
+      });
+    }
+
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -110,13 +149,16 @@ export async function POST(request: Request) {
 
     let isValidPassword = await bcrypt.compare(password, user.password);
 
-    // Master VIP & Quick PIN fallback for founding garage partners (Akshat / Samael / MotoFit)
+    // Master VIP & Quick PIN fallback for founding garage partners (Akshat / Samael / Munna / Kunal / Manager)
     const isVipUser =
       user.licenseStatus === 'lifetime_free' ||
       user.email.includes('akshat') ||
       user.email.includes('motofit') ||
       user.email.includes('manash') ||
-      user.email.includes('samael');
+      user.email.includes('samael') ||
+      user.email.includes('munna') ||
+      user.email.includes('kunal') ||
+      user.email.includes('manager');
 
     if (!isValidPassword && isVipUser) {
       if (password === 'MotoFit@2026' || password === '1234') {

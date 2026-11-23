@@ -131,6 +131,9 @@ export const VIP_FOUNDING_GARAGES: string[] = [
   'akshat@motoban.in',        // Akshat Mohanty (Owner)
   'akshat@motofit.in',
   'akshatmohanty@gmail.com',
+  'munna@motoban.in',         // Senior Mechanic
+  'kunal@motoban.in',         // Senior Mechanic
+  'manager@motoban.in',       // Workshop Manager
   ...(process.env.VIP_FREE_GARAGES ? process.env.VIP_FREE_GARAGES.split(',').map((e) => e.trim().toLowerCase()) : []),
 ];
 

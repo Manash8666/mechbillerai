@@ -18,7 +18,7 @@ async function main() {
   await prisma.vehicle.deleteMany({});
   await prisma.customer.deleteMany({});
 
-  // Create production user - MotoFit (Two-Wheeler & Four-Wheeler Service Center)
+  // Create production user - MotoFit (Two-Wheeler Service Center)
   const motofitPassword = await bcrypt.hash('MotoFit@2026', 10);
 
   const user1 = await prisma.user.upsert({

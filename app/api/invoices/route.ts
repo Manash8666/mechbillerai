@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateInvoiceNumber } from '@/lib/utils';
 import { requireAuth } from '@/lib/auth';
+import { getTargetUserIds } from '@/lib/partnerAccounts';
 import {
   buildAdvancedQuery,
   buildPaginatedResponse,
@@ -26,32 +27,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // Partner Account Aggregation for MotoFit Garages
-    let targetUserIds = [requestedUserId];
-    const userObj = await prisma.user.findUnique({
-      where: { id: requestedUserId },
-      select: { email: true },
-    });
-    const userEmail = (userObj?.email || '').toLowerCase();
-    if (
-      userEmail.includes('motofit') ||
-      userEmail.includes('manash') ||
-      userEmail.includes('samael') ||
-      userEmail.includes('akshat')
-    ) {
-      const partners = await prisma.user.findMany({
-        where: {
-          OR: [
-            { email: { contains: 'motofit' } },
-            { email: { contains: 'manash' } },
-            { email: { contains: 'samael' } },
-            { email: { contains: 'akshat' } },
-          ],
-        },
-        select: { id: true },
-      });
-      targetUserIds = partners.map((p) => p.id);
-    }
+    // Partner Account Aggregation for MotoFit Garages (cached in-memory for high performance)
+    const targetUserIds = await getTargetUserIds(requestedUserId);
 
     // Parse query parameters
     const page = parseInt(searchParams.get('page') || '1');
@@ -220,32 +197,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Partner Account Aggregation for MotoFit Garages
-    let targetUserIds = [userId];
-    const userObj = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    const userEmail = (userObj?.email || '').toLowerCase();
-    if (
-      userEmail.includes('motofit') ||
-      userEmail.includes('manash') ||
-      userEmail.includes('samael') ||
-      userEmail.includes('akshat')
-    ) {
-      const partners = await prisma.user.findMany({
-        where: {
-          OR: [
-            { email: { contains: 'motofit' } },
-            { email: { contains: 'manash' } },
-            { email: { contains: 'samael' } },
-            { email: { contains: 'akshat' } },
-          ],
-        },
-        select: { id: true },
-      });
-      targetUserIds = partners.map((p) => p.id);
-    }
+    // Partner Account Aggregation for MotoFit Garages (cached in-memory for high performance)
+    const targetUserIds = await getTargetUserIds(userId);
 
     const {
       customerId,

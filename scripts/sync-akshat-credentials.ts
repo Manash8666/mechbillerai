@@ -1,87 +1,94 @@
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 
-async function syncAkshat() {
-  console.log('⚡ Syncing Akshat Mohanty credentials across active database...');
+async function syncAllCredentials() {
+  console.log('⚡ Synchronizing all MotoBan & MotoFit 2 credentials in database...');
   const passwordHash = await bcrypt.hash('MotoFit@2026', 10);
 
-  // 1. Update existing garage2motofit@gmail.com
-  const u1 = await prisma.user.upsert({
-    where: { email: 'garage2motofit@gmail.com' },
-    update: {
+  const usersToSync = [
+    {
       name: 'Akshat Mohanty',
-      phone: '+91 72596 25881',
-      password: passwordHash,
-      role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'lifetime_free',
-      licenseKey: 'MOTOFIT-VIP-FOUNDING-2026',
-    },
-    create: {
-      email: 'garage2motofit@gmail.com',
-      name: 'Akshat Mohanty',
-      phone: '+91 72596 25881',
-      password: passwordHash,
-      role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'lifetime_free',
-      licenseKey: 'MOTOFIT-VIP-FOUNDING-2026',
-    },
-  });
-  console.log('✅ Updated garage2motofit@gmail.com ->', u1.name);
-
-  // 2. Upsert akshat@motoban.in
-  const u2 = await prisma.user.upsert({
-    where: { email: 'akshat@motoban.in' },
-    update: {
-      name: 'Akshat Mohanty',
-      phone: '+91 72596 25881',
-      password: passwordHash,
-      role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'lifetime_free',
-      licenseKey: 'AKSHAT-VIP-FOUNDING-2026',
-    },
-    create: {
       email: 'akshat@motoban.in',
-      name: 'Akshat Mohanty',
       phone: '+91 72596 25881',
-      password: passwordHash,
       role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'lifetime_free',
       licenseKey: 'AKSHAT-VIP-FOUNDING-2026',
     },
-  });
-  console.log('✅ Upserted akshat@motoban.in ->', u2.email);
-
-  // 3. Upsert akshatmohanty@gmail.com
-  const u3 = await prisma.user.upsert({
-    where: { email: 'akshatmohanty@gmail.com' },
-    update: {
+    {
       name: 'Akshat Mohanty',
+      email: 'garage2motofit@gmail.com',
       phone: '+91 72596 25881',
-      password: passwordHash,
       role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'lifetime_free',
-      licenseKey: 'AKSHAT-VIP-GMAIL-2026',
+      licenseKey: 'MOTOFIT-VIP-FOUNDING-2026',
     },
-    create: {
+    {
+      name: 'Akshat Mohanty',
       email: 'akshatmohanty@gmail.com',
-      name: 'Akshat Mohanty',
       phone: '+91 72596 25881',
-      password: passwordHash,
       role: 'owner',
-      garageType: 'two_wheeler',
-      licenseStatus: 'lifetime_free',
       licenseKey: 'AKSHAT-VIP-GMAIL-2026',
     },
-  });
-  console.log('✅ Upserted akshatmohanty@gmail.com ->', u3.email);
+    {
+      name: 'Samael Morningstar',
+      email: 'manashdash@aol.com',
+      phone: '+91 63596 35416',
+      role: 'owner',
+      licenseKey: 'SAMAEL-VIP-FOUNDING-2026',
+    },
+    {
+      name: 'Samael Morningstar',
+      email: 'samael@motoban.in',
+      phone: '+91 63596 35416',
+      role: 'owner',
+      licenseKey: 'SAMAEL-VIP-MOTOBAN-2026',
+    },
+    {
+      name: 'Munna Hezbollah',
+      email: 'munna@motoban.in',
+      phone: '+91 91232 93450',
+      role: 'senior_mechanic',
+      licenseKey: 'MUNNA-VIP-STAFF-2026',
+    },
+    {
+      name: 'Kunal Chota Thakor',
+      email: 'kunal@motoban.in',
+      phone: '+91 63544 73666',
+      role: 'senior_mechanic',
+      licenseKey: 'KUNAL-VIP-STAFF-2026',
+    },
+    {
+      name: 'MotoFit 2 Manager',
+      email: 'manager@motoban.in',
+      phone: '+91 72596 25881',
+      role: 'manager',
+      licenseKey: 'MANAGER-VIP-STAFF-2026',
+    },
+  ];
 
-  // 4. Upsert team settings for both Akshat and Samael
-  for (const user of [u1, u2, u3]) {
+  for (const u of usersToSync) {
+    const user = await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        name: u.name,
+        phone: u.phone,
+        password: passwordHash,
+        role: u.role,
+        garageType: 'two_wheeler',
+        licenseStatus: 'lifetime_free',
+      },
+      create: {
+        email: u.email,
+        name: u.name,
+        phone: u.phone,
+        password: passwordHash,
+        role: u.role,
+        garageType: 'two_wheeler',
+        licenseStatus: 'lifetime_free',
+        licenseKey: u.licenseKey,
+      },
+    });
+    console.log(`✅ Synced: ${user.name} (${user.email}) [${user.role}]`);
+
+    // Setup team settings for each
     const settingKey = `team_${user.id}`;
     const team = [
       {
@@ -120,6 +127,15 @@ async function syncAkshat() {
         isActive: true,
         createdAt: '2026-10-01T10:00:00.000Z',
       },
+      {
+        id: 'team_manager',
+        name: 'MotoFit Manager',
+        phone: '7259625881',
+        role: 'manager',
+        pin: '1234',
+        isActive: true,
+        createdAt: '2026-10-01T10:00:00.000Z',
+      },
     ];
 
     await prisma.settings.upsert({
@@ -129,9 +145,9 @@ async function syncAkshat() {
     });
   }
 
-  console.log('🎉 Akshat Mohanty credentials successfully configured & verified!');
+  console.log('🎉 All credentials and team roles successfully synced across active database!');
 }
 
-syncAkshat()
+syncAllCredentials()
   .catch(console.error)
   .finally(() => prisma.$disconnect());

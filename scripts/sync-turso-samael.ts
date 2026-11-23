@@ -30,7 +30,7 @@ async function main() {
       role: 'owner',
       licenseStatus: 'lifetime_free',
       licenseKey: 'SAMAEL-VIP-FOUNDING-2026',
-      garageType: 'four_wheeler',
+      garageType: 'two_wheeler',
       expiresAt: null,
       password: passwordHash,
     },
@@ -42,7 +42,7 @@ async function main() {
       role: 'owner',
       licenseStatus: 'lifetime_free',
       licenseKey: 'SAMAEL-VIP-FOUNDING-2026',
-      garageType: 'four_wheeler',
+      garageType: 'two_wheeler',
       expiresAt: null,
     },
   });

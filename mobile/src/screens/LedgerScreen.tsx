@@ -310,11 +310,11 @@ export default function LedgerScreen({ navigation }: any) {
               <Text style={styles.inputLabel}>Amount (₹)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="0.00"
+                placeholder="e.g. 1500"
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="numeric"
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(t) => setAmount(t.replace(/^0+(?=\d)/, ''))}
               />
 
               <Text style={styles.inputLabel}>Description</Text>
