@@ -88,7 +88,7 @@ export async function launchWhatsAppBill(params: MobileWhatsAppParams): Promise<
     return;
   }
 
-  const vehicleLine = params.vehicleNumber ? `\n🚗 *Vehicle:* ${params.vehicleNumber}` : '';
+  const vehicleLine = params.vehicleNumber ? `\n🏍️ *Vehicle:* ${params.vehicleNumber}` : '';
   const statusText = params.balanceAmount <= 0 ? '✅ PAID' : '⏳ BALANCE DUE';
   const urlSection = params.invoiceUrl ? `\n\n📄 *View & Download PDF Bill:*\n${params.invoiceUrl}` : '';
 

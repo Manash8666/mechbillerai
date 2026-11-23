@@ -543,6 +543,12 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
 
   let bottomCardsY = Math.max(ledgerY + 12, finalY + paymentBoxH + 4);
 
+  // If table/ledger pushed content too close to bottom, add a clean new page
+  if (bottomCardsY + (isSow ? 72 : 38) > pageHeight) {
+    doc.addPage();
+    bottomCardsY = 20;
+  }
+
   // 5. Dual Execution Cards: 1-Year Warranty (Left) + Post-Rebuild Run-In Service Breakdown (Right)
   if (isSow) {
     const boxW = (pageWidth - margin * 2 - 6) / 2;
@@ -614,7 +620,11 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   }
 
   // 6. Workshop Contacts & Authorized Signatory Line
-  const footerY = Math.max(bottomCardsY, pageHeight - 36);
+  let footerY = Math.max(bottomCardsY, pageHeight - 36);
+  if (footerY + 24 > pageHeight) {
+    doc.addPage();
+    footerY = 20;
+  }
 
   // Workshop Contacts
   doc.setFont('helvetica', 'bold');

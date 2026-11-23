@@ -243,12 +243,12 @@ export async function GET(request: Request) {
       customerVehicleMakeModel ||
       (allItemText.toLowerCase().includes('classic') ? 'Royal Enfield Classic 350' : null) ||
       (allItemText.toLowerCase().includes('himalayan') ? 'Royal Enfield Himalayan 411' : null) ||
-      'Royal Enfield Classic 350';
+      'Two-Wheeler';
 
     const vehicleRegNo =
       notesVehicleReg ||
       vehicleObj?.registrationNo ||
-      'As Per Estimate';
+      '-';
 
     const vehicleData = {
       makeModel: detectedModel,
@@ -256,10 +256,10 @@ export async function GET(request: Request) {
       refEstimate: invoice?.jobCard?.jobNumber ? `Ref: ${invoice.jobCard.jobNumber}` : undefined,
     };
 
-    let defaultServiceScope = 'Precision Maintenance & Overhaul';
-    if (detectedModel.includes('Classic 350')) {
+    let defaultServiceScope = 'Workshop Service & Maintenance';
+    if (detectedModel.toLowerCase().includes('classic')) {
       defaultServiceScope = 'Classic 350 Overhaul & Service';
-    } else if (detectedModel.includes('Himalayan')) {
+    } else if (detectedModel.toLowerCase().includes('himalayan')) {
       defaultServiceScope = 'Himalayan 411 Rebuild & Service';
     }
 

@@ -30,7 +30,7 @@ export function normalizeIndianPhoneNumber(phone: string): string {
  */
 export function buildWhatsAppBillUrl(details: WhatsAppBillDetails): string {
   const cleanPhone = normalizeIndianPhoneNumber(details.phone);
-  const vehicleText = details.vehicleNumber ? `\n🚗 *Vehicle:* ${details.vehicleNumber}` : '';
+  const vehicleText = details.vehicleNumber ? `\n🏍️ *Vehicle:* ${details.vehicleNumber}` : '';
   const statusEmoji = details.balanceAmount <= 0 ? '✅ PAID' : '⏳ BALANCE PENDING';
   const urlSection = details.invoiceUrl ? `\n\n📄 *View & Download PDF Bill:*\n${details.invoiceUrl}` : '';
 

@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
   },
   rtoPlateBadge: {
     color: COLORS.primary,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
     marginBottom: 2,
@@ -758,7 +758,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   qrHintText: {
-    fontSize: 10,
+    fontSize: 12,
     color: COLORS.primary,
     fontWeight: 'bold',
     marginTop: 5,
