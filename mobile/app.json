@@ -21,7 +21,8 @@
         "INTERNET",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -46,6 +47,13 @@
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#0B0F19"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MotoBan accesses your photos to allow bill importing and vehicle handover documentation.",
+          "cameraPermission": "MotoBan accesses your camera to capture vehicle condition and delivery handover proof."
         }
       ]
     ]

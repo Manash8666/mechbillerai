@@ -2,14 +2,14 @@
 
 ## 🎯 Quick Access
 
-### **Test Account #1 (Full Sample Data - Four-Wheeler Garage)**
+### **Test Account #1 (Full Sample Data - Two-Wheeler Garage)**
 ```
 URL:      http://localhost:3000/login
 Email:    test@garagesaas.com
 Password: test123
 License:  TEST-1234-ABCD-5678
 Status:   Active (Lifetime)
-Type:     🚗 Four-Wheeler (Cars & SUVs)
+Type:     🏍️ Two-Wheeler (Motorcycles & Scooters)
 ```
 
 ### **Demo Account #2 (Empty - Two-Wheeler Garage)**

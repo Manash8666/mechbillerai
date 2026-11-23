@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API, Storage, UserSession } from '../services/api';
+import { offlineSyncManager } from '../services/offlineSync';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function DashboardScreen({ navigation }: any) {
@@ -14,11 +15,25 @@ export default function DashboardScreen({ navigation }: any) {
   });
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [unsyncedOfflineCount, setUnsyncedOfflineCount] = useState(0);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
+
+  const checkOfflineQueue = async () => {
+    try {
+      const queued = await offlineSyncManager.getQueuedJobCards();
+      const unsynced = queued.filter((item) => !item.synced);
+      setUnsyncedOfflineCount(unsynced.length);
+    } catch {
+      setUnsyncedOfflineCount(0);
+    }
+  };
 
   const loadData = async () => {
     try {
       const currentUser = await Storage.getUser();
       setUser(currentUser);
+
+      await checkOfflineQueue();
 
       const [data, invoices] = await Promise.all([
         API.getDashboardStats(),
@@ -41,6 +56,22 @@ export default function DashboardScreen({ navigation }: any) {
       }
     } catch (e) {
       console.error('Failed to load dashboard data:', e);
+    }
+  };
+
+  const handleSyncOffline = async () => {
+    if (isSyncingOffline) return;
+    setIsSyncingOffline(true);
+    try {
+      const res = await offlineSyncManager.syncQueueWithServer();
+      await checkOfflineQueue();
+      if (res.synced > 0) {
+        await loadData();
+      }
+    } catch (e) {
+      console.error('Failed to sync offline cards:', e);
+    } finally {
+      setIsSyncingOffline(false);
     }
   };
 
@@ -78,6 +109,34 @@ export default function DashboardScreen({ navigation }: any) {
           <MaterialCommunityIcons name="calendar-month-outline" size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
+
+      {/* Offline Job Cards Sync Notification Banner */}
+      {unsyncedOfflineCount > 0 && (
+        <View style={styles.offlineBanner}>
+          <View style={styles.offlineBannerLeft}>
+            <MaterialCommunityIcons name="cloud-sync-outline" size={22} color="#F59E0B" />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.offlineBannerTitle}>
+                {unsyncedOfflineCount} Offline Job Card{unsyncedOfflineCount > 1 ? 's' : ''} Pending
+              </Text>
+              <Text style={styles.offlineBannerSub}>
+                Created without internet. Tap to upload to server.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.offlineSyncBtn}
+            onPress={handleSyncOffline}
+            disabled={isSyncingOffline}
+          >
+            {isSyncingOffline ? (
+              <ActivityIndicator size="small" color="#0B0F19" />
+            ) : (
+              <Text style={styles.offlineSyncBtnText}>Sync Now</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Hero: iOS Banking Balance & Cashflow Card */}
       <TouchableOpacity
@@ -475,5 +534,47 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  offlineBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  offlineBannerTitle: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  offlineBannerSub: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  offlineSyncBtn: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 76,
+  },
+  offlineSyncBtnText: {
+    color: '#0B0F19',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

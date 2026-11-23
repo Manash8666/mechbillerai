@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { API } from '../services/api';
+import { offlineSyncManager } from '../services/offlineSync';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileLoader from '../components/MobileLoader';
 import MobilePearlButton from '../components/MobilePearlButton';
@@ -67,10 +68,68 @@ export default function JobCardsScreen({ navigation }: any) {
 
   const fetchJobs = async () => {
     try {
+      try {
+        const queued = await offlineSyncManager.getQueuedJobCards();
+        const unsynced = queued.filter((item) => !item.synced);
+        if (unsynced.length > 0) {
+          await offlineSyncManager.syncQueueWithServer();
+        }
+      } catch {
+        // silent offline fallback
+      }
+
       const data = await API.getJobCards();
-      setJobs(data);
+      const queuedRemaining = await offlineSyncManager.getQueuedJobCards();
+      const unsyncedRemaining = queuedRemaining.filter((item) => !item.synced);
+
+      if (unsyncedRemaining.length > 0) {
+        const offlineMapped: JobCardItem[] = unsyncedRemaining.map((c) => ({
+          id: c.id,
+          jobNumber: 'OFFLINE',
+          status: 'pending (offline)',
+          priority: 'normal',
+          description: c.serviceDescription || 'General Service',
+          estimatedCost: c.estimatedCost,
+          customer: {
+            name: c.customerName,
+            phone: c.customerPhone,
+          },
+          vehicle: {
+            registrationNo: c.vehicleNumber,
+            make: 'Two-Wheeler',
+            model: 'Offline Entry',
+          },
+        }));
+        setJobs([...offlineMapped, ...(Array.isArray(data) ? data : [])]);
+      } else {
+        setJobs(Array.isArray(data) ? data : []);
+      }
     } catch (e) {
       console.error('Failed to fetch job cards:', e);
+      try {
+        const queuedRemaining = await offlineSyncManager.getQueuedJobCards();
+        const unsyncedRemaining = queuedRemaining.filter((item) => !item.synced);
+        if (unsyncedRemaining.length > 0) {
+          const offlineMapped: JobCardItem[] = unsyncedRemaining.map((c) => ({
+            id: c.id,
+            jobNumber: 'OFFLINE',
+            status: 'pending (offline)',
+            priority: 'normal',
+            description: c.serviceDescription || 'General Service',
+            estimatedCost: c.estimatedCost,
+            customer: {
+              name: c.customerName,
+              phone: c.customerPhone,
+            },
+            vehicle: {
+              registrationNo: c.vehicleNumber,
+              make: 'Two-Wheeler',
+              model: 'Offline Entry',
+            },
+          }));
+          setJobs(offlineMapped);
+        }
+      } catch {}
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,6 +146,7 @@ export default function JobCardsScreen({ navigation }: any) {
   };
 
   const getStatusColor = (status: string) => {
+    if (status?.toLowerCase().includes('offline')) return '#F59E0B';
     switch (status?.toLowerCase()) {
       case 'completed': return COLORS.success;
       case 'in-progress': return COLORS.primary;
@@ -229,6 +289,25 @@ export default function JobCardsScreen({ navigation }: any) {
 
   const handlePromptStatus = (item: JobCardItem) => {
     const s = item.status?.toLowerCase();
+    if (s?.includes('offline')) {
+      Alert.alert(
+        'Offline Job Card',
+        'This job card was logged without internet connection. Tap "Sync Now" to upload it to the cloud server.',
+        [
+          {
+            text: 'Sync Now',
+            onPress: async () => {
+              setRefreshing(true);
+              await offlineSyncManager.syncQueueWithServer();
+              await fetchJobs();
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     const options: any[] = [];
     if (s === 'pending') {
       options.push({ text: 'Start Work (In-Progress)', onPress: () => handleUpdateStatus(item, 'in-progress') });

@@ -181,9 +181,9 @@ async function migrate() {
             mileage: v.runningKm || 0,
           },
         });
-        console.log(`   🚗 Added Vehicle: ${reg} for ${c.name}`);
+        console.log(`   🏍️ Added Vehicle: ${reg} for ${c.name}`);
       } else {
-        console.log(`   🚗 Existing Vehicle: ${reg}`);
+        console.log(`   🏍️ Existing Vehicle: ${reg}`);
       }
     }
   }
