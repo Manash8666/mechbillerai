@@ -316,9 +316,9 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
       item.discount !== 0 &&
       item.discount !== '0'
     ) {
-      discountStr = String(item.discount).includes('%') || String(item.discount).includes('₹')
-        ? String(item.discount)
-        : `₹${Number(item.discount).toLocaleString('en-IN')}`;
+      discountStr = String(item.discount).includes('%') || String(item.discount).includes('Rs.')
+        ? String(item.discount).replace(/₹/g, 'Rs. ')
+        : `Rs. ${Number(item.discount).toLocaleString('en-IN')}`;
     }
 
     return [
@@ -334,7 +334,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   applyAutoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
-    head: [['S.NO.', 'SERVICE ITEM / SPARE PART DESCRIPTION', 'QTY', 'RATE (₹)', 'DISCOUNT', 'AMOUNT (₹)']],
+    head: [['S.NO.', 'SERVICE ITEM / SPARE PART DESCRIPTION', 'QTY', 'RATE (Rs.)', 'DISCOUNT', 'AMOUNT (Rs.)']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -403,7 +403,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   const finalY = (doc as any).lastAutoTable.finalY + 4;
 
   // 4. Financial Calculations Ledger (Right-Aligned)
-  const summaryBoxW = 80;
+  const summaryBoxW = 86;
   const summaryBoxX = pageWidth - margin - summaryBoxW;
 
   const discountAmount = data.discount || 0;
@@ -419,7 +419,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
       isAccent ? PRIMARY_COLOR[2] : 99
     );
     doc.text(lbl, summaryBoxX + 4, y);
-    doc.text(val, summaryBoxX + summaryBoxW - 4, y, { align: 'right' });
+    doc.text(val, summaryBoxX + summaryBoxW - 5, y, { align: 'right' });
   };
 
   doc.setFillColor(249, 250, 251);
@@ -429,7 +429,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   let ledgerY = finalY + 6;
   addLedgerRow(
     isEstimate ? 'Estimated Gross Subtotal:' : 'Gross Subtotal:',
-    `₹ ${grossSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    `Rs. ${grossSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     ledgerY
   );
 
@@ -438,7 +438,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
     const discountPercent = grossSubtotal > 0 ? Math.round((discountAmount / grossSubtotal) * 100) : 0;
     addLedgerRow(
       `Special Workshop Discount (${discountPercent}%):`,
-      `- ₹ ${discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `- Rs. ${discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ledgerY,
       false,
       true
@@ -451,15 +451,15 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
 
   // Total Highlight
   doc.setFillColor(...SLATE_DARK);
-  doc.roundedRect(summaryBoxX + 2, ledgerY, summaryBoxW - 4, 8, 1.5, 1.5, 'F');
+  doc.roundedRect(summaryBoxX + 2, ledgerY, summaryBoxW - 4, 8.5, 1.5, 1.5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('Total Payable Amount:', summaryBoxX + 5, ledgerY + 5.5);
+  doc.text('Total Payable Amount:', summaryBoxX + 5, ledgerY + 5.8);
   doc.text(
-    `₹ ${data.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    summaryBoxX + summaryBoxW - 5,
-    ledgerY + 5.5,
+    `Rs. ${data.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    summaryBoxX + summaryBoxW - 6,
+    ledgerY + 5.8,
     { align: 'right' }
   );
 
@@ -539,7 +539,7 @@ export function generateInvoiceOrEstimatePdf(data: InvoicePdfData): any {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.2);
   doc.setTextColor(...PRIMARY_COLOR);
-  doc.text(`Total Payable: ₹ ${data.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, infoX, qrY + 22.5);
+  doc.text(`Total Payable: Rs. ${data.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, infoX, qrY + 22.5);
 
   let bottomCardsY = Math.max(ledgerY + 12, finalY + paymentBoxH + 4);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Filter, FileText, Download, IndianRupee, X, Trash2, QrCode, Share2, Printer, Sparkles, FileUp, Edit3, CreditCard, Package, CheckCircle2, Camera, Image as ImageIcon, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -125,6 +125,8 @@ export default function InvoicesPage() {
   >([]);
   const [updatingInvoice, setUpdatingInvoice] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(false);
+  const editItemsContainerRef = useRef<HTMLDivElement>(null);
+  const newItemsContainerRef = useRef<HTMLDivElement>(null);
 
   const getItemNetTotal = (item: { quantity: number; unitPrice: number; discountType?: '%' | '₹'; discountValue?: number }) => {
     const qty = Number(item.quantity) || 1;
@@ -246,6 +248,15 @@ export default function InvoicesPage() {
       const paidVal = Number(editPaid) || 0;
       const balanceVal = Math.max(0, totalVal - paidVal);
 
+      let finalStatus = editStatus;
+      if (balanceVal <= 0) {
+        finalStatus = 'paid';
+      } else if (paidVal > 0) {
+        finalStatus = 'partial';
+      } else {
+        finalStatus = 'unpaid';
+      }
+
       const finalNotes = JSON.stringify({
         vehicleModel: editVehicleModel.trim() || undefined,
         vehicleReg: editVehicleReg.trim() || undefined,
@@ -256,7 +267,7 @@ export default function InvoicesPage() {
 
       const payload = {
         paymentMode: editPaymentMode,
-        status: editStatus,
+        status: finalStatus,
         customerName: editCustomerName.trim(),
         customerPhone: editCustomerPhone.trim(),
         customerEmail: editCustomerEmail.trim() || undefined,
@@ -633,7 +644,15 @@ export default function InvoicesPage() {
   };
 
   const handleAddItem = () => {
+    const nextIdx = lineItems.length;
     setLineItems([...lineItems, { description: '', details: '', quantity: 1, unitPrice: 0, discountType: '%', discountValue: 0 }]);
+    setTimeout(() => {
+      const el = document.getElementById(`new-item-desc-${nextIdx}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      }
+    }, 60);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -1027,8 +1046,10 @@ export default function InvoicesPage() {
       case 'paid':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'partial':
+      case 'partially_paid':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
       case 'unpaid':
+      case 'pending':
         return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
       case 'overdue':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
@@ -1181,8 +1202,8 @@ export default function InvoicesPage() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 {/* Left Section */}
                 <div className="space-y-3 flex-1">
-                  <div className="flex items-center justify-between sm:justify-start gap-4">
-                    <span className="font-mono font-bold text-lg text-foreground">{invoice.invoiceNumber}</span>
+                  <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2.5 sm:gap-4">
+                    <span className="font-mono font-bold text-base sm:text-lg text-foreground break-all">{invoice.invoiceNumber}</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium uppercase ${getStatusColor(invoice.status)}`}>
                       {invoice.status}
                     </span>
@@ -1215,21 +1236,21 @@ export default function InvoicesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6">
-                    <div>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-1">
+                    <div className="min-w-[70px]">
                       <p className="text-xs text-muted-foreground">Subtotal</p>
                       <p className="text-sm font-medium text-foreground">₹{invoice.subtotal.toLocaleString('en-IN')}</p>
                     </div>
-                    <div>
+                    <div className="min-w-[70px]">
                       <p className="text-xs text-muted-foreground">GST (18%)</p>
                       <p className="text-sm font-medium text-foreground">₹{invoice.tax.toLocaleString('en-IN')}</p>
                     </div>
-                    <div>
+                    <div className="min-w-[70px]">
                       <p className="text-xs text-muted-foreground">Total Amount</p>
                       <p className="text-sm font-bold text-foreground">₹{invoice.total.toLocaleString('en-IN')}</p>
                     </div>
                     {invoice.balance > 0 && (
-                      <div>
+                      <div className="min-w-[70px]">
                         <p className="text-xs text-muted-foreground">Balance Due</p>
                         <p className="text-sm font-bold text-red-600 dark:text-red-400">₹{invoice.balance.toLocaleString('en-IN')}</p>
                       </div>
@@ -1716,6 +1737,7 @@ export default function InvoicesPage() {
                     <div key={`line-item-${index}`} className="p-3 rounded-xl border border-border bg-muted/20 space-y-2">
                       <div className="flex gap-2 items-center flex-wrap sm:flex-nowrap">
                         <input
+                          id={`new-item-desc-${index}`}
                           type="text"
                           placeholder="Service / Spare Title (e.g. CYLINDER BLOCK & PISTON KIT)"
                           value={item.description}
@@ -2152,14 +2174,24 @@ export default function InvoicesPage() {
                   <select
                     id="edit-invoice-status"
                     value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500"
+                    onChange={(e) => {
+                      const newStat = e.target.value;
+                      setEditStatus(newStat);
+                      const curSub = editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0);
+                      const curDisc = Number(editDiscount) || 0;
+                      const curTax = gstEnabled ? Math.round(Math.max(0, curSub - curDisc) * 0.18) : 0;
+                      const curTot = Math.max(0, curSub - curDisc + curTax);
+                      if (newStat === 'paid') {
+                        setEditPaid(String(curTot));
+                      } else if (newStat === 'unpaid') {
+                        setEditPaid('0');
+                      }
+                    }}
+                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:ring-1 focus:ring-amber-500 font-medium"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="pending">Pending</option>
-                    <option value="partially_paid">Partially Paid</option>
                     <option value="paid">Paid</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="partial">Partially Paid</option>
+                    <option value="unpaid">Unpaid</option>
                   </select>
                 </div>
                 <div>
@@ -2275,23 +2307,35 @@ export default function InvoicesPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      const nextIdx = editLineItems.length;
                       setEditLineItems((prev) => [
                         ...prev,
                         { description: '', quantity: 1, unitPrice: 0, discountType: '%', discountValue: 0 },
-                      ])
-                    }
+                      ]);
+                      setTimeout(() => {
+                        if (editItemsContainerRef.current) {
+                          editItemsContainerRef.current.scrollTo({
+                            top: editItemsContainerRef.current.scrollHeight,
+                            behavior: 'smooth',
+                          });
+                        }
+                        const el = document.getElementById(`edit-item-desc-${nextIdx}`);
+                        if (el) el.focus();
+                      }, 60);
+                    }}
                     className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Item
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <div ref={editItemsContainerRef} className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {editLineItems.map((item, idx) => (
                     <div key={`edit-item-${idx}`} className="flex gap-2 items-center bg-card/60 p-2 rounded-lg border border-border/40 flex-wrap sm:flex-nowrap">
                       <div className="flex-1 min-w-[140px]">
                         <input
+                          id={`edit-item-desc-${idx}`}
                           type="text"
                           placeholder="Item Description"
                           value={item.description}
@@ -2416,7 +2460,23 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-invoice-paid" className="text-xs font-semibold text-muted-foreground">Amount Paid (₹)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor="edit-invoice-paid" className="text-xs font-semibold text-muted-foreground">Amount Paid (₹)</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curSub = editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0);
+                        const curDisc = Number(editDiscount) || 0;
+                        const curTax = gstEnabled ? Math.round(Math.max(0, curSub - curDisc) * 0.18) : 0;
+                        const curTot = Math.max(0, curSub - curDisc + curTax);
+                        setEditPaid(String(curTot));
+                        setEditStatus('paid');
+                      }}
+                      className="text-[11px] font-bold text-luxury-gold hover:underline"
+                    >
+                      ✓ Mark Paid in Full
+                    </button>
+                  </div>
                   <input
                     id="edit-invoice-paid"
                     type="number"
@@ -2426,7 +2486,22 @@ export default function InvoicesPage() {
                     onFocus={(e) => {
                       if (e.target.value === '0') e.target.select();
                     }}
-                    onChange={(e) => setEditPaid(e.target.value.replace(/^0+(?=\d)/, ''))}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/^0+(?=\d)/, '');
+                      setEditPaid(raw);
+                      const paidNum = Number(raw) || 0;
+                      const curSub = editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0);
+                      const curDisc = Number(editDiscount) || 0;
+                      const curTax = gstEnabled ? Math.round(Math.max(0, curSub - curDisc) * 0.18) : 0;
+                      const curTot = Math.max(0, curSub - curDisc + curTax);
+                      if (paidNum >= curTot && curTot > 0) {
+                        setEditStatus('paid');
+                      } else if (paidNum > 0) {
+                        setEditStatus('partial');
+                      } else {
+                        setEditStatus('unpaid');
+                      }
+                    }}
                     className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono"
                   />
                 </div>
@@ -2445,7 +2520,7 @@ export default function InvoicesPage() {
               </div>
 
               {/* Summary Calculation */}
-              <div className="p-3 bg-muted/40 rounded-xl border border-border/50 text-xs flex justify-between items-center font-mono">
+              <div className="p-3 bg-muted/40 rounded-xl border border-border/50 text-xs flex flex-wrap justify-between items-center gap-2 font-mono">
                 <div>
                   <span className="text-muted-foreground">Subtotal: </span>
                   <span className="font-bold text-foreground">
@@ -2462,6 +2537,12 @@ export default function InvoicesPage() {
                   <span className="text-muted-foreground">Total: </span>
                   <span className="font-black text-amber-400">
                     ₹{(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) + (gstEnabled ? Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18) : 0)).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Balance Due: </span>
+                  <span className={`font-black ${Math.max(0, (Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) + (gstEnabled ? Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18) : 0)) - (Number(editPaid) || 0)) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    ₹{Math.max(0, (Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) + (gstEnabled ? Math.round(Math.max(0, editLineItems.reduce((acc, it) => acc + getItemNetTotal(it), 0) - (Number(editDiscount) || 0)) * 0.18) : 0)) - (Number(editPaid) || 0)).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>

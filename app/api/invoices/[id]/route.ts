@@ -235,6 +235,20 @@ export async function PUT(
       }
     }
 
+    // Ensure status strictly reflects the final balance and paid amount
+    const finalTotal = updateData.total ?? existing.total;
+    const finalPaid = updateData.paid ?? existing.paid;
+    const finalBalance = updateData.balance ?? Math.max(0, finalTotal - finalPaid);
+    updateData.balance = finalBalance;
+
+    if (finalBalance <= 0) {
+      updateData.status = 'paid';
+    } else if (finalPaid > 0) {
+      updateData.status = 'partial';
+    } else {
+      updateData.status = 'unpaid';
+    }
+
     // Update invoice
     const invoice = await prisma.invoice.update({
       where: { id },

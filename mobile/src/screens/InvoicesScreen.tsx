@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -125,6 +125,9 @@ export default function InvoicesScreen() {
   const [editDiscount, setEditDiscount] = useState('0');
   const [editDeliveryPhoto, setEditDeliveryPhoto] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [newlyAddedEditItemId, setNewlyAddedEditItemId] = useState<string | null>(null);
+  const editModalScrollRef = useRef<ScrollView>(null);
+  const newModalScrollRef = useRef<ScrollView>(null);
 
   // Import Bills Modal State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -577,6 +580,15 @@ export default function InvoicesScreen() {
       const paid = Number.parseFloat(editPaidAmount) || 0;
       const balance = Math.max(0, total - paid);
 
+      let finalStatus = editStatus;
+      if (balance <= 0) {
+        finalStatus = 'paid';
+      } else if (paid > 0) {
+        finalStatus = 'partial';
+      } else {
+        finalStatus = 'unpaid';
+      }
+
       const notesPayload = JSON.stringify({
         vehicleModel: editVehicleModel.trim() || undefined,
         vehicleReg: editVehicleReg.trim().toUpperCase() || undefined,
@@ -586,7 +598,7 @@ export default function InvoicesScreen() {
 
       await API.updateInvoice(editingInvoice.id, {
         paymentMode: editPaymentMode,
-        status: editStatus,
+        status: finalStatus,
         subtotal,
         discount: overallDisc,
         tax: 0,
@@ -874,8 +886,10 @@ export default function InvoicesScreen() {
       <View style={styles.card}>
         {/* Card Header */}
         <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.invoiceNumber}>{item.invoiceNumber}</Text>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.invoiceNumber} numberOfLines={1} ellipsizeMode="tail">
+              {item.invoiceNumber}
+            </Text>
             <Text style={styles.dateText}>
               {new Date(item.createdAt).toLocaleDateString('en-IN', {
                 day: '2-digit',
@@ -909,23 +923,25 @@ export default function InvoicesScreen() {
 
         {/* Financial Breakdown */}
         <View style={styles.amountBreakdown}>
-          <View style={styles.amountCol}>
+          <View style={[styles.amountCol, { flex: 1 }]}>
             <Text style={styles.amountLabel}>Total Bill</Text>
-            <Text style={styles.amountVal}>₹{(item.total || 0).toLocaleString('en-IN')}</Text>
+            <Text style={styles.amountVal} numberOfLines={1} adjustsFontSizeToFit>₹{(item.total || 0).toLocaleString('en-IN')}</Text>
           </View>
-          <View style={styles.amountCol}>
+          <View style={[styles.amountCol, { flex: 1 }]}>
             <Text style={styles.amountLabel}>Paid</Text>
-            <Text style={[styles.amountVal, { color: '#10B981' }]}>
+            <Text style={[styles.amountVal, { color: '#10B981' }]} numberOfLines={1} adjustsFontSizeToFit>
               ₹{(item.paid || 0).toLocaleString('en-IN')}
             </Text>
           </View>
-          <View style={styles.amountCol}>
+          <View style={[styles.amountCol, { flex: 1 }]}>
             <Text style={styles.amountLabel}>Balance</Text>
             <Text
               style={[
                 styles.amountVal,
                 { color: item.balance > 0 ? '#EF4444' : COLORS.textMuted },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
             >
               ₹{(item.balance || 0).toLocaleString('en-IN')}
             </Text>
@@ -1142,7 +1158,7 @@ export default function InvoicesScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
+            <ScrollView ref={newModalScrollRef} contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
               {/* Document Type Selector: SoW Bill vs SoW Estimate */}
               <View style={styles.docTypeToggleRow}>
                 <TouchableOpacity
@@ -1816,7 +1832,7 @@ export default function InvoicesScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
+            <ScrollView ref={editModalScrollRef} contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
               {/* Customer & Vehicle Info */}
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionHeader}>Customer & Vehicle Information</Text>
@@ -1909,18 +1925,23 @@ export default function InvoicesScreen() {
                   <TouchableOpacity
                     style={styles.stockPickerBtn}
                     onPress={() => {
+                      const newId = `edit_item_${Date.now()}`;
                       const newItem: LineItem = {
-                        id: Date.now().toString(),
-                        description: 'Custom Repair / Spare',
-                        details: 'Mechanical service task',
+                        id: newId,
+                        description: '',
+                        details: '',
                         category: 'part',
                         quantity: 1,
-                        unitPrice: 500,
+                        unitPrice: 0,
                         discountType: '%',
                         discountValue: 0,
-                        total: 500,
+                        total: 0,
                       };
+                      setNewlyAddedEditItemId(newId);
                       setEditLineItems((prev) => [...prev, newItem]);
+                      setTimeout(() => {
+                        editModalScrollRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
                     }}
                   >
                     <MaterialCommunityIcons name="plus" size={14} color="#C9F31D" />
@@ -1934,6 +1955,7 @@ export default function InvoicesScreen() {
                       <TextInput
                         style={[styles.modalInput, { flex: 1, fontWeight: 'bold' }]}
                         value={item.description}
+                        autoFocus={item.id === newlyAddedEditItemId}
                         onChangeText={(val) => {
                           setEditLineItems((prev) =>
                             prev.map((it, i) => (i === idx ? { ...it, description: val } : it))
@@ -2069,12 +2091,39 @@ export default function InvoicesScreen() {
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Amount Paid (₹)</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.inputLabel}>Amount Paid (₹)</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const curSub = editLineItems.reduce((acc, it) => acc + (it.total || 0), 0);
+                          const curDisc = Number.parseFloat(editDiscount) || 0;
+                          const curTot = Math.max(0, curSub - curDisc);
+                          setEditPaidAmount(curTot.toString());
+                          setEditStatus('paid');
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, color: COLORS.primary, fontWeight: 'bold' }}>✓ Paid in Full</Text>
+                      </TouchableOpacity>
+                    </View>
                     <TextInput
                       style={styles.modalInput}
                       keyboardType="numeric"
                       value={editPaidAmount === '0' ? '' : editPaidAmount}
-                      onChangeText={(text) => setEditPaidAmount(text.replace(/^0+(?=\d)/, ''))}
+                      onChangeText={(text) => {
+                        const clean = text.replace(/^0+(?=\d)/, '');
+                        setEditPaidAmount(clean);
+                        const paidNum = Number.parseFloat(clean) || 0;
+                        const curSub = editLineItems.reduce((acc, it) => acc + (it.total || 0), 0);
+                        const curDisc = Number.parseFloat(editDiscount) || 0;
+                        const curTot = Math.max(0, curSub - curDisc);
+                        if (paidNum >= curTot && curTot > 0) {
+                          setEditStatus('paid');
+                        } else if (paidNum > 0) {
+                          setEditStatus('partial');
+                        } else {
+                          setEditStatus('unpaid');
+                        }
+                      }}
                       placeholder="0"
                       placeholderTextColor={COLORS.textMuted}
                     />
@@ -2099,7 +2148,7 @@ export default function InvoicesScreen() {
 
               {/* Save Button */}
               <View style={styles.totalSummaryBanner}>
-                <View>
+                <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.totalSummaryLabel}>Net Bill Amount</Text>
                   <Text style={styles.totalSummaryVal}>
                     ₹{Math.max(
@@ -2107,6 +2156,9 @@ export default function InvoicesScreen() {
                       editLineItems.reduce((acc, it) => acc + (it.total || 0), 0) -
                         (Number.parseFloat(editDiscount) || 0)
                     ).toLocaleString('en-IN')}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 3, color: (Math.max(0, editLineItems.reduce((acc, it) => acc + (it.total || 0), 0) - (Number.parseFloat(editDiscount) || 0)) - (Number.parseFloat(editPaidAmount) || 0)) > 0 ? '#EF4444' : '#10B981' }}>
+                    Balance: ₹{Math.max(0, (Math.max(0, editLineItems.reduce((acc, it) => acc + (it.total || 0), 0) - (Number.parseFloat(editDiscount) || 0)) - (Number.parseFloat(editPaidAmount) || 0))).toLocaleString('en-IN')} ({editStatus.toUpperCase()})
                   </Text>
                 </View>
                 <MobilePearlButton
